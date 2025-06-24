@@ -11,6 +11,8 @@ interface User {
   year: string;
   bio?: string;
   isAdmin: boolean;
+  interests: string[];
+  joinedGroups: string[];
 }
 
 interface AuthContextType {
@@ -18,6 +20,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (userData: Partial<User>) => Promise<void>;
   loading: boolean;
 }
 
@@ -27,6 +31,7 @@ interface RegisterData {
   password: string;
   major: string;
   year: string;
+  interests?: string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,7 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Mock authentication
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const mockUser: User = {
@@ -66,7 +70,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         major: 'Computer Science',
         year: 'Junior',
         bio: 'Passionate about technology and connecting with fellow students.',
-        isAdmin: email === 'admin@college.edu'
+        isAdmin: email === 'admin@college.edu',
+        interests: ['Programming', 'Machine Learning', 'Basketball'],
+        joinedGroups: ['cs-study-group', 'ml-enthusiasts']
       };
       
       setUser(mockUser);
@@ -82,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Please check your credentials and try again.",
         variant: "destructive"
       });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -98,7 +105,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: userData.email,
         major: userData.major,
         year: userData.year,
-        isAdmin: false
+        isAdmin: false,
+        interests: userData.interests || [],
+        joinedGroups: []
       };
       
       setUser(newUser);
@@ -114,8 +123,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Please try again later.",
         variant: "destructive"
       });
+      throw error;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Password reset sent",
+        description: "Check your email for password reset instructions."
+      });
+    } catch (error) {
+      toast({
+        title: "Reset failed",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
+  const updateProfile = async (userData: Partial<User>) => {
+    if (!user) return;
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem('campuzbuzz_user', JSON.stringify(updatedUser));
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+      throw error;
     }
   };
 
@@ -129,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, resetPassword, updateProfile, loading }}>
       {children}
     </AuthContext.Provider>
   );
