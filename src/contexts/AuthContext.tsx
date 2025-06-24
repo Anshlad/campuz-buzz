@@ -11,6 +11,7 @@ interface User {
   year: string;
   bio?: string;
   isAdmin: boolean;
+  role: 'student' | 'professor' | 'admin' | 'club';
   interests: string[];
   joinedGroups: string[];
 }
@@ -71,6 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         year: 'Junior',
         bio: 'Passionate about technology and connecting with fellow students.',
         isAdmin: email === 'admin@college.edu',
+        role: email === 'admin@college.edu' ? 'admin' : 'student',
         interests: ['Programming', 'Machine Learning', 'Basketball'],
         joinedGroups: ['cs-study-group', 'ml-enthusiasts']
       };
@@ -106,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         major: userData.major,
         year: userData.year,
         isAdmin: false,
+        role: 'student',
         interests: userData.interests || [],
         joinedGroups: []
       };

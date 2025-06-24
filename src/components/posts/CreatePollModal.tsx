@@ -161,7 +161,7 @@ export const CreatePollModal: React.FC<CreatePollModalProps> = ({
             <Checkbox
               id="allowMultiple"
               checked={allowMultiple}
-              onCheckedChange={setAllowMultiple}
+              onCheckedChange={(checked) => setAllowMultiple(checked === true)}
             />
             <Label htmlFor="allowMultiple" className="text-sm">
               Allow multiple selections
