@@ -1,73 +1,85 @@
-# Welcome to your Lovable project
+# 🎓 CampuzBuzz – Social Media Platform for College Communities
 
-## Project info
+CampuzBuzz is a modern, full-stack social media web app built to connect college students socially and academically. Inspired by platforms like LinkedIn, Reddit, and Instagram, it combines real-time messaging, study groups, events, and community-based networking tailored for campus life.
 
-**URL**: https://lovable.dev/projects/90ca6d7e-59c4-431d-9119-91ba4ed82bcf
+---
 
-## How can I edit this code?
+## 🚀 Features
 
-There are several ways of editing your application.
+### 🏠 Home Feed
+- Infinite scroll with posts
+- Likes, comments, and reactions
+- Filter by groups, tags, or events
 
-**Use Lovable**
+### 👤 Profile Page
+- Editable user profiles: bio, major, department, profile picture
+- Tabs for Posts | Study Groups | Events
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/90ca6d7e-59c4-431d-9119-91ba4ed82bcf) and start prompting.
+### ✍️ Post Creation
+- Text, image, and file upload support
+- Tag users or study groups
+- Poll and Q&A post formats
 
-Changes made via Lovable will be committed automatically to this repo.
+### 📅 Event Calendar
+- Monthly and weekly view
+- RSVP functionality with reminders
 
-**Use your preferred IDE**
+### 💬 Real-time Chat
+- 1-on-1 and group chat for study groups
+- Emoji support and message status
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🧑‍🏫 Study Groups
+- Join or create groups
+- Group chat and upcoming sessions view
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 📢 Campus Announcements
+- Admin-only posts with filters by department/date
 
-Follow these steps:
+### 🔍 Explore/Search
+- Discover users, events, study groups by keywords or tags
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 🧩 Communities
+- Department- or interest-based communities
+- Community feeds, posts, and group chat
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 🤝 Mentorship Matching
+- Match juniors with seniors based on interests
+- Mentorship badges and chat integration
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## 🧑‍💻 Tech Stack
+
+### Frontend
+- React.js + TypeScript
+- Tailwind CSS + Framer Motion
+- ShadCN UI / Radix for components
+- React Router (SPA)
+
+### Backend
+- Supabase (PostgreSQL, Auth, Storage, Realtime)
+- Supabase Edge Functions (for advanced backend logic)
+
+### Others
+- Toastify for notifications
+- Skeleton loaders for UX polish
+- RLS policies for role-based data access
+
+---
+
+## 🛠 Installation & Setup
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/campuzbuzz.git
+cd campuzbuzz
+
+# 2. Install dependencies
+npm install
+
+# 3. Setup environment variables
+cp .env.example .env
+# Add your Supabase keys in .env
+
+# 4. Run the app
 npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/90ca6d7e-59c4-431d-9119-91ba4ed82bcf) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
