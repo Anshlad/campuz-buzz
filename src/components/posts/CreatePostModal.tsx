@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Image, X } from 'lucide-react';
+import { AutoTagSuggestions } from '@/components/ai/AutoTagSuggestions';
 
 interface CreatePostModalProps {
   open: boolean;
@@ -90,6 +91,20 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({ open, onClose,
               placeholder="Share something with your community..."
               className="min-h-[120px] mt-2"
               required
+            />
+            
+            <AutoTagSuggestions
+              content={content}
+              onTagSelect={(tag) => {
+                if (!tags.includes(tag)) {
+                  setTags([...tags, tag]);
+                }
+              }}
+              onCommunitySelect={(community) => {
+                // Handle community selection
+                console.log('Selected community:', community);
+              }}
+              selectedTags={tags}
             />
           </div>
 

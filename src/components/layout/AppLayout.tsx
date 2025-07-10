@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { AuthPages } from '@/components/auth/AuthPages';
-import { HomeFeed } from '@/pages/HomeFeed';
+import HomeFeed from '@/pages/HomeFeed';
 import { Profile } from '@/pages/Profile';
 import { Communities } from '@/pages/Communities';
 import { EventCalendar } from '@/pages/EventCalendar';
