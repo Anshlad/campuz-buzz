@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ const getRoleBadge = (role: string) => {
 export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/', color: 'text-blue-500' },
@@ -132,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             <div className="flex items-center space-x-1 mt-1">
               <Zap className="h-3 w-3 text-yellow-500" />
               <span className="text-xs text-sidebar-foreground/70">
-                {user?.engagement_score || 0} pts
+                0 pts
               </span>
             </div>
           </div>
@@ -144,34 +145,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         <div className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wide mb-3 px-3">
           Navigation
         </div>
-        {navItems.map((item, index) => (
-          <motion.div
-            key={item.path}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <NavLink
-              to={item.path}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `group flex items-center space-x-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 animated-underline ${
+        {navItems.map((item, index) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <motion.div
+              key={item.path}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <NavLink
+                to={item.path}
+                onClick={onClose}
+                className={`group flex items-center space-x-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 animated-underline ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-md transform scale-[1.02]'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:transform hover:scale-[1.02]'
-                }`
-              }
-            >
-              <item.icon className={`h-5 w-5 ${isActive ? '' : item.color} group-hover:scale-110 transition-transform`} />
-              <span>{item.label}</span>
-              {item.path === '/chat' && (
-                <Badge variant="secondary" className="ml-auto bg-red-500 text-white text-xs">
-                  3
-                </Badge>
-              )}
-            </NavLink>
-          </motion.div>
-        ))}
+                }`}
+              >
+                <item.icon className={`h-5 w-5 ${isActive ? '' : item.color} group-hover:scale-110 transition-transform`} />
+                <span>{item.label}</span>
+                {item.path === '/chat' && (
+                  <Badge variant="secondary" className="ml-auto bg-red-500 text-white text-xs">
+                    3
+                  </Badge>
+                )}
+              </NavLink>
+            </motion.div>
+          );
+        })}
       </nav>
 
       {/* Footer Actions */}
