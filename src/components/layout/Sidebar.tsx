@@ -6,6 +6,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { StatusIndicator } from '@/components/ui/status-indicator';
+import { motion } from 'framer-motion';
 import { 
   Home, 
   User, 
@@ -17,7 +19,10 @@ import {
   LogOut,
   X,
   Moon,
-  Sun
+  Sun,
+  BookOpen,
+  Zap,
+  TrendingUp
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,10 +31,10 @@ interface SidebarProps {
 
 const getRoleBadge = (role: string) => {
   const roleConfig = {
-    admin: { label: 'Admin', className: 'bg-red-500 text-white' },
-    professor: { label: 'Prof', className: 'bg-purple-500 text-white' },
-    club: { label: 'Club', className: 'bg-green-500 text-white' },
-    student: { label: 'Student', className: 'bg-blue-500 text-white' }
+    admin: { label: 'Admin', className: 'badge-admin' },
+    professor: { label: 'Prof', className: 'badge-professor' },
+    club: { label: 'Club', className: 'badge-mentor' },
+    student: { label: 'Student', className: 'badge-student' }
   };
   
   const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.student;
@@ -45,35 +50,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   const { theme, toggleTheme } = useTheme();
 
   const navItems = [
-    { icon: Home, label: 'Home', path: '/' },
-    { icon: User, label: 'Profile', path: '/profile' },
-    { icon: Users, label: 'Communities', path: '/communities' },
-    { icon: Calendar, label: 'Events', path: '/events' },
-    { icon: MessageSquare, label: 'Chat', path: '/chat' },
-    { icon: Megaphone, label: 'Announcements', path: '/announcements' },
-    { icon: Search, label: 'Explore', path: '/explore' },
-    { icon: Users, label: 'Study Groups', path: '/study-groups' },
+    { icon: Home, label: 'Home', path: '/', color: 'text-blue-500' },
+    { icon: TrendingUp, label: 'Trending', path: '/explore', color: 'text-orange-500' },
+    { icon: Users, label: 'Communities', path: '/communities', color: 'text-green-500' },
+    { icon: Calendar, label: 'Events', path: '/events', color: 'text-purple-500' },
+    { icon: MessageSquare, label: 'Chat', path: '/chat', color: 'text-pink-500' },
+    { icon: BookOpen, label: 'Study Groups', path: '/study-groups', color: 'text-indigo-500' },
+    { icon: Megaphone, label: 'Announcements', path: '/announcements', color: 'text-red-500' },
   ];
 
   return (
-    <div className="h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+    <motion.div 
+      initial={{ x: -300 }}
+      animate={{ x: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="h-full bg-sidebar border-r border-sidebar-border flex flex-col shadow-lg"
+    >
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/lovable-uploads/e51f26a6-a9d4-4b1f-a787-2f24bdc5c8bf.png" 
-              alt="CampuzBuzz Logo" 
-              className="h-8 w-8 object-contain"
-            />
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <motion.div 
+            className="flex items-center space-x-3"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 400 }}
+          >
+            <div className="relative">
+              <img 
+                src="/lovable-uploads/e51f26a6-a9d4-4b1f-a787-2f24bdc5c8bf.png" 
+                alt="CampuzBuzz Logo" 
+                className="h-10 w-10 object-contain"
+              />
+              <motion.div
+                className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+            </div>
+            <span className="text-xl font-bold gradient-text bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               CampuzBuzz
             </span>
-          </div>
+          </motion.div>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="lg:hidden"
+            className="lg:hidden hover:bg-sidebar-accent"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -81,72 +101,103 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         </div>
       </div>
 
-      {/* User info */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-          </Avatar>
+      {/* User Profile Card */}
+      <div className="p-4 border-b border-sidebar-border/50">
+        <motion.div 
+          className="flex items-center space-x-3 p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
+          whileHover={{ scale: 1.02 }}
+        >
+          <div className="relative">
+            <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+              <AvatarImage src={user?.avatar} />
+              <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                {user?.name?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <StatusIndicator 
+              status="online" 
+              className="absolute -bottom-1 -right-1" 
+            />
+          </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            <div className="flex items-center space-x-2 mb-1">
+              <p className="text-sm font-semibold text-sidebar-foreground truncate">
                 {user?.name}
               </p>
               {user?.role && getRoleBadge(user.role)}
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p className="text-xs text-sidebar-foreground/70 truncate">
               {user?.major} • {user?.year}
             </p>
+            <div className="flex items-center space-x-1 mt-1">
+              <Zap className="h-3 w-3 text-yellow-500" />
+              <span className="text-xs text-sidebar-foreground/70">
+                {user?.engagement_score || 0} pts
+              </span>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => (
-          <NavLink
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <div className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wide mb-3 px-3">
+          Navigation
+        </div>
+        {navItems.map((item, index) => (
+          <motion.div
             key={item.path}
-            to={item.path}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }`
-            }
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.1 }}
           >
-            <item.icon className="h-5 w-5" />
-            <span>{item.label}</span>
-          </NavLink>
+            <NavLink
+              to={item.path}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `group flex items-center space-x-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 animated-underline ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md transform scale-[1.02]'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:transform hover:scale-[1.02]'
+                }`
+              }
+            >
+              <item.icon className={`h-5 w-5 ${isActive ? '' : item.color} group-hover:scale-110 transition-transform`} />
+              <span>{item.label}</span>
+              {item.path === '/chat' && (
+                <Badge variant="secondary" className="ml-auto bg-red-500 text-white text-xs">
+                  3
+                </Badge>
+              )}
+            </NavLink>
+          </motion.div>
         ))}
       </nav>
 
-      {/* Theme toggle and Logout */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+      {/* Footer Actions */}
+      <div className="p-4 border-t border-sidebar-border/50 space-y-2">
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group"
           onClick={toggleTheme}
         >
           {theme === 'dark' ? (
-            <Sun className="h-5 w-5 mr-3" />
+            <Sun className="h-5 w-5 mr-3 group-hover:rotate-180 transition-transform duration-300" />
           ) : (
-            <Moon className="h-5 w-5 mr-3" />
+            <Moon className="h-5 w-5 mr-3 group-hover:-rotate-12 transition-transform duration-300" />
           )}
           {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
         </Button>
         
         <Button 
           variant="ghost" 
-          className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="w-full justify-start text-sidebar-foreground hover:bg-destructive hover:text-destructive-foreground group"
           onClick={logout}
         >
-          <LogOut className="h-5 w-5 mr-3" />
+          <LogOut className="h-5 w-5 mr-3 group-hover:translate-x-1 transition-transform" />
           Sign Out
         </Button>
       </div>
-    </div>
+    </motion.div>
   );
 };

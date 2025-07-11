@@ -1,120 +1,66 @@
 
 import React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent } from '@/components/ui/card';
 
-export const PostSkeleton = () => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="flex items-start space-x-4">
-        <Skeleton className="h-12 w-12 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center space-x-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-32 w-full rounded-lg mt-4" />
-          <div className="flex items-center space-x-4 mt-4">
-            <Skeleton className="h-8 w-16" />
-            <Skeleton className="h-8 w-20" />
-            <Skeleton className="h-8 w-16" />
-          </div>
-        </div>
+export const PostSkeleton: React.FC = () => (
+  <div className="bg-card rounded-lg p-6 shadow-sm animate-fade-in">
+    <div className="flex items-start space-x-3 mb-4">
+      <div className="skeleton w-12 h-12 rounded-full" />
+      <div className="flex-1">
+        <div className="skeleton h-4 w-32 mb-2" />
+        <div className="skeleton h-3 w-24" />
       </div>
-    </CardContent>
-  </Card>
-);
-
-export const ProfileSkeleton = () => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="flex items-center space-x-4 mb-6">
-        <Skeleton className="h-20 w-20 rounded-full" />
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-40" />
-        </div>
-      </div>
-      <div className="space-y-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-        <div className="flex space-x-2 mt-4">
-          <Skeleton className="h-6 w-16" />
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-6 w-18" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-export const EventSkeleton = () => (
-  <Card>
-    <CardContent className="p-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-16" />
-        </div>
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-        <div className="flex items-center space-x-2 mt-4">
-          <Skeleton className="h-8 w-20" />
-          <Skeleton className="h-8 w-16" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-export const StudyGroupSkeleton = () => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-6 w-12" />
-        </div>
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        <div className="flex items-center space-x-2">
-          <Skeleton className="h-6 w-6 rounded-full" />
-          <Skeleton className="h-6 w-6 rounded-full" />
-          <Skeleton className="h-6 w-6 rounded-full" />
-          <Skeleton className="h-4 w-12" />
-        </div>
-        <div className="flex space-x-2 mt-4">
-          <Skeleton className="h-8 w-20" />
-          <Skeleton className="h-8 w-24" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-export const ChatSkeleton = () => (
-  <div className="space-y-4">
-    {[1, 2, 3].map(i => (
-      <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-        <div className={`flex space-x-2 ${i % 2 === 0 ? 'flex-row-reverse space-x-reverse' : ''}`}>
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <div className="space-y-1">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-8 w-48 rounded-2xl" />
-          </div>
-        </div>
-      </div>
-    ))}
+    </div>
+    <div className="space-y-2 mb-4">
+      <div className="skeleton h-4 w-full" />
+      <div className="skeleton h-4 w-3/4" />
+      <div className="skeleton h-4 w-1/2" />
+    </div>
+    <div className="skeleton h-48 w-full rounded-lg mb-4" />
+    <div className="flex space-x-4">
+      <div className="skeleton h-8 w-16" />
+      <div className="skeleton h-8 w-16" />
+      <div className="skeleton h-8 w-16" />
+    </div>
   </div>
 );
 
-export const FeedSkeletons = ({ count = 3 }: { count?: number }) => (
-  <div className="space-y-6">
-    {Array.from({ length: count }).map((_, i) => (
-      <PostSkeleton key={i} />
+export const ProfileSkeleton: React.FC = () => (
+  <div className="bg-card rounded-lg p-6 shadow-sm animate-fade-in">
+    <div className="flex items-center space-x-4 mb-6">
+      <div className="skeleton w-20 h-20 rounded-full" />
+      <div className="flex-1">
+        <div className="skeleton h-6 w-40 mb-2" />
+        <div className="skeleton h-4 w-32 mb-2" />
+        <div className="skeleton h-4 w-24" />
+      </div>
+    </div>
+    <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="text-center">
+        <div className="skeleton h-8 w-12 mx-auto mb-2" />
+        <div className="skeleton h-4 w-16 mx-auto" />
+      </div>
+      <div className="text-center">
+        <div className="skeleton h-8 w-12 mx-auto mb-2" />
+        <div className="skeleton h-4 w-16 mx-auto" />
+      </div>
+      <div className="text-center">
+        <div className="skeleton h-8 w-12 mx-auto mb-2" />
+        <div className="skeleton h-4 w-16 mx-auto" />
+      </div>
+    </div>
+    <div className="skeleton h-20 w-full" />
+  </div>
+);
+
+export const ChatSkeleton: React.FC = () => (
+  <div className="space-y-4 animate-fade-in">
+    {[...Array(5)].map((_, i) => (
+      <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+        <div className={`flex items-start space-x-2 max-w-xs ${i % 2 === 0 ? '' : 'flex-row-reverse space-x-reverse'}`}>
+          <div className="skeleton w-8 h-8 rounded-full flex-shrink-0" />
+          <div className="skeleton h-10 w-32 rounded-2xl" />
+        </div>
+      </div>
     ))}
   </div>
 );
