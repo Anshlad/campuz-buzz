@@ -248,7 +248,7 @@ export const Chat = () => {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <EmptyState
-              icon={MessageSquare}
+              icon={<MessageSquare className="h-12 w-12" />}
               title="No conversation selected"
               description="Choose a community channel or direct message to start chatting"
             />
