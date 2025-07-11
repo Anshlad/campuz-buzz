@@ -49,20 +49,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (channel?.id || dmConversationId) {
       loadMessages();
       
-      // Subscribe to new messages
+      // Subscribe to new messages - Fixed parameter order
       const unsubscribe = chatService.subscribeToMessages(
-        channel?.id,
-        dmConversationId,
         (newMessage) => {
           setMessages(prev => [...prev, newMessage]);
-        }
+        },
+        channel?.id,
+        dmConversationId
       );
 
-      // Subscribe to typing indicators
+      // Subscribe to typing indicators - Fixed parameter order
       const unsubscribeTyping = chatService.subscribeToTyping(
+        setTypingUsers,
         channel?.id,
-        dmConversationId,
-        setTypingUsers
+        dmConversationId
       );
 
       return () => {
