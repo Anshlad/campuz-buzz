@@ -332,8 +332,8 @@ class ChatService {
     }
   }
 
-  // Real-time subscriptions
-  subscribeToMessages(channelId?: string, dmConversationId?: string, callback: (message: MessageWithAuthor) => void) {
+  // Real-time subscriptions - Fixed parameter order
+  subscribeToMessages(callback: (message: MessageWithAuthor) => void, channelId?: string, dmConversationId?: string) {
     let channel = supabase
       .channel('messages')
       .on('postgres_changes', 
@@ -360,7 +360,7 @@ class ChatService {
     };
   }
 
-  subscribeToTyping(channelId?: string, dmConversationId?: string, callback: (users: string[]) => void) {
+  subscribeToTyping(callback: (users: string[]) => void, channelId?: string, dmConversationId?: string) {
     let channel = supabase
       .channel('typing')
       .on('postgres_changes',
