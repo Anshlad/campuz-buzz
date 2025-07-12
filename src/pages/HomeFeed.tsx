@@ -159,7 +159,7 @@ const HomeFeed = () => {
         likes_count: data.likes_count || 0,
         comments_count: data.comments_count || 0,
         created_at: data.created_at,
-        profiles: data.profiles && typeof data.profiles === 'object' && !('error' in data.profiles)
+        profiles: data.profiles && typeof data.profiles === 'object' && !('error' in data.profiles) && data.profiles !== null
           ? data.profiles
           : undefined
       };
