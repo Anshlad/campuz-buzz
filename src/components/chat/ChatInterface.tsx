@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -44,6 +43,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const handleMessageUpdated = (messageId: string, newContent: string) => {
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, content: newContent, is_edited: true, edited_at: new Date().toISOString() }
+          : msg
+      )
+    );
+  };
+
+  const handleMessageDeleted = (messageId: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+  };
 
   useEffect(() => {
     if (channel?.id || dmConversationId) {
@@ -189,6 +202,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   onReply={setReplyTo}
                   onReaction={handleReaction}
                   onPin={handlePinMessage}
+                  onMessageUpdated={handleMessageUpdated}
+                  onMessageDeleted={handleMessageDeleted}
                 />
               </motion.div>
             ))}

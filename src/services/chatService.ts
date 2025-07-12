@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -26,6 +25,28 @@ export interface CommunityWithChannels extends Community {
 }
 
 class ChatService {
+  async editMessage(messageId: string, content: string): Promise<void> {
+    const { error } = await supabase
+      .from('messages')
+      .update({ 
+        content, 
+        is_edited: true, 
+        edited_at: new Date().toISOString() 
+      })
+      .eq('id', messageId);
+
+    if (error) throw error;
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (error) throw error;
+  }
+
   // Communities
   async getCommunities(): Promise<CommunityWithChannels[]> {
     const { data: communities, error } = await supabase
@@ -137,28 +158,6 @@ class ChatService {
     return data;
   }
 
-  async editMessage(messageId: string, content: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .update({ 
-        content, 
-        is_edited: true, 
-        edited_at: new Date().toISOString() 
-      })
-      .eq('id', messageId);
-
-    if (error) throw error;
-  }
-
-  async deleteMessage(messageId: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .delete()
-      .eq('id', messageId);
-
-    if (error) throw error;
-  }
-
   async reactToMessage(messageId: string, emoji: string): Promise<void> {
     const userId = (await supabase.auth.getUser()).data.user?.id!;
     
@@ -241,7 +240,7 @@ class ChatService {
   }
 
   // Typing indicators - Fixed parameter order
-  async startTyping(channelId: string, dmConversationId?: string): Promise<void> {
+  async startTyping(channelId?: string, dmConversationId?: string): Promise<void> {
     const { error } = await supabase
       .from('typing_indicators')
       .upsert({
@@ -254,7 +253,7 @@ class ChatService {
     if (error) throw error;
   }
 
-  async stopTyping(channelId: string, dmConversationId?: string): Promise<void> {
+  async stopTyping(channelId?: string, dmConversationId?: string): Promise<void> {
     const userId = (await supabase.auth.getUser()).data.user?.id!;
     
     let query = supabase

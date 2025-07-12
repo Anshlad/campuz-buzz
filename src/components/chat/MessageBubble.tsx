@@ -5,14 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { type MessageWithAuthor } from '@/services/chatService';
+import { MessageActions } from './MessageActions';
 import { formatDistanceToNow } from 'date-fns';
 import { 
   MoreVertical, 
   Reply, 
   Pin, 
   Copy, 
-  Edit, 
-  Trash,
   Flag,
   Bookmark
 } from 'lucide-react';
@@ -25,6 +24,8 @@ interface MessageBubbleProps {
   onReply: (message: MessageWithAuthor) => void;
   onReaction: (messageId: string, emoji: string) => void;
   onPin: (messageId: string) => void;
+  onMessageUpdated?: (messageId: string, newContent: string) => void;
+  onMessageDeleted?: (messageId: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -33,7 +34,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   showAvatar,
   onReply,
   onReaction,
-  onPin
+  onPin,
+  onMessageUpdated,
+  onMessageDeleted
 }) => {
   const [showActions, setShowActions] = useState(false);
 
@@ -42,6 +45,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(message.content);
+  };
+
+  const handleMessageUpdated = (messageId: string, newContent: string) => {
+    if (onMessageUpdated) {
+      onMessageUpdated(messageId, newContent);
+    }
+  };
+
+  const handleMessageDeleted = (messageId: string) => {
+    if (onMessageDeleted) {
+      onMessageDeleted(messageId);
+    }
   };
 
   return (
@@ -103,6 +118,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {message.content}
         </div>
 
+        {/* Message Actions for Editing/Deleting */}
+        <MessageActions
+          messageId={message.id}
+          content={message.content}
+          isOwnMessage={isOwnMessage}
+          onMessageUpdated={handleMessageUpdated}
+          onMessageDeleted={handleMessageDeleted}
+        />
+
         {/* Reactions */}
         {Object.keys(reactions).length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
@@ -142,8 +166,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         )}
       </div>
 
-      {/* Message Actions */}
-      {showActions && (
+      {/* Message Actions Menu */}
+      {showActions && !isOwnMessage && (
         <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
@@ -172,24 +196,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <Bookmark className="h-4 w-4 mr-2" />
                 Save
               </DropdownMenuItem>
-              {isOwnMessage && (
-                <>
-                  <DropdownMenuItem>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-              {!isOwnMessage && (
-                <DropdownMenuItem className="text-destructive">
-                  <Flag className="h-4 w-4 mr-2" />
-                  Report
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem className="text-destructive">
+                <Flag className="h-4 w-4 mr-2" />
+                Report
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </motion.div>
