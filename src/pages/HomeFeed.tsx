@@ -18,6 +18,20 @@ interface PostProfile {
   year?: string;
 }
 
+interface DatabasePost {
+  id: string;
+  user_id: string;
+  title?: string;
+  content: string;
+  image_url?: string;
+  post_type: string;
+  tags?: string[];
+  likes_count: number;
+  comments_count: number;
+  created_at: string;
+  profiles: PostProfile | null;
+}
+
 interface Post {
   id: string;
   user_id: string;
@@ -48,8 +62,17 @@ const HomeFeed = () => {
       const { data, error } = await supabase
         .from('posts')
         .select(`
-          *,
-          profiles:user_id (
+          id,
+          user_id,
+          title,
+          content,
+          image_url,
+          post_type,
+          tags,
+          likes_count,
+          comments_count,
+          created_at,
+          profiles!posts_user_id_fkey (
             display_name,
             avatar_url,
             major,
@@ -60,7 +83,23 @@ const HomeFeed = () => {
         .limit(20);
 
       if (error) throw error;
-      setPosts(data || []);
+      
+      // Transform the data to match our Post interface
+      const transformedPosts: Post[] = (data || []).map((dbPost: any) => ({
+        id: dbPost.id,
+        user_id: dbPost.user_id,
+        title: dbPost.title,
+        content: dbPost.content,
+        image_url: dbPost.image_url,
+        post_type: dbPost.post_type,
+        tags: dbPost.tags,
+        likes_count: dbPost.likes_count || 0,
+        comments_count: dbPost.comments_count || 0,
+        created_at: dbPost.created_at,
+        profiles: dbPost.profiles
+      }));
+      
+      setPosts(transformedPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
       toast({
@@ -86,8 +125,17 @@ const HomeFeed = () => {
           image_url: postData.image
         })
         .select(`
-          *,
-          profiles:user_id (
+          id,
+          user_id,
+          title,
+          content,
+          image_url,
+          post_type,
+          tags,
+          likes_count,
+          comments_count,
+          created_at,
+          profiles!posts_user_id_fkey (
             display_name,
             avatar_url,
             major,
@@ -98,7 +146,22 @@ const HomeFeed = () => {
 
       if (error) throw error;
 
-      setPosts(prev => [data, ...prev]);
+      // Transform the response to match our Post interface
+      const newPost: Post = {
+        id: data.id,
+        user_id: data.user_id,
+        title: data.title,
+        content: data.content,
+        image_url: data.image_url,
+        post_type: data.post_type,
+        tags: data.tags,
+        likes_count: data.likes_count || 0,
+        comments_count: data.comments_count || 0,
+        created_at: data.created_at,
+        profiles: data.profiles
+      };
+
+      setPosts(prev => [newPost, ...prev]);
       setShowCreatePost(false);
       
       toast({
