@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bell, Menu, Search, Plus, MessageSquare } from 'lucide-react';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { motion } from 'framer-motion';
 
 interface TopBarProps {
@@ -15,7 +15,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { profile } = useUserProfile();
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleLogoClick = () => {
@@ -120,13 +120,13 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
             whileTap={{ scale: 0.95 }}
           >
             <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-              <AvatarImage src={user?.avatar} />
+              <AvatarImage src={profile?.avatar_url} />
               <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                {user?.name?.charAt(0)}
+                {profile?.display_name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
             <span className="hidden sm:block text-sm font-medium text-foreground">
-              {user?.name?.split(' ')[0]}
+              {profile?.display_name?.split(' ')[0] || 'User'}
             </span>
           </motion.button>
         </div>

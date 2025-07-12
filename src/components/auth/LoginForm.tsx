@@ -12,11 +12,11 @@ export const LoginForm = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
-  const { login, resetPassword, loading } = useAuth();
+  const { signIn, resetPassword, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(email, password);
+    await signIn(email, password);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {

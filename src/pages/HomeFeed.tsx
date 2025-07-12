@@ -11,6 +11,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface PostProfile {
+  display_name: string;
+  avatar_url?: string;
+  major?: string;
+  year?: string;
+}
+
 interface Post {
   id: string;
   user_id: string;
@@ -22,12 +29,7 @@ interface Post {
   likes_count: number;
   comments_count: number;
   created_at: string;
-  profiles?: {
-    display_name: string;
-    avatar_url?: string;
-    major?: string;
-    year?: string;
-  };
+  profiles?: PostProfile;
 }
 
 const HomeFeed = () => {
@@ -222,7 +224,6 @@ const HomeFeed = () => {
                     year: post.profiles?.year || ''
                   },
                   content: post.content,
-                  title: post.title,
                   image: post.image_url,
                   timestamp: post.created_at,
                   likes: post.likes_count,

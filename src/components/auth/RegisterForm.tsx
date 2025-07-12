@@ -14,11 +14,15 @@ export const RegisterForm = () => {
     major: '',
     year: ''
   });
-  const { register, loading } = useAuth();
+  const { signUp, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await register(formData);
+    await signUp(formData.email, formData.password, {
+      full_name: formData.name,
+      major: formData.major,
+      year: formData.year
+    });
   };
 
   const majors = [

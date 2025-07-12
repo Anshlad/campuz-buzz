@@ -7,7 +7,7 @@ import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { AuthPages } from '@/components/auth/AuthPages';
 import HomeFeed from '@/pages/HomeFeed';
-import { Profile } from '@/pages/Profile';
+import Profile from '@/pages/Profile';
 import { Communities } from '@/pages/Communities';
 import { EventCalendar } from '@/pages/EventCalendar';
 import { Chat } from '@/pages/Chat';

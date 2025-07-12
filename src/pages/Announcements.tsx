@@ -1,151 +1,128 @@
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CreateAnnouncementModal } from '@/components/announcements/CreateAnnouncementModal';
-import { Megaphone, Pin, Calendar, Building, Plus, Filter } from 'lucide-react';
+import { Megaphone, Plus, Pin, Calendar, Users, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface Announcement {
   id: string;
   title: string;
   content: string;
+  type: 'general' | 'academic' | 'event' | 'urgent';
   author: {
     name: string;
-    role: string;
     avatar?: string;
+    role: string;
   };
-  department: string;
-  priority: 'high' | 'medium' | 'low';
+  createdAt: string;
   isPinned: boolean;
-  timestamp: string;
-  expiresAt?: string;
+  tags: string[];
+  viewCount: number;
 }
 
+// Mock data for announcements
+const mockAnnouncements: Announcement[] = [
+  {
+    id: '1',
+    title: 'Campus Wi-Fi Maintenance Scheduled',
+    content: 'The campus network will undergo scheduled maintenance this Saturday from 2 AM to 6 AM. Please plan accordingly for any online activities during this time.',
+    type: 'general',
+    author: {
+      name: 'IT Services',
+      avatar: '',
+      role: 'admin'
+    },
+    createdAt: '2024-01-15T10:00:00Z',
+    isPinned: true,
+    tags: ['maintenance', 'wifi', 'important'],
+    viewCount: 234
+  },
+  {
+    id: '2',
+    title: 'Spring Semester Registration Opens',
+    content: 'Registration for Spring 2024 semester opens Monday, January 22nd at 8:00 AM. Make sure to meet with your academic advisor before registering.',
+    type: 'academic',
+    author: {
+      name: 'Registrar Office',
+      avatar: '',
+      role: 'admin'
+    },
+    createdAt: '2024-01-14T14:30:00Z',
+    isPinned: true,
+    tags: ['registration', 'spring2024', 'academic'],
+    viewCount: 412
+  }
+];
+
 export const Announcements = () => {
-  const { user } = useAuth();
+  const { profile } = useUserProfile();
+  const [announcements, setAnnouncements] = useState<Announcement[]>(mockAnnouncements);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: '1',
-      title: 'Spring Break Schedule Changes',
-      content: 'Please note that the library will have modified hours during spring break. Regular hours resume on March 25th. Check the website for detailed schedule.',
-      author: {
-        name: 'Dr. Anderson',
-        role: 'Academic Affairs',
-        avatar: '/placeholder.svg'
-      },
-      department: 'Academic Affairs',
-      priority: 'high',
-      isPinned: true,
-      timestamp: '2 hours ago',
-      expiresAt: 'March 30, 2024'
-    },
-    {
-      id: '2',
-      title: 'New Computer Lab Equipment',
-      content: 'The CS department has installed new high-performance workstations in Lab 301. These are available for advanced coursework and research projects.',
-      author: {
-        name: 'Prof. Williams',
-        role: 'CS Department Head',
-        avatar: '/placeholder.svg'
-      },
-      department: 'Computer Science',
-      priority: 'medium',
-      isPinned: false,
-      timestamp: '1 day ago'
-    },
-    {
-      id: '3',
-      title: 'Career Fair Registration Open',
-      content: 'Registration is now open for the Spring Career Fair. Over 50 companies will be participating. Register early to secure your preferred time slots.',
-      author: {
-        name: 'Career Services',
-        role: 'Career Center',
-        avatar: '/placeholder.svg'
-      },
-      department: 'Career Services',
-      priority: 'high',
-      isPinned: true,
-      timestamp: '2 days ago',
-      expiresAt: 'March 20, 2024'
-    },
-    {
-      id: '4',
-      title: 'Campus WiFi Maintenance',
-      content: 'Network maintenance will occur this Sunday from 2 AM to 6 AM. WiFi services may be intermittent during this time.',
-      author: {
-        name: 'IT Services',
-        role: 'Information Technology',
-        avatar: '/placeholder.svg'
-      },
-      department: 'IT Services',
-      priority: 'medium',
-      isPinned: false,
-      timestamp: '3 days ago'
-    }
-  ]);
+  const [selectedType, setSelectedType] = useState<string>('all');
 
-  const departments = [
-    'all',
-    'Academic Affairs',
-    'Computer Science',
-    'Career Services',
-    'IT Services',
-    'Student Life',
-    'Administration'
-  ];
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const typeColors = {
+    general: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    academic: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    event: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    urgent: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
   };
 
-  const filteredAnnouncements = selectedDepartment === 'all' 
+  const filteredAnnouncements = selectedType === 'all' 
     ? announcements 
-    : announcements.filter(ann => ann.department === selectedDepartment);
+    : announcements.filter(ann => ann.type === selectedType);
 
-  const pinnedAnnouncements = filteredAnnouncements.filter(ann => ann.isPinned);
-  const regularAnnouncements = filteredAnnouncements.filter(ann => !ann.isPinned);
+  const sortedAnnouncements = [...filteredAnnouncements].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
-  const handleNewAnnouncement = (newAnn: any) => {
-    const announcement: Announcement = {
+  const handleCreateAnnouncement = (announcementData: any) => {
+    const newAnnouncement: Announcement = {
       id: Date.now().toString(),
-      title: newAnn.title,
-      content: newAnn.content,
+      ...announcementData,
       author: {
-        name: user?.name || 'Admin',
-        role: 'Administrator',
-        avatar: user?.avatar
+        name: profile?.display_name || 'Anonymous',
+        avatar: profile?.avatar_url || '',
+        role: profile?.role || 'student'
       },
-      department: newAnn.department,
-      priority: newAnn.priority,
-      isPinned: newAnn.isPinned,
-      timestamp: 'Just now',
-      expiresAt: newAnn.expiresAt
+      createdAt: new Date().toISOString(),
+      viewCount: 0
     };
-    setAnnouncements([announcement, ...announcements]);
+    
+    setAnnouncements(prev => [newAnnouncement, ...prev]);
+    setShowCreateModal(false);
   };
+
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'professor';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Campus Announcements</h1>
-          <p className="text-gray-600">Stay updated with important campus news and updates</p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+            <Megaphone className="h-6 w-6 text-red-600 dark:text-red-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Campus Announcements
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Stay updated with the latest campus news and information
+            </p>
+          </div>
         </div>
-        {user?.isAdmin && (
+        
+        {isAdmin && (
           <Button 
             onClick={() => setShowCreateModal(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 mt-4 sm:mt-0"
+            className="bg-red-600 hover:bg-red-700 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Announcement
@@ -153,159 +130,132 @@ export const Announcements = () => {
         )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-2 overflow-x-auto">
-            <Filter className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-sm text-gray-600 flex-shrink-0">Department:</span>
-            {departments.map((dept) => (
-              <Badge
-                key={dept}
-                variant={selectedDepartment === dept ? "default" : "secondary"}
-                className="cursor-pointer whitespace-nowrap"
-                onClick={() => setSelectedDepartment(dept)}
-              >
-                {dept === 'all' ? 'All Departments' : dept}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+        {['all', 'general', 'academic', 'event', 'urgent'].map((type) => (
+          <button
+            key={type}
+            onClick={() => setSelectedType(type)}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+              selectedType === type
+                ? 'border-red-500 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            {type.charAt(0).toUpperCase() + type.slice(1)}
+            {type === 'all' && (
+              <span className="ml-2 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 rounded-full">
+                {announcements.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      {/* Pinned Announcements */}
-      {pinnedAnnouncements.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Pin className="h-5 w-5 text-red-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Pinned Announcements</h2>
-          </div>
-          
-          {pinnedAnnouncements.map((announcement) => (
-            <Card key={announcement.id} className="border-l-4 border-l-red-500 shadow-md">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={announcement.author.avatar} />
-                      <AvatarFallback>{announcement.author.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-lg">{announcement.title}</h3>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <span>{announcement.author.name}</span>
-                        <span>•</span>
-                        <span>{announcement.author.role}</span>
-                        <span>•</span>
-                        <span>{announcement.timestamp}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Pin className="h-4 w-4 text-red-500" />
-                    <Badge className={getPriorityColor(announcement.priority)}>
-                      {announcement.priority.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-                
-                <p className="text-gray-700 leading-relaxed mb-4">{announcement.content}</p>
-                
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4 text-gray-500">
-                    <div className="flex items-center">
-                      <Building className="h-4 w-4 mr-1" />
-                      <span>{announcement.department}</span>
-                    </div>
-                    {announcement.expiresAt && (
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        <span>Expires: {announcement.expiresAt}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Regular Announcements */}
+      {/* Announcements List */}
       <div className="space-y-4">
-        {pinnedAnnouncements.length > 0 && (
-          <h2 className="text-lg font-semibold text-gray-900">Recent Announcements</h2>
-        )}
-        
-        {regularAnnouncements.length === 0 ? (
+        {sortedAnnouncements.length === 0 ? (
           <Card>
-            <CardContent className="p-12 text-center">
-              <div className="text-gray-400 mb-4">
-                <Megaphone className="h-16 w-16 mx-auto mb-4" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No announcements</h3>
-              <p className="text-gray-500">
-                {selectedDepartment === 'all' 
-                  ? 'No announcements have been posted yet.' 
-                  : `No announcements from ${selectedDepartment}.`
-                }
+            <CardContent className="p-8 text-center">
+              <Megaphone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                No announcements yet
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                There are no announcements in this category.
               </p>
             </CardContent>
           </Card>
         ) : (
-          regularAnnouncements.map((announcement) => (
-            <Card key={announcement.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={announcement.author.avatar} />
-                      <AvatarFallback>{announcement.author.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <span>{announcement.author.name}</span>
-                        <span>•</span>
-                        <span>{announcement.author.role}</span>
-                        <span>•</span>
-                        <span>{announcement.timestamp}</span>
+          sortedAnnouncements.map((announcement, index) => (
+            <motion.div
+              key={announcement.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card className={`${
+                announcement.isPinned 
+                  ? 'ring-2 ring-yellow-400 dark:ring-yellow-500' 
+                  : 'hover:shadow-md'
+              } transition-shadow`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3 flex-1">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={announcement.author.avatar} />
+                        <AvatarFallback>
+                          {announcement.author.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          {announcement.isPinned && (
+                            <Pin className="h-4 w-4 text-yellow-500" />
+                          )}
+                          <CardTitle className="text-lg leading-tight">
+                            {announcement.title}
+                          </CardTitle>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400">
+                          <span className="font-medium">{announcement.author.name}</span>
+                          <span>•</span>
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {new Date(announcement.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <span>•</span>
+                          <div className="flex items-center space-x-1">
+                            <Users className="h-3 w-3" />
+                            <span>{announcement.viewCount} views</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    
+                    <Badge className={typeColors[announcement.type]}>
+                      {announcement.type}
+                    </Badge>
                   </div>
-                  <Badge className={getPriorityColor(announcement.priority)}>
-                    {announcement.priority.toUpperCase()}
-                  </Badge>
-                </div>
+                </CardHeader>
                 
-                <p className="text-gray-700 leading-relaxed mb-4">{announcement.content}</p>
-                
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <Building className="h-4 w-4 mr-1" />
-                    <span>{announcement.department}</span>
-                  </div>
-                  {announcement.expiresAt && (
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      <span>Expires: {announcement.expiresAt}</span>
+                <CardContent className="pt-0">
+                  <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+                    {announcement.content}
+                  </p>
+                  
+                  {announcement.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {announcement.tags.map((tag) => (
+                        <Badge 
+                          key={tag} 
+                          variant="secondary" 
+                          className="text-xs"
+                        >
+                          #{tag}
+                        </Badge>
+                      ))}
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))
         )}
       </div>
 
       {/* Create Announcement Modal */}
-      {user?.isAdmin && (
-        <CreateAnnouncementModal 
-          open={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleNewAnnouncement}
-        />
-      )}
+      <CreateAnnouncementModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateAnnouncement}
+      />
     </div>
   );
 };
+
+export default Announcements;

@@ -2,6 +2,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,7 +47,8 @@ const getRoleBadge = (role: string) => {
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
-  const { user, logout } = useAuth();
+  const { signOut } = useAuth();
+  const { profile } = useUserProfile();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
@@ -110,9 +112,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         >
           <div className="relative">
             <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-              <AvatarImage src={user?.avatar} />
+              <AvatarImage src={profile?.avatar_url} />
               <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                {user?.name?.charAt(0)}
+                {profile?.display_name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
             <StatusIndicator 
@@ -123,17 +125,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
               <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                {user?.name}
+                {profile?.display_name || 'User'}
               </p>
-              {user?.role && getRoleBadge(user.role)}
+              {profile?.role && getRoleBadge(profile.role)}
             </div>
             <p className="text-xs text-sidebar-foreground/70 truncate">
-              {user?.major} • {user?.year}
+              {profile?.major} • {profile?.year}
             </p>
             <div className="flex items-center space-x-1 mt-1">
               <Zap className="h-3 w-3 text-yellow-500" />
               <span className="text-xs text-sidebar-foreground/70">
-                0 pts
+                {profile?.engagement_score || 0} pts
               </span>
             </div>
           </div>
@@ -194,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         <Button 
           variant="ghost" 
           className="w-full justify-start text-sidebar-foreground hover:bg-destructive hover:text-destructive-foreground group"
-          onClick={logout}
+          onClick={signOut}
         >
           <LogOut className="h-5 w-5 mr-3 group-hover:translate-x-1 transition-transform" />
           Sign Out
