@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PostCard } from '@/components/posts/PostCard';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
@@ -148,6 +149,10 @@ const HomeFeed = () => {
       if (error) throw error;
 
       // Transform the response to match our Post interface
+      const profileData = data.profiles && typeof data.profiles === 'object' && !('error' in data.profiles) && data.profiles !== null
+        ? data.profiles as PostProfile
+        : undefined;
+
       const newPost: Post = {
         id: data.id,
         user_id: data.user_id,
@@ -159,9 +164,7 @@ const HomeFeed = () => {
         likes_count: data.likes_count || 0,
         comments_count: data.comments_count || 0,
         created_at: data.created_at,
-        profiles: data.profiles && typeof data.profiles === 'object' && !('error' in data.profiles) && data.profiles !== null
-          ? data.profiles
-          : undefined
+        profiles: profileData
       };
 
       setPosts(prev => [newPost, ...prev]);
