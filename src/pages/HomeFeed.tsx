@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { PostCard } from '@/components/posts/PostCard';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
@@ -96,7 +95,9 @@ const HomeFeed = () => {
         likes_count: dbPost.likes_count || 0,
         comments_count: dbPost.comments_count || 0,
         created_at: dbPost.created_at,
-        profiles: dbPost.profiles
+        profiles: dbPost.profiles && typeof dbPost.profiles === 'object' && !('error' in dbPost.profiles) 
+          ? dbPost.profiles 
+          : undefined
       }));
       
       setPosts(transformedPosts);
@@ -158,7 +159,9 @@ const HomeFeed = () => {
         likes_count: data.likes_count || 0,
         comments_count: data.comments_count || 0,
         created_at: data.created_at,
-        profiles: data.profiles
+        profiles: data.profiles && typeof data.profiles === 'object' && !('error' in data.profiles)
+          ? data.profiles
+          : undefined
       };
 
       setPosts(prev => [newPost, ...prev]);
