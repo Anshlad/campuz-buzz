@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Sidebar } from './Sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from './AppSidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { AuthPages } from '@/components/auth/AuthPages';
@@ -15,11 +16,10 @@ import { Announcements } from '@/pages/Announcements';
 import { Explore } from '@/pages/Explore';
 import { StudyGroups } from '@/pages/StudyGroups';
 import { Toaster } from '@/components/ui/toaster';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export const AppLayout = () => {
   const { user, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
     return (
@@ -55,54 +55,34 @@ export const AppLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex w-full">
-      {/* Mobile sidebar overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-      
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-80 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0 transition-transform duration-300 ease-in-out`}>
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AppSidebar />
+        <SidebarInset className="flex-1">
+          <TopBar />
+          <main className="flex-1 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="p-4 lg:p-6 pb-20 md:pb-6"
+            >
+              <Routes>
+                <Route path="/" element={<HomeFeed />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/communities" element={<Communities />} />
+                <Route path="/events" element={<EventCalendar />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/announcements" element={<Announcements />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/study-groups" element={<StudyGroups />} />
+              </Routes>
+            </motion.div>
+          </main>
+          <MobileBottomNav />
+        </SidebarInset>
+        <Toaster />
       </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-0 min-h-screen">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
-        
-        <main className="flex-1 overflow-y-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="p-4 lg:p-6 pb-20 md:pb-6"
-          >
-            <Routes>
-              <Route path="/" element={<HomeFeed />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/communities" element={<Communities />} />
-              <Route path="/events" element={<EventCalendar />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/announcements" element={<Announcements />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/study-groups" element={<StudyGroups />} />
-            </Routes>
-          </motion.div>
-        </main>
-
-        {/* Mobile Bottom Navigation */}
-        <MobileBottomNav />
-      </div>
-
-      <Toaster />
-    </div>
+    </SidebarProvider>
   );
 };

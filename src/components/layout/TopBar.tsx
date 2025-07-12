@@ -4,16 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bell, Menu, Search, Plus, MessageSquare } from 'lucide-react';
+import { Search, Plus, MessageSquare } from 'lucide-react';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { motion } from 'framer-motion';
 
-interface TopBarProps {
-  onMenuClick: () => void;
-}
-
-export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
+export const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,18 +34,11 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
       className="bg-background/95 backdrop-blur-md border-b border-border px-4 lg:px-6 py-3 sticky top-0 z-30"
     >
       <div className="flex items-center justify-between">
-        {/* Mobile menu button */}
+        {/* Mobile sidebar trigger */}
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="lg:hidden hover:bg-accent"
-            onClick={onMenuClick}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <SidebarTrigger className="md:hidden" />
 
-          {/* Logo - Desktop */}
+          {/* Logo - Desktop only, hidden when sidebar is visible */}
           <motion.button 
             onClick={handleLogoClick}
             className="hidden lg:flex items-center space-x-3 hover:opacity-80 transition-opacity"
