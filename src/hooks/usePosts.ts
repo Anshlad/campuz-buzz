@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -122,8 +121,11 @@ export const usePosts = () => {
 
       if (error) throw error;
 
-      // Transform the response to match our Post interface
-      const profileData = data.profiles && typeof data.profiles === 'object' && !('error' in data.profiles) && data.profiles !== null
+      // Transform the response to match our Post interface with proper null checking
+      const profileData = data.profiles && 
+                         data.profiles !== null && 
+                         typeof data.profiles === 'object' && 
+                         !('error' in data.profiles)
         ? data.profiles as PostProfile
         : undefined;
 
