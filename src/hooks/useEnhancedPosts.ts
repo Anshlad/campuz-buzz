@@ -1,23 +1,22 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface PostProfile {
+export interface PostProfile {
   display_name: string;
   avatar_url?: string;
   major?: string;
   year?: string;
 }
 
-interface PostReaction {
+export interface PostReaction {
   reaction_type: string;
   count: number;
   hasReacted: boolean;
 }
 
-interface EnhancedPost {
+export interface EnhancedPost {
   id: string;
   user_id: string;
   title?: string;
@@ -37,96 +36,92 @@ interface EnhancedPost {
 }
 
 export const useEnhancedPosts = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const [posts, setPosts] = useState<EnhancedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const loadPosts = async () => {
+  const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
-          id,
-          user_id,
-          title,
-          content,
-          image_url,
-          post_type,
-          tags,
-          likes_count,
-          comments_count,
-          shares_count,
-          saves_count,
-          reactions,
-          created_at,
-          profiles!posts_user_id_fkey (
+          *,
+          profiles:user_id (
             display_name,
             avatar_url,
             major,
             year
-          ),
-          post_hashtags!inner (
-            hashtags!inner (name)
           )
         `)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      // Transform and enrich posts data
-      const enrichedPosts: EnhancedPost[] = await Promise.all((data || []).map(async (post: any) => {
-        // Check if user has saved this post
-        let is_saved = false;
-        if (user) {
-          const { data: saveData } = await supabase
+      if (postsError) throw postsError;
+
+      const enhancedPosts = await Promise.all(
+        (postsData || []).map(async (post) => {
+          // Get reactions
+          const { data: reactionsData } = await supabase
+            .from('post_reactions')
+            .select('reaction_type, user_id')
+            .eq('post_id', post.id);
+
+          // Get saves
+          const { data: savesData } = await supabase
             .from('post_saves')
-            .select('id')
-            .eq('post_id', post.id)
-            .eq('user_id', user.id)
-            .single();
-          is_saved = !!saveData;
-        }
+            .select('user_id')
+            .eq('post_id', post.id);
 
-        // Process reactions
-        const reactions: Record<string, PostReaction> = {};
-        if (post.reactions) {
-          for (const [type, userIds] of Object.entries(post.reactions)) {
-            reactions[type] = {
-              reaction_type: type,
-              count: (userIds as string[]).length,
-              hasReacted: user ? (userIds as string[]).includes(user.id) : false
-            };
+          // Get hashtags
+          const { data: hashtagsData } = await supabase
+            .from('post_hashtags')
+            .select(`
+              hashtags (
+                name
+              )
+            `)
+            .eq('post_id', post.id);
+
+          // Process reactions
+          const reactions: Record<string, PostReaction> = {
+            like: { reaction_type: 'like', count: 0, hasReacted: false },
+            love: { reaction_type: 'love', count: 0, hasReacted: false },
+            laugh: { reaction_type: 'laugh', count: 0, hasReacted: false },
+            wow: { reaction_type: 'wow', count: 0, hasReacted: false },
+            sad: { reaction_type: 'sad', count: 0, hasReacted: false },
+            angry: { reaction_type: 'angry', count: 0, hasReacted: false }
+          };
+
+          const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+
+          if (reactionsData) {
+            reactionsData.forEach(reaction => {
+              if (reactions[reaction.reaction_type]) {
+                reactions[reaction.reaction_type].count++;
+                if (reaction.user_id === currentUserId) {
+                  reactions[reaction.reaction_type].hasReacted = true;
+                }
+              }
+            });
           }
-        }
 
-        // Extract hashtags
-        const hashtags = post.post_hashtags?.map((ph: any) => ph.hashtags.name) || [];
+          const isSaved = savesData?.some(save => save.user_id === currentUserId) || false;
+          const hashtags = hashtagsData?.map(h => (h.hashtags as any)?.name).filter(Boolean) || [];
 
-        return {
-          id: post.id,
-          user_id: post.user_id,
-          title: post.title,
-          content: post.content,
-          image_url: post.image_url,
-          post_type: post.post_type,
-          tags: post.tags,
-          likes_count: post.likes_count || 0,
-          comments_count: post.comments_count || 0,
-          shares_count: post.shares_count || 0,
-          saves_count: post.saves_count || 0,
-          reactions,
-          created_at: post.created_at,
-          profiles: post.profiles,
-          is_saved,
-          hashtags
-        };
-      }));
-      
-      setPosts(enrichedPosts);
+          return {
+            ...post,
+            reactions,
+            is_saved: isSaved,
+            hashtags,
+            profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
+          } as EnhancedPost;
+        })
+      );
+
+      setPosts(enhancedPosts);
     } catch (error) {
-      console.error('Error loading posts:', error);
+      console.error('Error fetching posts:', error);
       toast({
         title: "Error loading posts",
         description: "Please try refreshing the page.",
@@ -137,64 +132,32 @@ export const useEnhancedPosts = () => {
     }
   };
 
-  const createPost = async (postData: {
-    content: string;
-    title?: string;
-    image?: string;
-    tags?: string[];
-    type?: string;
-  }) => {
-    if (!user) return;
-
+  const createPost = async (postData: any) => {
     try {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error('Not authenticated');
+
       const { data, error } = await supabase
         .from('posts')
         .insert({
-          user_id: user.id,
-          content: postData.content,
+          user_id: user.data.user.id,
           title: postData.title,
+          content: postData.content,
+          image_url: postData.image,
           post_type: postData.type || 'text',
-          tags: postData.tags,
-          image_url: postData.image
+          tags: postData.tags || []
         })
-        .select(`
-          id,
-          user_id,
-          title,
-          content,
-          image_url,
-          post_type,
-          tags,
-          likes_count,
-          comments_count,
-          shares_count,
-          saves_count,
-          reactions,
-          created_at,
-          profiles!posts_user_id_fkey (
-            display_name,
-            avatar_url,
-            major,
-            year
-          )
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
-      const newPost: EnhancedPost = {
-        ...data,
-        reactions: {},
-        is_saved: false,
-        hashtags: []
-      };
-
-      setPosts(prev => [newPost, ...prev]);
-      
       toast({
         title: "Post created!",
         description: "Your post has been shared successfully."
       });
+
+      fetchPosts();
     } catch (error) {
       console.error('Error creating post:', error);
       toast({
@@ -206,15 +169,16 @@ export const useEnhancedPosts = () => {
   };
 
   const reactToPost = async (postId: string, reactionType: string) => {
-    if (!user) return;
-
     try {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error('Not authenticated');
+
       // Check if user already reacted with this type
       const { data: existingReaction } = await supabase
         .from('post_reactions')
         .select('id')
         .eq('post_id', postId)
-        .eq('user_id', user.id)
+        .eq('user_id', user.data.user.id)
         .eq('reaction_type', reactionType)
         .single();
 
@@ -225,80 +189,83 @@ export const useEnhancedPosts = () => {
           .delete()
           .eq('id', existingReaction.id);
       } else {
-        // Add reaction
+        // Remove any existing reactions from this user on this post
+        await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.data.user.id);
+
+        // Add new reaction
         await supabase
           .from('post_reactions')
           .insert({
             post_id: postId,
-            user_id: user.id,
+            user_id: user.data.user.id,
             reaction_type: reactionType
           });
       }
 
-      // Refresh posts to get updated reactions
-      loadPosts();
+      fetchPosts();
     } catch (error) {
       console.error('Error reacting to post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to react to post.",
+        variant: "destructive"
+      });
     }
   };
 
   const savePost = async (postId: string) => {
-    if (!user) return;
-
     try {
-      const post = posts.find(p => p.id === postId);
-      if (!post) return;
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error('Not authenticated');
 
-      if (post.is_saved) {
-        // Unsave post
+      const { data: existingSave } = await supabase
+        .from('post_saves')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.data.user.id)
+        .single();
+
+      if (existingSave) {
         await supabase
           .from('post_saves')
           .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id);
+          .eq('id', existingSave.id);
+        toast({ title: "Post unsaved" });
       } else {
-        // Save post
         await supabase
           .from('post_saves')
           .insert({
             post_id: postId,
-            user_id: user.id
+            user_id: user.data.user.id
           });
+        toast({ title: "Post saved" });
       }
 
-      // Update local state
-      setPosts(prev => prev.map(p => 
-        p.id === postId 
-          ? { ...p, is_saved: !p.is_saved, saves_count: p.saves_count + (p.is_saved ? -1 : 1) }
-          : p
-      ));
+      fetchPosts();
     } catch (error) {
       console.error('Error saving post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save post.",
+        variant: "destructive"
+      });
     }
   };
 
   const sharePost = async (postId: string) => {
     try {
-      await supabase
-        .from('posts')
-        .update({ shares_count: posts.find(p => p.id === postId)?.shares_count + 1 || 1 })
-        .eq('id', postId);
-
-      setPosts(prev => prev.map(p => 
-        p.id === postId ? { ...p, shares_count: p.shares_count + 1 } : p
-      ));
-
-      toast({
-        title: "Post shared!",
-        description: "Post has been shared successfully."
-      });
+      toast({ title: "Share feature coming soon!" });
     } catch (error) {
       console.error('Error sharing post:', error);
     }
   };
 
   useEffect(() => {
-    loadPosts();
+    fetchPosts();
   }, []);
 
   return {
@@ -308,6 +275,6 @@ export const useEnhancedPosts = () => {
     reactToPost,
     savePost,
     sharePost,
-    refetch: loadPosts
+    refetch: fetchPosts
   };
 };

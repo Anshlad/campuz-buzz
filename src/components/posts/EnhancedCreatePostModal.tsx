@@ -12,7 +12,7 @@ import {
   X, 
   Hash, 
   AtSign, 
-  Poll,
+  BarChart3,
   FileText,
   Video,
   Mic,
@@ -104,7 +104,7 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
     const hashtagRegex = /#(\w+)/g;
     const matches = text.match(hashtagRegex);
     if (matches) {
-      const newHashtags = matches.map(tag => tag.slice(1)); // Remove #
+      const newHashtags = matches.map(tag => tag.slice(1));
       setHashtags([...new Set([...hashtags, ...newHashtags])]);
     }
   };
@@ -113,7 +113,7 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
     const mentionRegex = /@(\w+)/g;
     const matches = text.match(mentionRegex);
     if (matches) {
-      const newMentions = matches.map(mention => mention.slice(1)); // Remove @
+      const newMentions = matches.map(mention => mention.slice(1));
       setMentions([...new Set([...mentions, ...newMentions])]);
     }
   };
@@ -132,7 +132,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Post Type Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="text" className="flex items-center gap-2">
@@ -144,7 +143,7 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
                 Photo
               </TabsTrigger>
               <TabsTrigger value="poll" className="flex items-center gap-2">
-                <Poll className="h-4 w-4" />
+                <BarChart3 className="h-4 w-4" />
                 Poll
               </TabsTrigger>
               <TabsTrigger value="video" className="flex items-center gap-2">
@@ -158,7 +157,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
             </TabsList>
 
             <TabsContent value="text" className="space-y-4">
-              {/* Title Input */}
               <div>
                 <Label htmlFor="title">Title (Optional)</Label>
                 <Input
@@ -170,7 +168,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
                 />
               </div>
 
-              {/* Content Input */}
               <div>
                 <Label htmlFor="content">What's on your mind?</Label>
                 <Textarea
@@ -182,7 +179,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
                   required
                 />
                 
-                {/* Content Enhancement Tips */}
                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
                     <Hash className="h-3 w-3" />
@@ -210,7 +206,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
             </TabsContent>
 
             <TabsContent value="image" className="space-y-4">
-              {/* Title for image posts */}
               <div>
                 <Label htmlFor="image-title">Title</Label>
                 <Input
@@ -222,7 +217,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
                 />
               </div>
 
-              {/* Image Upload */}
               <div>
                 <Label>Add an Image</Label>
                 <div className="mt-2">
@@ -249,7 +243,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
                 </div>
               </div>
 
-              {/* Caption */}
               <div>
                 <Label htmlFor="image-content">Caption</Label>
                 <Textarea
@@ -264,7 +257,7 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
 
             <TabsContent value="poll" className="space-y-4">
               <div className="text-center py-8 text-gray-500">
-                <Poll className="h-12 w-12 mx-auto mb-4" />
+                <BarChart3 className="h-12 w-12 mx-auto mb-4" />
                 <p>Poll creation coming soon!</p>
               </div>
             </TabsContent>
@@ -284,7 +277,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
             </TabsContent>
           </Tabs>
 
-          {/* Tags Section */}
           <div>
             <Label>Tags</Label>
             <div className="mt-2 space-y-2">
@@ -300,7 +292,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
                 </Button>
               </div>
               
-              {/* Display all tags */}
               {(tags.length > 0 || hashtags.length > 0 || mentions.length > 0) && (
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
@@ -330,7 +321,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
             </div>
           </div>
 
-          {/* Submit Buttons */}
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
