@@ -9,18 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateStudyGroupModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (group: any) => void;
+  onGroupCreated?: () => void;
 }
 
 export const CreateStudyGroupModal: React.FC<CreateStudyGroupModalProps> = ({ 
   open, 
   onClose, 
-  onSubmit 
+  onGroupCreated
 }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     subject: '',
@@ -49,35 +52,54 @@ export const CreateStudyGroupModal: React.FC<CreateStudyGroupModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.subject || !formData.description.trim()) return;
+    if (!formData.name.trim() || !formData.subject || !formData.description.trim() || !user) return;
 
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-
-    onSubmit({
-      ...formData,
-      topics
-    });
-
-    // Reset form
-    setFormData({
-      name: '',
-      subject: '',
-      description: '',
-      maxMembers: 10,
-      schedule: '',
-      difficulty: 'Intermediate'
-    });
-    setTopics([]);
-    setTopicInput('');
-    setLoading(false);
     
-    toast({
-      title: "Study group created!",
-      description: "Your study group has been created successfully."
-    });
-    
-    onClose();
+    try {
+      const { error } = await supabase
+        .from('study_groups')
+        .insert({
+          name: formData.name,
+          subject: formData.subject,
+          description: formData.description,
+          max_members: formData.maxMembers,
+          tags: topics,
+          created_by: user.id,
+          meeting_schedule: formData.schedule ? { schedule: formData.schedule } : null
+        });
+
+      if (error) throw error;
+
+      // Reset form
+      setFormData({
+        name: '',
+        subject: '',
+        description: '',
+        maxMembers: 10,
+        schedule: '',
+        difficulty: 'Intermediate'
+      });
+      setTopics([]);
+      setTopicInput('');
+      
+      toast({
+        title: "Study group created!",
+        description: "Your study group has been created successfully."
+      });
+      
+      onGroupCreated?.();
+      onClose();
+    } catch (error) {
+      console.error('Error creating study group:', error);
+      toast({
+        title: "Failed to create group",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addTopic = () => {
