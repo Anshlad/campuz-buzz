@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
-import { messageService, type MessageWithAuthor, type MessageAttachment } from '@/services/messageService';
+import { editMessage, deleteMessage, addReaction, pinMessage, type MessageWithAuthor, type MessageAttachment } from '@/services/messageService';
 import { FileUpload } from '@/components/common/FileUpload';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -68,7 +68,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
     
     try {
       setIsLoading(true);
-      await messageService.editMessage(message.id, editContent.trim());
+      await editMessage(message.id, editContent.trim());
       onMessageUpdated?.(message.id, editContent.trim());
       setIsEditing(false);
       toast({ title: "Message updated" });
@@ -86,7 +86,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
   const handleDelete = async () => {
     try {
       setIsLoading(true);
-      await messageService.deleteMessage(message.id);
+      await deleteMessage(message.id);
       onMessageDeleted?.(message.id);
       toast({ title: "Message deleted" });
     } catch (error) {
@@ -104,7 +104,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
     if (!user) return;
     
     try {
-      await messageService.addReaction(message.id, emoji, user.id);
+      await addReaction(message.id, emoji, user.id);
       setShowReactions(false);
     } catch (error) {
       console.error('Failed to add reaction:', error);
@@ -117,7 +117,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
 
   const handlePin = async () => {
     try {
-      await messageService.pinMessage(
+      await pinMessage(
         message.id, 
         message.channel_id || undefined, 
         message.dm_conversation_id || undefined

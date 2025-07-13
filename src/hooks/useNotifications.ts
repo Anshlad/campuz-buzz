@@ -89,8 +89,20 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
+      // Transform the data to match our Notification interface
+      const transformedNotifications: Notification[] = (data || []).map((item: any) => ({
+        id: item.id,
+        user_id: item.user_id,
+        type: item.type as 'like' | 'comment' | 'mention' | 'message' | 'friend_request' | 'event' | 'community',
+        title: item.title,
+        message: item.message,
+        data: item.data,
+        is_read: item.is_read,
+        created_at: item.created_at
+      }));
+
+      setNotifications(transformedNotifications);
+      setUnreadCount(transformedNotifications.filter(n => !n.is_read).length);
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { messageService } from '@/services/messageService';
+import { editMessage, deleteMessage } from '@/services/messageService';
 import { MoreVertical, Edit, Trash, Check, X } from 'lucide-react';
 
 interface MessageActionsProps {
@@ -36,7 +36,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
     
     try {
       setIsLoading(true);
-      await messageService.editMessage(messageId, editContent.trim());
+      await editMessage(messageId, editContent.trim());
       onMessageUpdated(messageId, editContent.trim());
       setIsEditing(false);
       toast({ title: "Message updated successfully" });
@@ -55,7 +55,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
   const handleDelete = async () => {
     try {
       setIsLoading(true);
-      await messageService.deleteMessage(messageId);
+      await deleteMessage(messageId);
       onMessageDeleted(messageId);
       setShowDeleteDialog(false);
       toast({ title: "Message deleted successfully" });

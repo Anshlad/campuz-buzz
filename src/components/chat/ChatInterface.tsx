@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -162,7 +161,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       fileName: result.fileName,
       fileSize: result.fileSize,
       fileType: result.fileType,
-      fileUrl: result.url
+      mimeType: result.mimeType,
+      url: result.url
     };
     setAttachments(prev => [...prev, attachment]);
     setShowFileUpload(false);

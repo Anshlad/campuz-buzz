@@ -1,48 +1,70 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Plus, Users, Calendar, MapPin, Book, Search, Filter } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreateStudyGroupModal } from './CreateStudyGroupModal';
 import { StudyGroupDetails } from './StudyGroupDetails';
-import type { Database } from '@/integrations/supabase/types';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Users, 
+  Calendar, 
+  MapPin, 
+  Plus, 
+  Search,
+  BookOpen,
+  Clock,
+  Star
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-type StudyGroup = Database['public']['Tables']['study_groups']['Row'];
-type StudyGroupMember = Database['public']['Tables']['study_group_members']['Row'];
-type StudySession = Database['public']['Tables']['study_sessions']['Row'];
+interface StudyGroup {
+  id: string;
+  name: string;
+  subject: string;
+  description: string;
+  location?: string;
+  max_members: number;
+  is_private: boolean;
+  tags: string[];
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  meeting_schedule?: any;
+}
+
+interface StudyGroupMember {
+  id: string;
+  study_group_id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+}
 
 interface StudyGroupWithMembers extends StudyGroup {
-  study_group_members: StudyGroupMember[];
+  members: StudyGroupMember[];
   member_count: number;
-  user_role?: string;
 }
 
 export const StudyGroupManager: React.FC = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [studyGroups, setStudyGroups] = useState<StudyGroupWithMembers[]>([]);
   const [myGroups, setMyGroups] = useState<StudyGroupWithMembers[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState<string>('all');
-  const [showPrivateGroups, setShowPrivateGroups] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<StudyGroupWithMembers | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'discover' | 'my-groups'>('discover');
+  const [activeTab, setActiveTab] = useState<'all' | 'my-groups' | 'created'>('all');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    loadStudyGroups();
     if (user) {
-      loadStudyGroups();
       loadMyGroups();
     }
   }, [user]);
@@ -50,7 +72,9 @@ export const StudyGroupManager: React.FC = () => {
   const loadStudyGroups = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Get study groups with member count
+      const { data: groups } = await supabase
         .from('study_groups')
         .select(`
           *,
@@ -59,17 +83,22 @@ export const StudyGroupManager: React.FC = () => {
         .eq('is_private', false)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-
-      const groupsWithCounts = data.map(group => ({
-        ...group,
-        member_count: group.study_group_members?.length || 0,
-        study_group_members: group.study_group_members || []
-      }));
-
-      setStudyGroups(groupsWithCounts);
+      if (groups) {
+        const groupsWithMembers: StudyGroupWithMembers[] = groups.map(group => ({
+          ...group,
+          members: group.study_group_members || [],
+          member_count: group.study_group_members?.length || 0
+        }));
+        
+        setStudyGroups(groupsWithMembers);
+      }
     } catch (error) {
-      console.error('Failed to load study groups:', error);
+      console.error('Error loading study groups:', error);
+      toast({
+        title: "Error loading study groups",
+        description: "Please try refreshing the page.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -79,41 +108,36 @@ export const StudyGroupManager: React.FC = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('study_groups')
+      // Get groups where user is a member
+      const { data: memberGroups } = await supabase
+        .from('study_group_members')
         .select(`
-          *,
-          study_group_members(*)
+          study_group_id,
+          study_groups(
+            *,
+            study_group_members(*)
+          )
         `)
-        .in('id', 
-          supabase
-            .from('study_group_members')
-            .select('study_group_id')
-            .eq('user_id', user.id)
-        );
+        .eq('user_id', user.id);
 
-      if (error) throw error;
-
-      const groupsWithCounts = data.map(group => {
-        const userMembership = group.study_group_members?.find(
-          member => member.user_id === user.id
-        );
+      if (memberGroups) {
+        const myGroupsData: StudyGroupWithMembers[] = memberGroups
+          .map(mg => mg.study_groups)
+          .filter(Boolean)
+          .map(group => ({
+            ...group,
+            members: group.study_group_members || [],
+            member_count: group.study_group_members?.length || 0
+          }));
         
-        return {
-          ...group,
-          member_count: group.study_group_members?.length || 0,
-          user_role: userMembership?.role,
-          study_group_members: group.study_group_members || []
-        };
-      });
-
-      setMyGroups(groupsWithCounts);
+        setMyGroups(myGroupsData);
+      }
     } catch (error) {
-      console.error('Failed to load my study groups:', error);
+      console.error('Error loading my groups:', error);
     }
   };
 
-  const joinStudyGroup = async (groupId: string) => {
+  const handleJoinGroup = async (groupId: string) => {
     if (!user) return;
 
     try {
@@ -127,14 +151,24 @@ export const StudyGroupManager: React.FC = () => {
 
       if (error) throw error;
 
-      await loadStudyGroups();
-      await loadMyGroups();
+      toast({
+        title: "Joined study group!",
+        description: "You've successfully joined the study group."
+      });
+
+      loadStudyGroups();
+      loadMyGroups();
     } catch (error) {
-      console.error('Failed to join study group:', error);
+      console.error('Error joining group:', error);
+      toast({
+        title: "Failed to join group",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
     }
   };
 
-  const leaveStudyGroup = async (groupId: string) => {
+  const handleLeaveGroup = async (groupId: string) => {
     if (!user) return;
 
     try {
@@ -146,28 +180,136 @@ export const StudyGroupManager: React.FC = () => {
 
       if (error) throw error;
 
-      await loadStudyGroups();
-      await loadMyGroups();
+      toast({
+        title: "Left study group",
+        description: "You've left the study group."
+      });
+
+      loadStudyGroups();
+      loadMyGroups();
     } catch (error) {
-      console.error('Failed to leave study group:', error);
+      console.error('Error leaving group:', error);
+      toast({
+        title: "Failed to leave group",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
     }
   };
 
-  const filteredGroups = studyGroups.filter(group => {
-    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         group.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         group.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesSubject = selectedSubject === 'all' || group.subject === selectedSubject;
-    
-    return matchesSearch && matchesSubject;
-  });
-
-  const subjects = [...new Set(studyGroups.map(group => group.subject))];
-
-  const isUserMember = (groupId: string) => {
-    return myGroups.some(group => group.id === groupId);
+  const handleGroupCreated = () => {
+    loadStudyGroups();
+    loadMyGroups();
+    setShowCreateModal(false);
   };
+
+  const filteredGroups = studyGroups.filter(group =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const isUserMember = (group: StudyGroupWithMembers) => {
+    return group.members.some(member => member.user_id === user?.id);
+  };
+
+  const renderStudyGroupCard = (group: StudyGroupWithMembers) => (
+    <motion.div
+      key={group.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-4"
+    >
+      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg mb-2">{group.name}</CardTitle>
+              <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center space-x-1">
+                  <BookOpen className="h-4 w-4" />
+                  <span>{group.subject}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Users className="h-4 w-4" />
+                  <span>{group.member_count}/{group.max_members}</span>
+                </div>
+                {group.location && (
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{group.location}</span>
+                  </div>
+                )}
+              </div>
+              {group.description && (
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                  {group.description}
+                </p>
+              )}
+              {group.tags && group.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {group.tags.slice(0, 3).map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {group.tags.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{group.tags.length - 3} more
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>
+                  <Users className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="text-sm">
+                <p className="font-medium">Study Group</p>
+                <p className="text-muted-foreground">
+                  Created {new Date(group.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedGroup(group)}
+              >
+                View Details
+              </Button>
+              {isUserMember(group) ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleLeaveGroup(group.id)}
+                >
+                  Leave
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => handleJoinGroup(group.id)}
+                  disabled={group.member_count >= group.max_members}
+                >
+                  {group.member_count >= group.max_members ? 'Full' : 'Join'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 
   if (isLoading) {
     return (
@@ -180,7 +322,7 @@ export const StudyGroupManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Study Groups</h1>
           <p className="text-muted-foreground">
@@ -193,181 +335,69 @@ export const StudyGroupManager: React.FC = () => {
         </Button>
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Search study groups..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       {/* Tabs */}
-      <div className="flex space-x-1 bg-muted rounded-lg p-1">
-        <Button
-          variant={activeTab === 'discover' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('discover')}
-          className="flex-1"
-        >
-          Discover Groups
-        </Button>
-        <Button
-          variant={activeTab === 'my-groups' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('my-groups')}
-          className="flex-1"
-        >
-          My Groups ({myGroups.length})
-        </Button>
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList>
+          <TabsTrigger value="all">All Groups</TabsTrigger>
+          <TabsTrigger value="my-groups">My Groups</TabsTrigger>
+        </TabsList>
 
-      {/* Filters */}
-      {activeTab === 'discover' && (
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search study groups..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="Filter by subject" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map(subject => (
-                <SelectItem key={subject} value={subject}>
-                  {subject}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Study Groups Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(activeTab === 'discover' ? filteredGroups : myGroups).map((group) => (
-          <Card key={group.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{group.name}</CardTitle>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary">
-                      <Book className="h-3 w-3 mr-1" />
-                      {group.subject}
-                    </Badge>
-                    {group.is_private && (
-                      <Badge variant="outline">Private</Badge>
-                    )}
-                  </div>
-                </div>
+        <TabsContent value="all" className="space-y-4">
+          <AnimatePresence>
+            {filteredGroups.length === 0 ? (
+              <div className="text-center py-12">
+                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No study groups found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchQuery ? 'Try adjusting your search terms' : 'Be the first to create a study group!'}
+                </p>
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Study Group
+                </Button>
               </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {group.description || 'No description provided.'}
-              </p>
-              
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  <span>{group.member_count} members</span>
-                </div>
-                {group.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span className="truncate">{group.location}</span>
-                  </div>
-                )}
+            ) : (
+              filteredGroups.map(renderStudyGroupCard)
+            )}
+          </AnimatePresence>
+        </TabsContent>
+
+        <TabsContent value="my-groups" className="space-y-4">
+          <AnimatePresence>
+            {myGroups.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">You haven't joined any groups yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Join a study group to collaborate with other students
+                </p>
+                <Button onClick={() => setActiveTab('all')}>
+                  Browse Groups
+                </Button>
               </div>
-
-              {group.tags && group.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {group.tags.slice(0, 3).map((tag, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                  {group.tags.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{group.tags.length - 3} more
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                {activeTab === 'discover' ? (
-                  isUserMember(group.id) ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => leaveStudyGroup(group.id)}
-                      className="flex-1"
-                    >
-                      Leave Group
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => joinStudyGroup(group.id)}
-                      className="flex-1"
-                    >
-                      Join Group
-                    </Button>
-                  )
-                ) : (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedGroup(group)}
-                      className="flex-1"
-                    >
-                      View Details
-                    </Button>
-                    {group.user_role === 'admin' && (
-                      <Button size="sm" variant="outline">
-                        Manage
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Empty States */}
-      {activeTab === 'discover' && filteredGroups.length === 0 && (
-        <div className="text-center py-12">
-          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No study groups found</h3>
-          <p className="text-muted-foreground">
-            Try adjusting your search criteria or create a new study group.
-          </p>
-        </div>
-      )}
-
-      {activeTab === 'my-groups' && myGroups.length === 0 && (
-        <div className="text-center py-12">
-          <Book className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">You haven't joined any study groups yet</h3>
-          <p className="text-muted-foreground mb-4">
-            Browse available study groups or create your own to get started.
-          </p>
-          <Button onClick={() => setActiveTab('discover')}>
-            Discover Groups
-          </Button>
-        </div>
-      )}
+            ) : (
+              myGroups.map(renderStudyGroupCard)
+            )}
+          </AnimatePresence>
+        </TabsContent>
+      </Tabs>
 
       {/* Modals */}
       <CreateStudyGroupModal
-        isOpen={showCreateModal}
+        open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onGroupCreated={() => {
-          loadStudyGroups();
-          loadMyGroups();
-        }}
+        onGroupCreated={handleGroupCreated}
       />
 
       {selectedGroup && (
@@ -375,6 +405,9 @@ export const StudyGroupManager: React.FC = () => {
           group={selectedGroup}
           isOpen={!!selectedGroup}
           onClose={() => setSelectedGroup(null)}
+          onJoin={() => handleJoinGroup(selectedGroup.id)}
+          onLeave={() => handleLeaveGroup(selectedGroup.id)}
+          isMember={isUserMember(selectedGroup)}
         />
       )}
     </div>

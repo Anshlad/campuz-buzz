@@ -13,10 +13,12 @@ export interface MessageAttachment {
   fileName: string;
   fileSize: number;
   fileType: string;
-  fileUrl: string;
+  mimeType: string;
+  url: string;
+  [key: string]: any; // Index signature for Json compatibility
 }
 
-export interface MessageWithAuthor extends Message {
+export interface MessageWithAuthor extends Omit<Message, 'attachments'> {
   author: {
     id: string;
     display_name: string;
@@ -146,7 +148,7 @@ class ChatService {
         display_name: `User ${msg.user_id.slice(0, 8)}`,
         avatar_url: undefined
       },
-      attachments: Array.isArray(msg.attachments) ? msg.attachments as MessageAttachment[] : []
+      attachments: Array.isArray(msg.attachments) ? (msg.attachments as unknown as MessageAttachment[]) : []
     })) as MessageWithAuthor[];
   }
 
@@ -158,7 +160,7 @@ class ChatService {
         channel_id: channelId,
         dm_conversation_id: dmConversationId,
         reply_to: replyTo,
-        attachments: attachments || [],
+        attachments: attachments as any || [],
         user_id: (await supabase.auth.getUser()).data.user?.id!
       })
       .select()
