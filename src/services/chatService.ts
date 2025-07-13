@@ -8,6 +8,14 @@ export type CommunityMember = Database['public']['Tables']['community_members'][
 export type CommunityRole = Database['public']['Tables']['community_roles']['Row'];
 export type DMConversation = Database['public']['Tables']['dm_conversations']['Row'];
 
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  fileUrl: string;
+}
+
 export interface MessageWithAuthor extends Message {
   author: {
     id: string;
@@ -16,6 +24,7 @@ export interface MessageWithAuthor extends Message {
   };
   reply_message?: MessageWithAuthor;
   thread_replies?: MessageWithAuthor[];
+  attachments: MessageAttachment[];
 }
 
 export interface CommunityWithChannels extends Community {
@@ -129,19 +138,19 @@ class ChatService {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Since we don't have a profiles table, we'll create mock author data
-    // In a real implementation, you'd want to create a profiles table or get user data differently
+    // Transform the data to match our interface
     return data.map(msg => ({
       ...msg,
       author: {
         id: msg.user_id,
         display_name: `User ${msg.user_id.slice(0, 8)}`,
         avatar_url: undefined
-      }
+      },
+      attachments: Array.isArray(msg.attachments) ? msg.attachments as MessageAttachment[] : []
     })) as MessageWithAuthor[];
   }
 
-  async sendMessage(content: string, channelId?: string, dmConversationId?: string, replyTo?: string): Promise<Message> {
+  async sendMessage(content: string, channelId?: string, dmConversationId?: string, replyTo?: string, attachments?: MessageAttachment[]): Promise<Message> {
     const { data, error } = await supabase
       .from('messages')
       .insert({
@@ -149,6 +158,7 @@ class ChatService {
         channel_id: channelId,
         dm_conversation_id: dmConversationId,
         reply_to: replyTo,
+        attachments: attachments || [],
         user_id: (await supabase.auth.getUser()).data.user?.id!
       })
       .select()
@@ -161,7 +171,6 @@ class ChatService {
   async reactToMessage(messageId: string, emoji: string): Promise<void> {
     const userId = (await supabase.auth.getUser()).data.user?.id!;
     
-    // Get current reactions
     const { data: message } = await supabase
       .from('messages')
       .select('reactions')
@@ -174,7 +183,6 @@ class ChatService {
       reactions[emoji] = [];
     }
 
-    // Toggle reaction
     const userIndex = reactions[emoji].indexOf(userId);
     if (userIndex > -1) {
       reactions[emoji].splice(userIndex, 1);
@@ -206,7 +214,6 @@ class ChatService {
     if (error) throw error;
   }
 
-  // Direct Messages
   async getDMConversations(): Promise<DMConversation[]> {
     const userId = (await supabase.auth.getUser()).data.user?.id!;
     
@@ -239,7 +246,6 @@ class ChatService {
     return data;
   }
 
-  // Typing indicators - Fixed parameter order
   async startTyping(channelId?: string, dmConversationId?: string): Promise<void> {
     const { error } = await supabase
       .from('typing_indicators')
@@ -270,7 +276,6 @@ class ChatService {
     await query;
   }
 
-  // Voice chat - Fixed parameter order
   async startVoiceSession(channelId: string): Promise<string> {
     const sessionId = `room_${channelId}_${Date.now()}`;
     const userId = (await supabase.auth.getUser()).data.user?.id!;
@@ -291,7 +296,6 @@ class ChatService {
   async joinVoiceSession(sessionId: string): Promise<void> {
     const userId = (await supabase.auth.getUser()).data.user?.id!;
 
-    // Get current session
     const { data: session } = await supabase
       .from('voice_sessions')
       .select('participants')
@@ -331,7 +335,6 @@ class ChatService {
     }
   }
 
-  // Real-time subscriptions - Fixed parameter order
   subscribeToMessages(callback: (message: MessageWithAuthor) => void, channelId?: string, dmConversationId?: string) {
     let channel = supabase
       .channel('messages')
@@ -343,7 +346,6 @@ class ChatService {
           filter: channelId ? `channel_id=eq.${channelId}` : `dm_conversation_id=eq.${dmConversationId}`
         }, 
         (payload) => {
-          // Fetch full message with author info
           this.getMessages(channelId, dmConversationId).then(messages => {
             const newMessage = messages.find(m => m.id === payload.new.id);
             if (newMessage) {
@@ -370,7 +372,6 @@ class ChatService {
           filter: channelId ? `channel_id=eq.${channelId}` : `dm_conversation_id=eq.${dmConversationId}`
         },
         () => {
-          // Fetch current typing users
           let query = supabase
             .from('typing_indicators')
             .select('user_id');

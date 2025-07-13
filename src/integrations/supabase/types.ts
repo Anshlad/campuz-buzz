@@ -769,6 +769,136 @@ export type Database = {
         }
         Relationships: []
       }
+      study_group_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string | null
+          study_group_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          role?: string | null
+          study_group_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          role?: string | null
+          study_group_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_members_study_group_id_fkey"
+            columns: ["study_group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_private: boolean | null
+          location: string | null
+          max_members: number | null
+          meeting_schedule: Json | null
+          name: string
+          subject: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          location?: string | null
+          max_members?: number | null
+          meeting_schedule?: Json | null
+          name: string
+          subject: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          location?: string | null
+          max_members?: number | null
+          meeting_schedule?: Json | null
+          name?: string
+          subject?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      study_sessions: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_virtual: boolean | null
+          location: string | null
+          max_participants: number | null
+          meeting_link: string | null
+          scheduled_at: string
+          study_group_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_virtual?: boolean | null
+          location?: string | null
+          max_participants?: number | null
+          meeting_link?: string | null
+          scheduled_at: string
+          study_group_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_virtual?: boolean | null
+          location?: string | null
+          max_participants?: number | null
+          meeting_link?: string | null
+          scheduled_at?: string
+          study_group_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_sessions_study_group_id_fkey"
+            columns: ["study_group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       typing_indicators: {
         Row: {
           channel_id: string | null

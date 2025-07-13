@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { chatService, type MessageWithAuthor, type Channel } from '@/services/chatService';
+import { chatService, type MessageWithAuthor, type Channel, type MessageAttachment } from '@/services/chatService';
 import { EnhancedMessageBubble } from './EnhancedMessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { VoiceChatButton } from './VoiceChatButton';
@@ -45,7 +45,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [replyTo, setReplyTo] = useState<MessageWithAuthor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [attachments, setAttachments] = useState<UploadResult[]>([]);
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
@@ -68,7 +68,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (channel?.id || dmConversationId) {
       loadMessages();
       
-      // Subscribe to new messages
       const unsubscribe = chatService.subscribeToMessages(
         (newMessage) => {
           setMessages(prev => [...prev, newMessage]);
@@ -77,7 +76,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         dmConversationId
       );
 
-      // Subscribe to typing indicators
       const unsubscribeTyping = chatService.subscribeToTyping(
         setTypingUsers,
         channel?.id,
@@ -116,22 +114,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (!messageInput.trim() || !user) return;
 
     try {
-      if (attachments.length > 0) {
-        // Send message with attachments using enhanced service
-        await chatService.sendMessage(
-          messageInput.trim(),
-          channel?.id,
-          dmConversationId,
-          replyTo?.id
-        );
-      } else {
-        await chatService.sendMessage(
-          messageInput.trim(),
-          channel?.id,
-          dmConversationId,
-          replyTo?.id
-        );
-      }
+      await chatService.sendMessage(
+        messageInput.trim(),
+        channel?.id,
+        dmConversationId,
+        replyTo?.id,
+        attachments
+      );
       
       setMessageInput('');
       setReplyTo(null);
@@ -168,7 +157,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   const handleFileUpload = (result: UploadResult) => {
-    setAttachments(prev => [...prev, result]);
+    const attachment: MessageAttachment = {
+      id: Date.now().toString(),
+      fileName: result.fileName,
+      fileSize: result.fileSize,
+      fileType: result.fileType,
+      fileUrl: result.url
+    };
+    setAttachments(prev => [...prev, attachment]);
     setShowFileUpload(false);
   };
 
@@ -186,14 +182,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full">
-      {/* Chat Header */}
       <ChannelHeader 
         channel={channel}
         dmConversationId={dmConversationId}
         communityId={communityId}
       />
 
-      {/* Messages Area */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-1">
           <AnimatePresence initial={false}>
@@ -210,7 +204,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             ))}
           </AnimatePresence>
           
-          {/* Typing Indicator */}
           {typingUsers.length > 0 && (
             <TypingIndicator users={typingUsers.filter(id => id !== user?.id)} />
           )}
@@ -219,7 +212,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </ScrollArea>
 
-      {/* File Upload Area */}
       <AnimatePresence>
         {showFileUpload && (
           <motion.div
@@ -238,7 +230,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Attachments Preview */}
       <AnimatePresence>
         {attachments.length > 0 && (
           <motion.div
@@ -271,7 +262,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Reply Preview */}
       <AnimatePresence>
         {replyTo && (
           <motion.div
@@ -301,7 +291,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Message Input */}
       <div className="p-4 border-t">
         <form onSubmit={handleSendMessage} className="flex items-end space-x-2">
           <div className="flex-1 relative">
