@@ -18,28 +18,45 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          depth: number | null
           id: string
           likes_count: number | null
+          parent_id: string | null
           post_id: string
+          reactions: Json | null
           user_id: string
         }
         Insert: {
           content: string
           created_at?: string
+          depth?: number | null
           id?: string
           likes_count?: number | null
+          parent_id?: string | null
           post_id: string
+          reactions?: Json | null
           user_id: string
         }
         Update: {
           content?: string
           created_at?: string
+          depth?: number | null
           id?: string
           likes_count?: number | null
+          parent_id?: string | null
           post_id?: string
+          reactions?: Json | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       communities: {
         Row: {
@@ -127,6 +144,50 @@ export type Database = {
           welcome_message?: string | null
         }
         Relationships: []
+      }
+      community_announcements: {
+        Row: {
+          author_id: string
+          community_id: string
+          content: string
+          created_at: string | null
+          id: string
+          is_pinned: boolean | null
+          priority: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          community_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          priority?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          community_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          priority?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_announcements_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities_enhanced"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       community_channels: {
         Row: {
@@ -248,6 +309,10 @@ export type Database = {
       }
       community_roles: {
         Row: {
+          can_create_posts: boolean | null
+          can_invite_members: boolean | null
+          can_manage_events: boolean | null
+          can_moderate: boolean | null
           color: string | null
           community_id: string
           created_at: string
@@ -258,6 +323,10 @@ export type Database = {
           position: number | null
         }
         Insert: {
+          can_create_posts?: boolean | null
+          can_invite_members?: boolean | null
+          can_manage_events?: boolean | null
+          can_moderate?: boolean | null
           color?: string | null
           community_id: string
           created_at?: string
@@ -268,6 +337,10 @@ export type Database = {
           position?: number | null
         }
         Update: {
+          can_create_posts?: boolean | null
+          can_invite_members?: boolean | null
+          can_manage_events?: boolean | null
+          can_moderate?: boolean | null
           color?: string | null
           community_id?: string
           created_at?: string
@@ -349,6 +422,124 @@ export type Database = {
           name?: string | null
           participants?: string[]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      event_rsvps: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          community_id: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          end_time: string
+          event_type: string | null
+          id: string
+          is_public: boolean | null
+          is_virtual: boolean | null
+          location: string | null
+          max_attendees: number | null
+          meeting_link: string | null
+          start_time: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          community_id?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          end_time: string
+          event_type?: string | null
+          id?: string
+          is_public?: boolean | null
+          is_virtual?: boolean | null
+          location?: string | null
+          max_attendees?: number | null
+          meeting_link?: string | null
+          start_time: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          community_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          end_time?: string
+          event_type?: string | null
+          id?: string
+          is_public?: boolean | null
+          is_virtual?: boolean | null
+          location?: string | null
+          max_attendees?: number | null
+          meeting_link?: string | null
+          start_time?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities_enhanced"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hashtags: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -637,6 +828,100 @@ export type Database = {
           },
         ]
       }
+      post_hashtags: {
+        Row: {
+          hashtag_id: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          hashtag_id: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          hashtag_id?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_hashtags_hashtag_id_fkey"
+            columns: ["hashtag_id"]
+            isOneToOne: false
+            referencedRelation: "hashtags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_hashtags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_mentions: {
+        Row: {
+          created_at: string | null
+          id: string
+          mentioned_user_id: string
+          post_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mentioned_user_id: string
+          post_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mentioned_user_id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_mentions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_reactions: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_reports: {
         Row: {
           created_at: string
@@ -667,6 +952,35 @@ export type Database = {
         }
         Relationships: []
       }
+      post_saves: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_saves_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           comments_count: number | null
@@ -681,10 +995,14 @@ export type Database = {
           likes_count: number | null
           poll_options: Json | null
           post_type: string | null
+          reactions: Json | null
+          saves_count: number | null
+          shares_count: number | null
           tags: string[] | null
           title: string | null
           updated_at: string
           user_id: string
+          visibility: string | null
         }
         Insert: {
           comments_count?: number | null
@@ -699,10 +1017,14 @@ export type Database = {
           likes_count?: number | null
           poll_options?: Json | null
           post_type?: string | null
+          reactions?: Json | null
+          saves_count?: number | null
+          shares_count?: number | null
           tags?: string[] | null
           title?: string | null
           updated_at?: string
           user_id: string
+          visibility?: string | null
         }
         Update: {
           comments_count?: number | null
@@ -717,10 +1039,14 @@ export type Database = {
           likes_count?: number | null
           poll_options?: Json | null
           post_type?: string | null
+          reactions?: Json | null
+          saves_count?: number | null
+          shares_count?: number | null
           tags?: string[] | null
           title?: string | null
           updated_at?: string
           user_id?: string
+          visibility?: string | null
         }
         Relationships: []
       }
@@ -732,9 +1058,16 @@ export type Database = {
           department: string | null
           display_name: string | null
           engagement_score: number | null
+          gpa: number | null
+          graduation_year: number | null
           id: string
+          interests: string[] | null
           major: string | null
+          privacy_settings: Json | null
           role: string | null
+          school: string | null
+          skills: string[] | null
+          social_links: Json | null
           updated_at: string
           user_id: string
           year: string | null
@@ -746,9 +1079,16 @@ export type Database = {
           department?: string | null
           display_name?: string | null
           engagement_score?: number | null
+          gpa?: number | null
+          graduation_year?: number | null
           id?: string
+          interests?: string[] | null
           major?: string | null
+          privacy_settings?: Json | null
           role?: string | null
+          school?: string | null
+          skills?: string[] | null
+          social_links?: Json | null
           updated_at?: string
           user_id: string
           year?: string | null
@@ -760,9 +1100,16 @@ export type Database = {
           department?: string | null
           display_name?: string | null
           engagement_score?: number | null
+          gpa?: number | null
+          graduation_year?: number | null
           id?: string
+          interests?: string[] | null
           major?: string | null
+          privacy_settings?: Json | null
           role?: string | null
+          school?: string | null
+          skills?: string[] | null
+          social_links?: Json | null
           updated_at?: string
           user_id?: string
           year?: string | null
@@ -938,6 +1285,33 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_data: Json | null
+          achievement_type: string
+          earned_at: string | null
+          id: string
+          is_visible: boolean | null
+          user_id: string
+        }
+        Insert: {
+          achievement_data?: Json | null
+          achievement_type: string
+          earned_at?: string | null
+          id?: string
+          is_visible?: boolean | null
+          user_id: string
+        }
+        Update: {
+          achievement_data?: Json | null
+          achievement_type?: string
+          earned_at?: string | null
+          id?: string
+          is_visible?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_blocks: {
         Row: {
           blocked_at: string
@@ -1037,6 +1411,10 @@ export type Database = {
       cleanup_old_typing_indicators: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      extract_hashtags: {
+        Args: { content: string }
+        Returns: string[]
       }
       get_study_suggestions: {
         Args: { user_uuid: string }

@@ -1,76 +1,77 @@
+
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Hash } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AIService } from '@/services/aiService';
+import { TrendingUp, Hash } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface TrendingHashtag {
+  name: string;
+  usage_count: number;
+}
 
 export const TrendingTopics: React.FC = () => {
-  const [trending, setTrending] = useState<Array<{ topic: string; count: number }>>([]);
+  const [trendingHashtags, setTrendingHashtags] = useState<TrendingHashtag[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadTrending();
+    loadTrendingHashtags();
   }, []);
 
-  const loadTrending = async () => {
-    setLoading(true);
+  const loadTrendingHashtags = async () => {
     try {
-      const data = await AIService.getTrendingTopics();
-      setTrending(data);
+      const { data, error } = await supabase
+        .from('hashtags')
+        .select('name, usage_count')
+        .order('usage_count', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setTrendingHashtags(data || []);
+    } catch (error) {
+      console.error('Error loading trending hashtags:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5" />
-            <span>Trending Topics</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="animate-pulse flex items-center space-x-2">
-                <div className="w-4 h-4 bg-muted rounded"></div>
-                <div className="h-4 bg-muted rounded flex-1"></div>
-                <div className="w-8 h-4 bg-muted rounded"></div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <span>Trending Topics</span>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />
+          Trending Topics
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {trending.map((item, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center space-x-2">
-                <Hash className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-sm">{item.topic}</span>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-6 bg-gray-200 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : trendingHashtags.length > 0 ? (
+          trendingHashtags.map((hashtag, index) => (
+            <div key={hashtag.name} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-500">
+                  {index + 1}
+                </span>
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Hash className="h-3 w-3" />
+                  {hashtag.name}
+                </Badge>
               </div>
-              <Badge variant="secondary" className="text-xs">
-                {item.count} posts
-              </Badge>
+              <span className="text-xs text-gray-500">
+                {hashtag.usage_count} posts
+              </span>
             </div>
-          ))}
-        </div>
+          ))
+        ) : (
+          <div className="text-sm text-gray-500">
+            No trending topics yet. Be the first to start a conversation with hashtags!
+          </div>
+        )}
       </CardContent>
     </Card>
   );
