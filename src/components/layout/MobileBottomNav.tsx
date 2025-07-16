@@ -1,66 +1,106 @@
 
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, Search, Plus, Users, User } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Home, 
+  Search, 
+  Plus, 
+  MessageSquare, 
+  User,
+  Calendar,
+  Users
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { motion } from 'framer-motion';
 
 export const MobileBottomNav: React.FC = () => {
-  const navItems = [
-    { icon: Home, label: 'Home', path: '/' },
-    { icon: Search, label: 'Explore', path: '/explore' },
-    { icon: Plus, label: 'Create', path: '/create', isCreate: true },
-    { icon: Users, label: 'Groups', path: '/communities' },
-    { icon: User, label: 'Profile', path: '/profile' },
+  const location = useLocation();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  const createMenuItems = [
+    { icon: MessageSquare, label: 'New Post', path: '/' },
+    { icon: Calendar, label: 'Create Event', path: '/events' },
+    { icon: Users, label: 'Study Group', path: '/study-groups' }
   ];
 
   return (
-    <motion.div 
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border md:hidden"
-    >
-      <div className="flex items-center justify-around px-2 py-2 safe-area-pb">
-        {navItems.map((item, index) => (
-          <motion.div
-            key={item.path}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <NavLink
-              to={item.path}
-              className={({ isActive }) =>
-                `flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-[60px] ${
-                  item.isCreate
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg scale-110'
-                    : isActive
-                    ? 'text-primary bg-primary/10'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                }`
-              }
+    <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-xl border-t border-border/40">
+      <div className="flex items-center justify-around px-2 py-2">
+        <NavLink
+          to="/"
+          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+            isActive('/') ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Home className="h-5 w-5" />
+          <span className="text-xs mt-1">Home</span>
+        </NavLink>
+
+        <NavLink
+          to="/explore"
+          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+            isActive('/explore') ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Search className="h-5 w-5" />
+          <span className="text-xs mt-1">Explore</span>
+        </NavLink>
+
+        {/* Create Menu for Mobile */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <motion.button
+              className="flex flex-col items-center justify-center p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              whileTap={{ scale: 0.95 }}
             >
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className="relative"
-              >
-                <item.icon className={`h-5 w-5 ${item.isCreate ? 'h-6 w-6' : ''}`} />
-                {item.path === '/communities' && (
-                  <Badge 
-                    variant="secondary" 
-                    className="absolute -top-2 -right-2 bg-red-500 text-white text-xs h-4 w-4 p-0 flex items-center justify-center rounded-full"
-                  >
-                    2
-                  </Badge>
-                )}
-              </motion.div>
-              <span className="text-xs mt-1 font-medium truncate">{item.label}</span>
-            </NavLink>
-          </motion.div>
-        ))}
+              <div className="bg-primary text-primary-foreground rounded-full p-1">
+                <Plus className="h-4 w-4" />
+              </div>
+              <span className="text-xs mt-1">Create</span>
+            </motion.button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" side="top" className="mb-2 bg-background/95 backdrop-blur-xl border-border/50">
+            {createMenuItems.map((item) => (
+              <DropdownMenuItem key={item.label} asChild>
+                <NavLink to={item.path} className="cursor-pointer flex items-center gap-2">
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </NavLink>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <NavLink
+          to="/chat"
+          className={`relative flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+            isActive('/chat') ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <MessageSquare className="h-5 w-5" />
+          <span className="text-xs mt-1">Chat</span>
+          <Badge className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 bg-red-500 text-white text-xs rounded-full">
+            3
+          </Badge>
+        </NavLink>
+
+        <NavLink
+          to="/profile"
+          className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+            isActive('/profile') ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <User className="h-5 w-5" />
+          <span className="text-xs mt-1">Profile</span>
+        </NavLink>
       </div>
-    </motion.div>
+    </nav>
   );
 };

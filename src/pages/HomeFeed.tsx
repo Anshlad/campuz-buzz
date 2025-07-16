@@ -12,10 +12,12 @@ import { EnhancedPostCreator } from '@/components/posts/EnhancedPostCreator';
 import { EnhancedProfileEditor } from '@/components/profile/EnhancedProfileEditor';
 import { LoadingSkeletons } from '@/components/common/LoadingSkeletons';
 import { TrendingTopics } from '@/components/feed/TrendingTopics';
+import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { motion } from 'framer-motion';
 
 export default function HomeFeed() {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [showPostCreator, setShowPostCreator] = useState(false);
   const { posts, loading, createPost, reactToPost, savePost, sharePost } = useEnhancedPosts();
   const { profile, loading: profileLoading, refetchProfile } = useUserProfile();
 
@@ -112,10 +114,14 @@ export default function HomeFeed() {
               transition={{ delay: 0.2 }}
               className="mb-6"
             >
-              <EnhancedPostCreator
-                onSubmit={createPost}
-                placeholder="What's on your mind?"
-              />
+              <div data-post-creator>
+                <EnhancedPostCreator
+                  onSubmit={createPost}
+                  placeholder="What's on your mind?"
+                  expanded={showPostCreator}
+                  onExpandedChange={setShowPostCreator}
+                />
+              </div>
             </motion.div>
 
             {/* Posts Feed */}
@@ -130,6 +136,10 @@ export default function HomeFeed() {
                     <div className="p-8 text-center">
                       <h3 className="text-lg font-medium text-foreground mb-2">No posts yet</h3>
                       <p className="text-muted-foreground mb-4">Be the first to share something with the community!</p>
+                      <EnhancedButton onClick={() => setShowPostCreator(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Post
+                      </EnhancedButton>
                     </div>
                   </EnhancedCard>
                 </motion.div>
@@ -189,6 +199,11 @@ export default function HomeFeed() {
           </div>
         </div>
       </div>
+
+      {/* Mobile FAB */}
+      <FloatingActionButton 
+        onClick={() => setShowPostCreator(true)}
+      />
 
       {/* Profile Editor Modal */}
       <EnhancedProfileEditor

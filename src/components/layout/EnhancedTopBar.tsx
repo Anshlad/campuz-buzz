@@ -14,7 +14,10 @@ import {
   User,
   LogOut,
   Moon,
-  Sun
+  Sun,
+  PenTool,
+  Calendar,
+  Users
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,9 +39,10 @@ export const EnhancedTopBar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   const handleLogoClick = () => {
-    window.location.reload();
+    navigate('/');
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -47,6 +51,13 @@ export const EnhancedTopBar: React.FC = () => {
       navigate(`/explore?q=${encodeURIComponent(searchQuery)}`);
     }
   };
+
+  const createMenuItems = [
+    { icon: PenTool, label: 'New Post', action: () => navigate('/') },
+    { icon: Calendar, label: 'Create Event', action: () => navigate('/events') },
+    { icon: Users, label: 'Study Group', action: () => navigate('/study-groups') },
+    { icon: MessageSquare, label: 'Community', action: () => navigate('/communities') }
+  ];
 
   return (
     <motion.header 
@@ -98,16 +109,32 @@ export const EnhancedTopBar: React.FC = () => {
         <div className="flex items-center space-x-2">
           {/* Quick Actions - Desktop */}
           <div className="hidden md:flex items-center space-x-2">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <EnhancedButton 
-                variant="ghost" 
-                size="icon"
-                className="relative hover:bg-accent/50"
-                onClick={() => navigate('/create')}
-              >
-                <Plus className="h-5 w-5" />
-              </EnhancedButton>
-            </motion.div>
+            {/* Create Dropdown */}
+            <DropdownMenu open={showCreateMenu} onOpenChange={setShowCreateMenu}>
+              <DropdownMenuTrigger asChild>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <EnhancedButton 
+                    variant="ghost" 
+                    size="icon"
+                    className="relative hover:bg-accent/50"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </EnhancedButton>
+                </motion.div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-background/95 backdrop-blur-xl border-border/50">
+                {createMenuItems.map((item) => (
+                  <DropdownMenuItem 
+                    key={item.label}
+                    onClick={item.action} 
+                    className="cursor-pointer flex items-center gap-2"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <EnhancedButton 

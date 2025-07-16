@@ -16,6 +16,7 @@ import { EventCalendar } from '@/pages/EventCalendar';
 import { Announcements } from '@/pages/Announcements';
 import Profile from '@/pages/Profile';
 import { Explore } from '@/pages/Explore';
+import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 
 export const EnhancedAppLayout: React.FC = () => {
@@ -39,6 +40,7 @@ export const EnhancedAppLayout: React.FC = () => {
                   <Route path="/announcements" element={<Announcements />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/explore" element={<Explore />} />
+                  <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </div>
