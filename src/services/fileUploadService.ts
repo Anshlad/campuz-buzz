@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 export type FileUploadType = 'avatar' | 'post' | 'attachment' | 'community';
 
@@ -44,7 +43,7 @@ class FileUploadService {
     if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
       return {
         valid: false,
-        error: `File type ${file.type} is not allowed`
+        error: `File type ${file.type} is not allowed for ${type} uploads`
       };
     }
 
@@ -57,36 +56,74 @@ class FileUploadService {
     userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
+    // Validate file first
+    const validation = this.validateFile(file, type);
+    if (!validation.valid) {
+      throw new Error(validation.error);
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}_${Date.now()}.${fileExt}`;
     const bucketName = this.getBucketName(type);
 
     onProgress?.(0);
 
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-    if (error) {
-      throw new Error(`Upload failed: ${error.message}`);
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      onProgress?.(100);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
+
+      return {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: fileExt || '',
+        mimeType: file.type,
+        url: publicUrl
+      };
+    } catch (error) {
+      console.error('File upload error:', error);
+      throw error instanceof Error ? error : new Error('Unknown upload error');
+    }
+  }
+
+  async uploadMultipleFiles(
+    files: File[],
+    type: FileUploadType,
+    userId: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadResult[]> {
+    const results: UploadResult[] = [];
+    const totalFiles = files.length;
+
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const result = await this.uploadFile(files[i], type, userId, (fileProgress) => {
+          const overallProgress = ((i / totalFiles) * 100) + ((fileProgress / totalFiles));
+          onProgress?.(overallProgress);
+        });
+        results.push(result);
+      } catch (error) {
+        console.error(`Failed to upload file ${files[i].name}:`, error);
+        // Continue with other files, but note the failure
+        throw error;
+      }
     }
 
-    onProgress?.(100);
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(fileName);
-
-    return {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: fileExt || '',
-      mimeType: file.type,
-      url: publicUrl
-    };
+    return results;
   }
 
   private getBucketName(type: FileUploadType): string {
@@ -101,6 +138,28 @@ class FileUploadService {
         return 'communities';
       default:
         return 'attachments';
+    }
+  }
+
+  async deleteFile(url: string, type: FileUploadType): Promise<void> {
+    try {
+      const bucketName = this.getBucketName(type);
+      const fileName = url.split('/').pop();
+      
+      if (!fileName) {
+        throw new Error('Invalid file URL');
+      }
+
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .remove([fileName]);
+
+      if (error) {
+        throw new Error(`Delete failed: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('File deletion error:', error);
+      throw error instanceof Error ? error : new Error('Unknown deletion error');
     }
   }
 }

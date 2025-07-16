@@ -1,46 +1,34 @@
+import { AuthPages } from '@/pages/AuthPages';
+import { ThemeProvider } from '@/components/theme-provider';
+import { AuthGuard } from '@/guards/AuthGuard';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import { EnhancedAppLayout } from '@/layouts/EnhancedAppLayout';
+import { AppErrorBoundary } from '@/components/common/AppErrorBoundary';
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { AuthGuard } from "@/components/auth/AuthGuard";
-import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 3,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
-
-const App = () => (
-  <ErrorBoundary>
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
+function App() {
+  return (
+    <AppErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <BrowserRouter>
+            <div className="min-h-screen bg-background text-foreground">
+              <Routes>
+                <Route path="/auth" element={<AuthPages />} />
+                <Route path="/*" element={
+                  <AuthGuard>
+                    <EnhancedAppLayout />
+                  </AuthGuard>
+                } />
+              </Routes>
+            </div>
             <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AuthGuard>
-                <Routes>
-                  <Route path="/*" element={<Index />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AuthGuard>
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
-  </ErrorBoundary>
-);
+          </BrowserRouter>
+        </ThemeProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
+  );
+}
 
 export default App;

@@ -46,11 +46,13 @@ export const useUserProfile = () => {
 
   const fetchProfile = async () => {
     if (!user) {
+      setProfile(null);
       setLoading(false);
       return;
     }
 
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -58,6 +60,7 @@ export const useUserProfile = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
         throw error;
       }
 
@@ -70,53 +73,86 @@ export const useUserProfile = () => {
             : data.social_links || {},
           privacy_settings: typeof data.privacy_settings === 'string'
             ? JSON.parse(data.privacy_settings)
-            : data.privacy_settings || {}
+            : data.privacy_settings || {
+                email_visible: false,
+                profile_visible: true,
+                academic_info_visible: true,
+                notifications: {
+                  posts: true,
+                  comments: true,
+                  mentions: true,
+                  messages: true,
+                  events: true
+                }
+              }
         };
         setProfile(profileData);
       } else {
         // Create default profile if none exists
+        const defaultProfile = {
+          user_id: user.id,
+          display_name: user.email?.split('@')[0] || 'Anonymous',
+          role: 'student',
+          engagement_score: 0,
+          privacy_settings: {
+            email_visible: false,
+            profile_visible: true,
+            academic_info_visible: true,
+            notifications: {
+              posts: true,
+              comments: true,
+              mentions: true,
+              messages: true,
+              events: true
+            }
+          },
+          social_links: {}
+        };
+
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({
-            user_id: user.id,
-            display_name: user.email?.split('@')[0] || 'Anonymous',
-            role: 'student'
-          })
+          .insert(defaultProfile)
           .select()
           .single();
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          throw createError;
+        }
         
-        const profileData = {
-          ...newProfile,
-          social_links: typeof newProfile.social_links === 'string' 
-            ? JSON.parse(newProfile.social_links) 
-            : newProfile.social_links || {},
-          privacy_settings: typeof newProfile.privacy_settings === 'string'
-            ? JSON.parse(newProfile.privacy_settings)
-            : newProfile.privacy_settings || {}
-        };
-        setProfile(profileData);
+        setProfile({ ...newProfile, ...defaultProfile });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user || !profile) return;
+    if (!user || !profile) {
+      throw new Error('No user or profile found');
+    }
 
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+      }
 
-      setProfile({ ...profile, ...updates });
+      // Update local state
+      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      
+      return true;
     } catch (error) {
       console.error('Error updating profile:', error);
       throw error;

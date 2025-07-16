@@ -38,8 +38,8 @@ export interface EnhancedPost {
 interface PostCreationData {
   content: string;
   title?: string;
-  type: 'text' | 'image' | 'video' | 'poll';
-  images?: string[];
+  post_type: 'text' | 'image' | 'video' | 'poll';
+  images?: any[];
   location?: string;
   tags?: string[];
   mentions?: string[];
@@ -68,7 +68,10 @@ export const useEnhancedPosts = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (postsError) throw postsError;
+      if (postsError) {
+        console.error('Error fetching posts:', postsError);
+        throw postsError;
+      }
 
       const enhancedPosts = await Promise.all(
         (postsData || []).map(async (post) => {
@@ -125,7 +128,11 @@ export const useEnhancedPosts = () => {
             reactions,
             is_saved: isSaved,
             hashtags,
-            profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles
+            profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles,
+            likes_count: post.likes_count || 0,
+            comments_count: post.comments_count || 0,
+            shares_count: post.shares_count || 0,
+            saves_count: post.saves_count || 0,
           } as EnhancedPost;
         })
       );
@@ -146,7 +153,23 @@ export const useEnhancedPosts = () => {
   const createPost = async (postData: PostCreationData) => {
     try {
       const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
+      if (!user.data.user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to create a post.",
+          variant: "destructive"
+        });
+        throw new Error('Not authenticated');
+      }
+
+      // Determine post type and image URL
+      let imageUrl = null;
+      let postType = postData.post_type || 'text';
+      
+      if (postData.images && postData.images.length > 0) {
+        imageUrl = postData.images[0].url || postData.images[0];
+        postType = 'image';
+      }
 
       // Create the post
       const { data, error } = await supabase
@@ -155,59 +178,76 @@ export const useEnhancedPosts = () => {
           user_id: user.data.user.id,
           title: postData.title,
           content: postData.content,
-          image_url: postData.images?.[0], // Use first image for now
-          post_type: postData.type,
+          image_url: imageUrl,
+          post_type: postType,
           tags: postData.tags || [],
-          visibility: postData.visibility
+          visibility: postData.visibility || 'public'
         })
-        .select()
+        .select(`
+          *,
+          profiles:user_id (
+            display_name,
+            avatar_url,
+            major,
+            year
+          )
+        `)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating post:', error);
+        throw error;
+      }
 
-      // Process hashtags and mentions
+      // Process hashtags if they exist
       if (postData.tags && postData.tags.length > 0) {
-        // Insert hashtags and link them to the post
         for (const tag of postData.tags) {
-          // Insert or update hashtag
-          const { data: hashtag } = await supabase
-            .from('hashtags')
-            .upsert(
-              { name: tag.toLowerCase() },
-              { onConflict: 'name', ignoreDuplicates: false }
-            )
-            .select()
-            .single();
+          try {
+            // Insert or update hashtag
+            const { data: hashtag } = await supabase
+              .from('hashtags')
+              .upsert(
+                { name: tag.toLowerCase() },
+                { onConflict: 'name', ignoreDuplicates: false }
+              )
+              .select()
+              .single();
 
-          if (hashtag) {
-            // Link hashtag to post
-            await supabase
-              .from('post_hashtags')
-              .insert({
-                post_id: data.id,
-                hashtag_id: hashtag.id
-              });
+            if (hashtag) {
+              // Link hashtag to post
+              await supabase
+                .from('post_hashtags')
+                .insert({
+                  post_id: data.id,
+                  hashtag_id: hashtag.id
+                });
+            }
+          } catch (hashtagError) {
+            console.warn('Error processing hashtag:', tag, hashtagError);
           }
         }
       }
 
-      // Process mentions
+      // Process mentions if they exist
       if (postData.mentions && postData.mentions.length > 0) {
         for (const mention of postData.mentions) {
-          // Find user by display name (simplified)
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('user_id')
-            .ilike('display_name', mention)
-            .single();
+          try {
+            const { data: userProfile } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .ilike('display_name', mention)
+              .single();
 
-          if (userProfile) {
-            await supabase
-              .from('post_mentions')
-              .insert({
-                post_id: data.id,
-                mentioned_user_id: userProfile.user_id
-              });
+            if (userProfile) {
+              await supabase
+                .from('post_mentions')
+                .insert({
+                  post_id: data.id,
+                  mentioned_user_id: userProfile.user_id
+                });
+            }
+          } catch (mentionError) {
+            console.warn('Error processing mention:', mention, mentionError);
           }
         }
       }
@@ -217,13 +257,13 @@ export const useEnhancedPosts = () => {
         description: "Your post has been shared successfully."
       });
 
-      // Refresh posts
-      fetchPosts();
+      // Refresh posts to include the new one
+      await fetchPosts();
     } catch (error) {
       console.error('Error creating post:', error);
       toast({
         title: "Error creating post",
-        description: "Please try again.",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive"
       });
       throw error;
@@ -233,7 +273,14 @@ export const useEnhancedPosts = () => {
   const reactToPost = async (postId: string, reactionType: string) => {
     try {
       const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
+      if (!user.data.user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to react to posts.",
+          variant: "destructive"
+        });
+        throw new Error('Not authenticated');
+      }
 
       // Check if user already reacted with this type
       const { data: existingReaction } = await supabase
@@ -268,7 +315,8 @@ export const useEnhancedPosts = () => {
           });
       }
 
-      fetchPosts();
+      // Refresh posts to update reaction counts
+      await fetchPosts();
     } catch (error) {
       console.error('Error reacting to post:', error);
       toast({
@@ -282,7 +330,14 @@ export const useEnhancedPosts = () => {
   const savePost = async (postId: string) => {
     try {
       const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
+      if (!user.data.user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to save posts.",
+          variant: "destructive"
+        });
+        throw new Error('Not authenticated');
+      }
 
       const { data: existingSave } = await supabase
         .from('post_saves')
@@ -307,7 +362,8 @@ export const useEnhancedPosts = () => {
         toast({ title: "Post saved" });
       }
 
-      fetchPosts();
+      // Refresh posts to update save status
+      await fetchPosts();
     } catch (error) {
       console.error('Error saving post:', error);
       toast({
@@ -320,9 +376,22 @@ export const useEnhancedPosts = () => {
 
   const sharePost = async (postId: string) => {
     try {
-      toast({ title: "Share feature coming soon!" });
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check out this post on CampuzBuzz',
+          url: `${window.location.origin}/post/${postId}`
+        });
+      } else {
+        await navigator.clipboard.writeText(`${window.location.origin}/post/${postId}`);
+        toast({ title: "Link copied to clipboard!" });
+      }
     } catch (error) {
       console.error('Error sharing post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to share post.",
+        variant: "destructive"
+      });
     }
   };
 

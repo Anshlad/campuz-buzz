@@ -1,151 +1,179 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
 export interface Community {
   id: string;
   name: string;
   description: string;
-  type: 'department' | 'club' | 'interest';
+  category?: string;
   memberCount: number;
   isJoined: boolean;
-  avatar?: string;
-  moderators: string[];
-  tags: string[];
-  isPrivate: boolean;
+  avatar_url?: string;
+  is_private: boolean;
+  created_by: string;
+  created_at: string;
 }
-
-export interface Poll {
-  id: string;
-  question: string;
-  options: PollOption[];
-  totalVotes: number;
-  expiresAt?: string;
-  allowMultiple: boolean;
-}
-
-export interface PollOption {
-  id: string;
-  text: string;
-  votes: number;
-  hasVoted: boolean;
-}
-
-export interface QAPost {
-  id: string;
-  question: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-    role: UserRole;
-  };
-  answers: QAAnswer[];
-  tags: string[];
-  timestamp: string;
-  votes: number;
-  hasVoted: boolean;
-}
-
-export interface QAAnswer {
-  id: string;
-  content: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-    role: UserRole;
-  };
-  votes: number;
-  hasVoted: boolean;
-  timestamp: string;
-  isAccepted: boolean;
-}
-
-export type UserRole = 'student' | 'professor' | 'admin' | 'club';
 
 class CommunitiesService {
-  private mockCommunities: Community[] = [
-    {
-      id: '1',
-      name: 'Computer Science Department',
-      description: 'Official CS department community for students and faculty',
-      type: 'department',
-      memberCount: 324,
-      isJoined: true,
-      avatar: '/placeholder.svg',
-      moderators: ['prof1', 'admin1'],
-      tags: ['Computer Science', 'Programming', 'Tech'],
-      isPrivate: false
-    },
-    {
-      id: '2',
-      name: 'Photography Club',
-      description: 'Capture moments, share stories, learn together',
-      type: 'club',
-      memberCount: 87,
-      isJoined: false,
-      avatar: '/placeholder.svg',
-      moderators: ['club_mod1'],
-      tags: ['Photography', 'Art', 'Creative'],
-      isPrivate: false
-    },
-    {
-      id: '3',
-      name: 'Machine Learning Enthusiasts',
-      description: 'Discussing latest trends in AI and ML',
-      type: 'interest',
-      memberCount: 156,
-      isJoined: true,
-      avatar: '/placeholder.svg',
-      moderators: ['ml_expert1'],
-      tags: ['Machine Learning', 'AI', 'Data Science'],
-      isPrivate: false
-    }
-  ];
+  async getCommunities(category?: string): Promise<Community[]> {
+    try {
+      let query = supabase
+        .from('communities')
+        .select('*');
 
-  async getCommunities(type?: string): Promise<Community[]> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (type) {
-      return this.mockCommunities.filter(c => c.type === type);
+      if (category) {
+        query = query.eq('category', category);
+      }
+
+      const { data: communitiesData, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching communities:', error);
+        throw error;
+      }
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      // Get membership status for each community
+      const communitiesWithMembership = await Promise.all(
+        (communitiesData || []).map(async (community) => {
+          let isJoined = false;
+          
+          if (userId) {
+            const { data: membership } = await supabase
+              .from('community_members')
+              .select('id')
+              .eq('community_id', community.id)
+              .eq('user_id', userId)
+              .single();
+            
+            isJoined = !!membership;
+          }
+
+          return {
+            ...community,
+            memberCount: community.member_count || 0,
+            isJoined
+          } as Community;
+        })
+      );
+
+      return communitiesWithMembership;
+    } catch (error) {
+      console.error('Error in getCommunities:', error);
+      throw error;
     }
-    return this.mockCommunities;
   }
 
   async joinCommunity(communityId: string, userId: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const community = this.mockCommunities.find(c => c.id === communityId);
-    if (community) {
-      community.isJoined = true;
-      community.memberCount += 1;
+    try {
+      // Check if already a member
+      const { data: existingMember } = await supabase
+        .from('community_members')
+        .select('id')
+        .eq('community_id', communityId)
+        .eq('user_id', userId)
+        .single();
+
+      if (existingMember) {
+        throw new Error('Already a member of this community');
+      }
+
+      // Join the community
+      const { error } = await supabase
+        .from('community_members')
+        .insert({
+          community_id: communityId,
+          user_id: userId
+        });
+
+      if (error) {
+        console.error('Error joining community:', error);
+        throw error;
+      }
+
+      // Update member count
+      const { error: updateError } = await supabase.rpc('increment', {
+        table_name: 'communities',
+        column_name: 'member_count',
+        row_id: communityId
+      });
+
+      if (updateError) {
+        console.warn('Error updating member count:', updateError);
+      }
+    } catch (error) {
+      console.error('Error in joinCommunity:', error);
+      throw error;
     }
   }
 
   async leaveCommunity(communityId: string, userId: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const community = this.mockCommunities.find(c => c.id === communityId);
-    if (community) {
-      community.isJoined = false;
-      community.memberCount -= 1;
+    try {
+      // Leave the community
+      const { error } = await supabase
+        .from('community_members')
+        .delete()
+        .eq('community_id', communityId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error leaving community:', error);
+        throw error;
+      }
+
+      // Update member count
+      const { error: updateError } = await supabase.rpc('decrement', {
+        table_name: 'communities',
+        column_name: 'member_count',
+        row_id: communityId
+      });
+
+      if (updateError) {
+        console.warn('Error updating member count:', updateError);
+      }
+    } catch (error) {
+      console.error('Error in leaveCommunity:', error);
+      throw error;
     }
   }
 
-  async createPoll(pollData: Omit<Poll, 'id' | 'totalVotes'>, authorId: string): Promise<Poll> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const newPoll: Poll = {
-      ...pollData,
-      id: Date.now().toString(),
-      totalVotes: 0,
-      options: pollData.options.map(opt => ({ ...opt, votes: 0, hasVoted: false }))
-    };
-    
-    return newPoll;
-  }
+  async createCommunity(communityData: {
+    name: string;
+    description: string;
+    category?: string;
+    is_private?: boolean;
+  }, userId: string): Promise<Community> {
+    try {
+      const { data, error } = await supabase
+        .from('communities')
+        .insert({
+          ...communityData,
+          created_by: userId,
+          member_count: 1
+        })
+        .select()
+        .single();
 
-  async votePoll(pollId: string, optionId: string, userId: string): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    // Mock implementation - would update poll votes in real backend
+      if (error) {
+        console.error('Error creating community:', error);
+        throw error;
+      }
+
+      // Auto-join the creator
+      await this.joinCommunity(data.id, userId);
+
+      return {
+        ...data,
+        memberCount: 1,
+        isJoined: true
+      } as Community;
+    } catch (error) {
+      console.error('Error in createCommunity:', error);
+      throw error;
+    }
   }
 }
 

@@ -71,6 +71,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
 
   const handleFilesUploaded = (results: UploadResult[]) => {
     setUploadResults(results);
+    console.log('Files uploaded:', results);
   };
 
   const handleSubmit = async () => {
@@ -83,17 +84,28 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
       return;
     }
 
+    if (content.length > 280) {
+      toast({
+        title: "Content too long",
+        description: "Please keep your post under 280 characters.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      await onSubmit({
+      const postData = {
         content: content.trim(),
-        images: uploadResults.filter(r => r.mimeType.startsWith('image/')),
+        images: uploadResults.length > 0 ? uploadResults : undefined,
         location: location.trim() || undefined,
         visibility,
-        hashtags,
+        tags: [...hashtags, ...mentions],
         mentions,
-        post_type: uploadResults.length > 0 ? 'image' : 'text'
-      });
+        post_type: uploadResults.length > 0 ? 'image' as const : 'text' as const
+      };
+
+      await onSubmit(postData);
 
       // Reset form
       setContent('');
@@ -110,6 +122,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
         description: "Your post has been shared successfully!"
       });
     } catch (error) {
+      console.error('Error creating post:', error);
       toast({
         title: "Error",
         description: "Failed to create post. Please try again.",
@@ -127,6 +140,10 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   ];
 
   const currentVisibility = visibilityOptions.find(opt => opt.value === visibility);
+
+  const removeUploadedFile = (index: number) => {
+    setUploadResults(prev => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <EnhancedCard variant="glass" className="overflow-hidden">
@@ -168,6 +185,33 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
                     accept="image/*,video/*"
                     className="border-dashed border-2 border-border/50 rounded-lg"
                   />
+                  
+                  {/* Display uploaded files */}
+                  {uploadResults.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {uploadResults.map((file, index) => (
+                        <div key={index} className="relative">
+                          {file.mimeType.startsWith('image/') ? (
+                            <img 
+                              src={file.url} 
+                              alt={file.fileName}
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-muted rounded-lg flex items-center justify-center">
+                              <span className="text-sm text-muted-foreground">{file.fileName}</span>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => removeUploadedFile(index)}
+                            className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   
                   {/* Location Input */}
                   <div className="flex items-center gap-2">
