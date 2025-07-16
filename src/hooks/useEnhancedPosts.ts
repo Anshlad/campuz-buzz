@@ -35,6 +35,17 @@ export interface EnhancedPost {
   hashtags: string[];
 }
 
+interface PostCreationData {
+  content: string;
+  title?: string;
+  type: 'text' | 'image' | 'video' | 'poll';
+  images?: string[];
+  location?: string;
+  tags?: string[];
+  mentions?: string[];
+  visibility: 'public' | 'private' | 'community';
+}
+
 export const useEnhancedPosts = () => {
   const [posts, setPosts] = useState<EnhancedPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,31 +143,81 @@ export const useEnhancedPosts = () => {
     }
   };
 
-  const createPost = async (postData: any) => {
+  const createPost = async (postData: PostCreationData) => {
     try {
       const user = await supabase.auth.getUser();
       if (!user.data.user) throw new Error('Not authenticated');
 
+      // Create the post
       const { data, error } = await supabase
         .from('posts')
         .insert({
           user_id: user.data.user.id,
           title: postData.title,
           content: postData.content,
-          image_url: postData.image,
-          post_type: postData.type || 'text',
-          tags: postData.tags || []
+          image_url: postData.images?.[0], // Use first image for now
+          post_type: postData.type,
+          tags: postData.tags || [],
+          visibility: postData.visibility
         })
         .select()
         .single();
 
       if (error) throw error;
 
+      // Process hashtags and mentions
+      if (postData.tags && postData.tags.length > 0) {
+        // Insert hashtags and link them to the post
+        for (const tag of postData.tags) {
+          // Insert or update hashtag
+          const { data: hashtag } = await supabase
+            .from('hashtags')
+            .upsert(
+              { name: tag.toLowerCase() },
+              { onConflict: 'name', ignoreDuplicates: false }
+            )
+            .select()
+            .single();
+
+          if (hashtag) {
+            // Link hashtag to post
+            await supabase
+              .from('post_hashtags')
+              .insert({
+                post_id: data.id,
+                hashtag_id: hashtag.id
+              });
+          }
+        }
+      }
+
+      // Process mentions
+      if (postData.mentions && postData.mentions.length > 0) {
+        for (const mention of postData.mentions) {
+          // Find user by display name (simplified)
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('user_id')
+            .ilike('display_name', mention)
+            .single();
+
+          if (userProfile) {
+            await supabase
+              .from('post_mentions')
+              .insert({
+                post_id: data.id,
+                mentioned_user_id: userProfile.user_id
+              });
+          }
+        }
+      }
+
       toast({
         title: "Post created!",
         description: "Your post has been shared successfully."
       });
 
+      // Refresh posts
       fetchPosts();
     } catch (error) {
       console.error('Error creating post:', error);
@@ -165,6 +226,7 @@ export const useEnhancedPosts = () => {
         description: "Please try again.",
         variant: "destructive"
       });
+      throw error;
     }
   };
 

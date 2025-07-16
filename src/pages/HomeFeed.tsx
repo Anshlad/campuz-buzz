@@ -8,14 +8,13 @@ import { Plus, TrendingUp, Users, Calendar, Bookmark } from 'lucide-react';
 import { useEnhancedPosts } from '@/hooks/useEnhancedPosts';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { EnhancedPostCard } from '@/components/posts/EnhancedPostCard';
-import { EnhancedCreatePostModal } from '@/components/posts/EnhancedCreatePostModal';
-import { EnhancedEditProfileModal } from '@/components/profile/EnhancedEditProfileModal';
+import { EnhancedPostCreator } from '@/components/posts/EnhancedPostCreator';
+import { EnhancedProfileEditor } from '@/components/profile/EnhancedProfileEditor';
 import { LoadingSkeletons } from '@/components/common/LoadingSkeletons';
 import { TrendingTopics } from '@/components/feed/TrendingTopics';
 import { motion } from 'framer-motion';
 
 export default function HomeFeed() {
-  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const { posts, loading, createPost, reactToPost, savePost, sharePost } = useEnhancedPosts();
   const { profile, loading: profileLoading, refetchProfile } = useUserProfile();
@@ -111,34 +110,12 @@ export default function HomeFeed() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              className="mb-6"
             >
-              <EnhancedCard variant="elevated" className="mb-6">
-                <div className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-                      <AvatarImage src={profile?.avatar_url} />
-                      <AvatarFallback>
-                        {profile?.display_name?.charAt(0) || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <EnhancedButton
-                      variant="outline"
-                      className="flex-1 justify-start text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => setIsCreatePostOpen(true)}
-                    >
-                      What's on your mind?
-                    </EnhancedButton>
-                    <EnhancedButton
-                      size="sm"
-                      onClick={() => setIsCreatePostOpen(true)}
-                      gradient
-                      glow
-                    >
-                      <Plus className="h-4 w-4" />
-                    </EnhancedButton>
-                  </div>
-                </div>
-              </EnhancedCard>
+              <EnhancedPostCreator
+                onSubmit={createPost}
+                placeholder="What's on your mind?"
+              />
             </motion.div>
 
             {/* Posts Feed */}
@@ -153,9 +130,6 @@ export default function HomeFeed() {
                     <div className="p-8 text-center">
                       <h3 className="text-lg font-medium text-foreground mb-2">No posts yet</h3>
                       <p className="text-muted-foreground mb-4">Be the first to share something with the community!</p>
-                      <EnhancedButton onClick={() => setIsCreatePostOpen(true)} gradient glow>
-                        Create First Post
-                      </EnhancedButton>
                     </div>
                   </EnhancedCard>
                 </motion.div>
@@ -216,14 +190,8 @@ export default function HomeFeed() {
         </div>
       </div>
 
-      {/* Modals */}
-      <EnhancedCreatePostModal
-        open={isCreatePostOpen}
-        onClose={() => setIsCreatePostOpen(false)}
-        onSubmit={createPost}
-      />
-
-      <EnhancedEditProfileModal
+      {/* Profile Editor Modal */}
+      <EnhancedProfileEditor
         open={isEditProfileOpen}
         onClose={() => setIsEditProfileOpen(false)}
         profile={profile}
