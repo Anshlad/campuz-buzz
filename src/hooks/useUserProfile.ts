@@ -3,6 +3,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface NotificationSettings {
+  posts: boolean;
+  comments: boolean;
+  mentions: boolean;
+  messages: boolean;
+  events: boolean;
+}
+
 export interface UserProfile {
   id: string;
   user_id: string;
@@ -20,7 +28,13 @@ export interface UserProfile {
   skills?: string[];
   interests?: string[];
   social_links?: Record<string, string>;
-  privacy_settings?: Record<string, boolean>;
+  privacy_settings?: {
+    email_visible?: boolean;
+    profile_visible?: boolean;
+    academic_info_visible?: boolean;
+    notifications?: NotificationSettings;
+    [key: string]: any;
+  };
   created_at: string;
   updated_at: string;
 }

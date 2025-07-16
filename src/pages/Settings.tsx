@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EnhancedCard } from '@/components/ui/enhanced-card';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +43,13 @@ export default function Settings() {
     messages: true,
     events: true
   });
+
+  // Initialize notifications from profile when it loads
+  useEffect(() => {
+    if (profile?.privacy_settings?.notifications) {
+      setNotifications(profile.privacy_settings.notifications);
+    }
+  }, [profile]);
 
   const handleSaveSettings = async () => {
     setLoading(true);
