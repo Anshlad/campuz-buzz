@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRetryableQuery } from './useRetryableQuery';
@@ -42,6 +43,29 @@ interface PostCreationData {
   visibility: 'public' | 'private' | 'community';
 }
 
+// Helper function to convert Json reactions to our expected format
+const convertReactions = (reactions: any): Record<string, {
+  reaction_type: string;
+  count: number;
+  hasReacted: boolean;
+}> => {
+  const defaultReactions = {
+    like: { reaction_type: 'like', count: 0, hasReacted: false },
+    love: { reaction_type: 'love', count: 0, hasReacted: false },
+    laugh: { reaction_type: 'laugh', count: 0, hasReacted: false },
+    wow: { reaction_type: 'wow', count: 0, hasReacted: false },
+    sad: { reaction_type: 'sad', count: 0, hasReacted: false },
+    angry: { reaction_type: 'angry', count: 0, hasReacted: false }
+  };
+
+  if (!reactions || typeof reactions !== 'object') {
+    return defaultReactions;
+  }
+
+  // Merge with any existing reactions from the database
+  return { ...defaultReactions, ...reactions };
+};
+
 export const useOptimizedPosts = () => {
   const [posts, setPosts] = useState<OptimizedPost[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -60,7 +84,7 @@ export const useOptimizedPosts = () => {
         )
       `)
       .order('created_at', { ascending: false })
-      .limit(20); // Limit initial load for performance
+      .limit(20);
 
     if (error) throw error;
 
@@ -75,6 +99,7 @@ export const useOptimizedPosts = () => {
       comments_count: post.comments_count || 0,
       shares_count: post.shares_count || 0,
       saves_count: post.saves_count || 0,
+      reactions: convertReactions(post.reactions),
     }));
   }, []);
 
@@ -144,6 +169,7 @@ export const useOptimizedPosts = () => {
         comments_count: 0,
         shares_count: 0,
         saves_count: 0,
+        reactions: convertReactions(null),
       };
 
       setPosts(prevPosts => [newPost, ...prevPosts]);

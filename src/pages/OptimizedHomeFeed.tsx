@@ -86,17 +86,10 @@ export default function OptimizedHomeFeed() {
                 ) : (
                   <AnimatePresence initial={false}>
                     {posts.map((post, index) => {
-                      // Convert OptimizedPost to EnhancedPost format
+                      // Convert OptimizedPost to EnhancedPost format - reactions are already properly typed
                       const enhancedPost = {
                         ...post,
-                        reactions: {
-                          like: { reaction_type: 'like', count: 0, hasReacted: false },
-                          love: { reaction_type: 'love', count: 0, hasReacted: false },
-                          laugh: { reaction_type: 'laugh', count: 0, hasReacted: false },
-                          wow: { reaction_type: 'wow', count: 0, hasReacted: false },
-                          sad: { reaction_type: 'sad', count: 0, hasReacted: false },
-                          angry: { reaction_type: 'angry', count: 0, hasReacted: false }
-                        }
+                        reactions: post.reactions // Already in the correct format
                       };
 
                       return (
@@ -146,6 +139,7 @@ export default function OptimizedHomeFeed() {
         {/* Mobile FAB */}
         <FloatingActionButton 
           onClick={() => setShowPostCreator(true)}
+          disabled={isCreating}
         />
       </div>
     </ErrorBoundaryWithRetry>
