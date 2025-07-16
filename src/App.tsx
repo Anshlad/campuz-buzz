@@ -1,10 +1,11 @@
-import { AuthPages } from '@/pages/AuthPages';
-import { ThemeProvider } from '@/components/theme-provider';
-import { AuthGuard } from '@/guards/AuthGuard';
+
+import { AuthPages } from '@/components/auth/AuthPages';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
-import { EnhancedAppLayout } from '@/layouts/EnhancedAppLayout';
+import { EnhancedAppLayout } from '@/components/layout/EnhancedAppLayout';
 import { AppErrorBoundary } from '@/components/common/AppErrorBoundary';
 
 function App() {

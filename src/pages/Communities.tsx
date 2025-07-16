@@ -72,8 +72,8 @@ export const Communities = () => {
     community.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
+  const getTypeIcon = (category: string) => {
+    switch (category) {
       case 'department':
         return <Building className="h-4 w-4" />;
       case 'club':
@@ -157,15 +157,15 @@ export const Communities = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-start space-x-3">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={community.avatar} />
+                        <AvatarImage src={community.avatar_url} />
                         <AvatarFallback>{community.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-lg truncate">{community.name}</CardTitle>
                         <div className="flex items-center space-x-1 mt-1">
-                          {getTypeIcon(community.type)}
+                          {getTypeIcon(community.category || 'general')}
                           <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-                            {community.type}
+                            {community.category || 'General'}
                           </span>
                         </div>
                       </div>
@@ -182,21 +182,8 @@ export const Communities = () => {
                         <Users className="h-4 w-4 mr-1" />
                         {community.memberCount} members
                       </div>
-                      {community.isPrivate && (
+                      {community.is_private && (
                         <Badge variant="secondary">Private</Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {community.tags.slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {community.tags.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{community.tags.length - 2}
-                        </Badge>
                       )}
                     </div>
                     

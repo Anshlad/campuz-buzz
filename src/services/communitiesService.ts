@@ -94,15 +94,22 @@ class CommunitiesService {
         throw error;
       }
 
-      // Update member count
-      const { error: updateError } = await supabase.rpc('increment', {
-        table_name: 'communities',
-        column_name: 'member_count',
-        row_id: communityId
-      });
+      // Update member count manually
+      const { data: community } = await supabase
+        .from('communities')
+        .select('member_count')
+        .eq('id', communityId)
+        .single();
 
-      if (updateError) {
-        console.warn('Error updating member count:', updateError);
+      if (community) {
+        const { error: updateError } = await supabase
+          .from('communities')
+          .update({ member_count: (community.member_count || 0) + 1 })
+          .eq('id', communityId);
+
+        if (updateError) {
+          console.warn('Error updating member count:', updateError);
+        }
       }
     } catch (error) {
       console.error('Error in joinCommunity:', error);
@@ -124,15 +131,22 @@ class CommunitiesService {
         throw error;
       }
 
-      // Update member count
-      const { error: updateError } = await supabase.rpc('decrement', {
-        table_name: 'communities',
-        column_name: 'member_count',
-        row_id: communityId
-      });
+      // Update member count manually
+      const { data: community } = await supabase
+        .from('communities')
+        .select('member_count')
+        .eq('id', communityId)
+        .single();
 
-      if (updateError) {
-        console.warn('Error updating member count:', updateError);
+      if (community) {
+        const { error: updateError } = await supabase
+          .from('communities')
+          .update({ member_count: Math.max(0, (community.member_count || 0) - 1) })
+          .eq('id', communityId);
+
+        if (updateError) {
+          console.warn('Error updating member count:', updateError);
+        }
       }
     } catch (error) {
       console.error('Error in leaveCommunity:', error);
