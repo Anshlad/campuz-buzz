@@ -23,13 +23,21 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface NotificationSettings {
+  posts: boolean;
+  comments: boolean;
+  mentions: boolean;
+  messages: boolean;
+  events: boolean;
+}
+
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
   const { signOut } = useAuth();
   const { profile, updateProfile } = useUserProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<NotificationSettings>({
     posts: true,
     comments: true,
     mentions: true,

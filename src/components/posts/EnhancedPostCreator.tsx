@@ -20,6 +20,7 @@ import {
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { UploadResult } from '@/services/fileUploadService';
 
 interface EnhancedPostCreatorProps {
   onSubmit: (post: any) => Promise<void>;
@@ -35,7 +36,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   onExpandedChange
 }) => {
   const [content, setContent] = useState('');
-  const [images, setImages] = useState<File[]>([]);
+  const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [location, setLocation] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [hashtags, setHashtags] = useState<string[]>([]);
@@ -68,8 +69,12 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
     setMentions(mentionMatches.map(mention => mention.slice(1)));
   };
 
+  const handleFilesUploaded = (results: UploadResult[]) => {
+    setUploadResults(results);
+  };
+
   const handleSubmit = async () => {
-    if (!content.trim() && images.length === 0) {
+    if (!content.trim() && uploadResults.length === 0) {
       toast({
         title: "Content required",
         description: "Please add some content or images to your post.",
@@ -82,17 +87,17 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
     try {
       await onSubmit({
         content: content.trim(),
-        images,
+        images: uploadResults.filter(r => r.mimeType.startsWith('image/')),
         location: location.trim() || undefined,
         visibility,
         hashtags,
         mentions,
-        post_type: images.length > 0 ? 'image' : 'text'
+        post_type: uploadResults.length > 0 ? 'image' : 'text'
       });
 
       // Reset form
       setContent('');
-      setImages([]);
+      setUploadResults([]);
       setLocation('');
       setVisibility('public');
       setHashtags([]);
@@ -156,33 +161,13 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
                 >
                   {/* File Upload */}
                   <EnhancedFileUpload
-                    onFilesSelected={(files) => setImages([...images, ...files])}
-                    accept="image/*"
+                    type="post"
                     multiple
                     maxFiles={4}
-                    className="border-dashed border-2 border-border/50 rounded-lg p-4"
+                    onFilesUploaded={handleFilesUploaded}
+                    accept="image/*,video/*"
+                    className="border-dashed border-2 border-border/50 rounded-lg"
                   />
-                  
-                  {/* Image Preview */}
-                  {images.length > 0 && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {images.map((image, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={URL.createObjectURL(image)}
-                            alt={`Upload ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
-                          />
-                          <button
-                            onClick={() => setImages(images.filter((_, i) => i !== index))}
-                            className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   
                   {/* Location Input */}
                   <div className="flex items-center gap-2">
@@ -253,7 +238,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
             
             <EnhancedButton
               onClick={handleSubmit}
-              disabled={(!content.trim() && images.length === 0) || loading || content.length > 280}
+              disabled={(!content.trim() && uploadResults.length === 0) || loading || content.length > 280}
               size="sm"
               className="bg-primary hover:bg-primary/90"
             >
