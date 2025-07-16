@@ -16,24 +16,34 @@ export const useTheme = () => {
   return context;
 };
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  defaultTheme?: 'light' | 'dark';
+  storageKey?: string;
+}
+
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ 
+  children, 
+  defaultTheme = 'light',
+  storageKey = 'campuzbuzz_theme'
+}) => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(defaultTheme);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('campuzbuzz_theme') as 'light' | 'dark' | null;
+    const savedTheme = localStorage.getItem(storageKey) as 'light' | 'dark' | null;
     if (savedTheme) {
       setTheme(savedTheme);
     }
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
-    localStorage.setItem('campuzbuzz_theme', theme);
+    localStorage.setItem(storageKey, theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [theme]);
+  }, [theme, storageKey]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
