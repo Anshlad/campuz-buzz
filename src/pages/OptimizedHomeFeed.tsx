@@ -14,22 +14,6 @@ const EnhancedPostCard = lazy(() => import('@/components/posts/EnhancedPostCard'
 const ProfileSidebar = lazy(() => import('@/components/feed/ProfileSidebar'));
 const TrendingSidebar = lazy(() => import('@/components/feed/TrendingSidebar'));
 
-const ProfileSidebar: React.FC = () => {
-  return (
-    <div className="sticky top-6">
-      <SmartSkeletonLoader type="profile" />
-    </div>
-  );
-};
-
-const TrendingSidebar: React.FC = () => {
-  return (
-    <div className="sticky top-6 space-y-6">
-      <SmartSkeletonLoader type="community" count={3} />
-    </div>
-  );
-};
-
 export default function OptimizedHomeFeed() {
   const [showPostCreator, setShowPostCreator] = useState(false);
   const { posts, loading, error, retry, createPost, isCreating } = useOptimizedPosts();
@@ -101,28 +85,43 @@ export default function OptimizedHomeFeed() {
                   </motion.div>
                 ) : (
                   <AnimatePresence initial={false}>
-                    {posts.map((post, index) => (
-                      <motion.div
-                        key={post.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: Math.min(index * 0.05, 0.3) }}
-                      >
-                        <Suspense fallback={<SmartSkeletonLoader type="post" />}>
-                          <ErrorBoundaryWithRetry
-                            fallback={<SmartSkeletonLoader type="post" />}
-                          >
-                            <EnhancedPostCard
-                              post={post}
-                              onReact={() => {}}
-                              onSave={() => {}}
-                              onShare={() => {}}
-                            />
-                          </ErrorBoundaryWithRetry>
-                        </Suspense>
-                      </motion.div>
-                    ))}
+                    {posts.map((post, index) => {
+                      // Convert OptimizedPost to EnhancedPost format
+                      const enhancedPost = {
+                        ...post,
+                        reactions: {
+                          like: { reaction_type: 'like', count: 0, hasReacted: false },
+                          love: { reaction_type: 'love', count: 0, hasReacted: false },
+                          laugh: { reaction_type: 'laugh', count: 0, hasReacted: false },
+                          wow: { reaction_type: 'wow', count: 0, hasReacted: false },
+                          sad: { reaction_type: 'sad', count: 0, hasReacted: false },
+                          angry: { reaction_type: 'angry', count: 0, hasReacted: false }
+                        }
+                      };
+
+                      return (
+                        <motion.div
+                          key={post.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: Math.min(index * 0.05, 0.3) }}
+                        >
+                          <Suspense fallback={<SmartSkeletonLoader type="post" />}>
+                            <ErrorBoundaryWithRetry
+                              fallback={<SmartSkeletonLoader type="post" />}
+                            >
+                              <EnhancedPostCard
+                                post={enhancedPost}
+                                onReact={() => {}}
+                                onSave={() => {}}
+                                onShare={() => {}}
+                              />
+                            </ErrorBoundaryWithRetry>
+                          </Suspense>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                 )}
 
@@ -147,7 +146,6 @@ export default function OptimizedHomeFeed() {
         {/* Mobile FAB */}
         <FloatingActionButton 
           onClick={() => setShowPostCreator(true)}
-          disabled={isCreating}
         />
       </div>
     </ErrorBoundaryWithRetry>

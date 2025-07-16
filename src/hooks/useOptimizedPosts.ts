@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRetryableQuery } from './useRetryableQuery';
@@ -25,6 +24,11 @@ export interface OptimizedPost {
   };
   is_saved: boolean;
   hashtags: string[];
+  reactions: Record<string, {
+    reaction_type: string;
+    count: number;
+    hasReacted: boolean;
+  }>;
 }
 
 interface PostCreationData {
