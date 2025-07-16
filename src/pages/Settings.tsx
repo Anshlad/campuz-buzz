@@ -48,12 +48,14 @@ export default function Settings() {
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
-      // Save notification preferences
+      // Save notification preferences to privacy_settings
+      const updatedPrivacySettings = {
+        ...profile?.privacy_settings,
+        notifications: notifications
+      };
+      
       await updateProfile({
-        privacy_settings: {
-          ...profile?.privacy_settings,
-          notifications
-        }
+        privacy_settings: updatedPrivacySettings
       });
       
       toast({
