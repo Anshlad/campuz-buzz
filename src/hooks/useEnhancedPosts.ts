@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +30,7 @@ export interface EnhancedPost {
   saves_count: number;
   reactions: Record<string, PostReaction>;
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
   visibility: 'public' | 'friends' | 'private';
   profiles?: PostProfile;
   is_saved: boolean;

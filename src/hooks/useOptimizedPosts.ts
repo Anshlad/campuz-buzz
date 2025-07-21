@@ -17,7 +17,7 @@ export interface OptimizedPost {
   shares_count: number;
   saves_count: number;
   created_at: string;
-  updated_at?: string;
+  updated_at: string; // Made required
   visibility: 'public' | 'friends' | 'private';
   profiles?: {
     display_name: string;
@@ -105,7 +105,7 @@ export const useOptimizedPosts = () => {
       return {
         ...post,
         post_type: (post.post_type as 'text' | 'image' | 'video' | 'poll') || 'text',
-        updated_at: post.updated_at || post.created_at,
+        updated_at: post.updated_at || post.created_at, // Ensure updated_at is always present
         visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
         profiles: profile,
         is_saved: false, // TODO: Optimize this query
@@ -188,7 +188,7 @@ export const useOptimizedPosts = () => {
       const newPost: OptimizedPost = {
         ...data,
         post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
-        updated_at: data.updated_at || data.created_at,
+        updated_at: data.updated_at || data.created_at, // Ensure updated_at is present
         visibility: (data.visibility as 'public' | 'friends' | 'private') || 'public',
         profiles: profile,
         is_saved: false,
