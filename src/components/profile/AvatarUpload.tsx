@@ -3,8 +3,9 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Camera, Upload, X } from 'lucide-react';
+import { Camera, Upload, X, Loader2 } from 'lucide-react';
 import { fileUploadService } from '@/services/fileUploadService';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,9 +22,11 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   onAvatarChange,
   size = 'lg'
 }) => {
+  const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -35,21 +38,26 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   };
 
   const handleFileSelect = async (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!user) {
       toast({
-        title: "Invalid file type",
-        description: "Please select an image file",
+        title: "Authentication required",
+        description: "Please log in to upload an avatar",
         variant: "destructive"
       });
       return;
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file
+    const validationError = fileUploadService.validateFile(
+      file, 
+      5, 
+      ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    );
+    
+    if (validationError) {
       toast({
-        title: "File too large",
-        description: "Avatar image must be less than 5MB",
+        title: "Invalid file",
+        description: validationError,
         variant: "destructive"
       });
       return;
@@ -62,10 +70,19 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     setUploadProgress(0);
 
     try {
+      // Delete old avatar if it exists
+      if (currentAvatarUrl) {
+        try {
+          await fileUploadService.deleteFile(currentAvatarUrl, 'avatar');
+        } catch (deleteError) {
+          console.warn('Failed to delete old avatar:', deleteError);
+        }
+      }
+
       const result = await fileUploadService.uploadFile(
         file,
         'avatar',
-        'current-user', // This should come from auth context
+        user.id,
         (progress) => {
           setUploadProgress(progress);
         }
@@ -87,13 +104,11 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         variant: "destructive"
       });
 
-      // Reset preview on error
       setPreviewUrl(null);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
       
-      // Clean up preview URL
       if (preview) {
         URL.revokeObjectURL(preview);
       }
@@ -109,6 +124,8 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragging(false);
+    
     const file = e.dataTransfer.files[0];
     if (file) {
       handleFileSelect(file);
@@ -117,15 +134,33 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragging(true);
   };
 
-  const removeAvatar = () => {
-    onAvatarChange('');
-    setPreviewUrl(null);
-    toast({
-      title: "Avatar removed",
-      description: "Your profile picture has been removed"
-    });
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const removeAvatar = async () => {
+    if (!currentAvatarUrl) return;
+
+    try {
+      await fileUploadService.deleteFile(currentAvatarUrl, 'avatar');
+      onAvatarChange('');
+      setPreviewUrl(null);
+      
+      toast({
+        title: "Avatar removed",
+        description: "Your profile picture has been removed"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove avatar",
+        variant: "destructive"
+      });
+    }
   };
 
   const displayUrl = previewUrl || currentAvatarUrl;
@@ -133,12 +168,13 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   return (
     <div className="relative inline-block">
       <div
-        className="relative group cursor-pointer"
+        className={`relative group cursor-pointer transition-transform ${isDragging ? 'scale-105' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        onClick={() => fileInputRef.current?.click()}
+        onDragLeave={handleDragLeave}
+        onClick={() => !isUploading && fileInputRef.current?.click()}
       >
-        <Avatar className={`${sizeClasses[size]} ring-4 ring-background shadow-lg`}>
+        <Avatar className={`${sizeClasses[size]} ring-4 ring-background shadow-lg transition-shadow group-hover:ring-primary/50`}>
           <AvatarImage src={displayUrl} />
           <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-primary-foreground font-bold text-lg">
             {fallbackText}
@@ -146,9 +182,27 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
         </Avatar>
 
         {/* Upload Overlay */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center">
-          <Camera className="h-6 w-6 text-white" />
+        <div className={`absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center ${isUploading ? 'opacity-100' : ''}`}>
+          {isUploading ? (
+            <Loader2 className="h-6 w-6 text-white animate-spin" />
+          ) : (
+            <Camera className="h-6 w-6 text-white" />
+          )}
         </div>
+
+        {/* Drag & Drop Indicator */}
+        <AnimatePresence>
+          {isDragging && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute -inset-4 border-2 border-dashed border-primary rounded-full bg-primary/10 flex items-center justify-center"
+            >
+              <Upload className="h-8 w-8 text-primary" />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Upload Progress */}
         <AnimatePresence>
@@ -159,11 +213,11 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center"
             >
-              <div className="text-center">
+              <div className="text-center px-2">
                 <div className="w-16 mb-2">
                   <Progress value={uploadProgress} className="h-1" />
                 </div>
-                <p className="text-xs text-white">{Math.round(uploadProgress)}%</p>
+                <p className="text-xs text-white font-medium">{Math.round(uploadProgress)}%</p>
               </div>
             </motion.div>
           )}
@@ -171,32 +225,42 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       </div>
 
       {/* Remove Button */}
-      {displayUrl && !isUploading && (
-        <Button
-          size="sm"
-          variant="destructive"
-          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            removeAvatar();
-          }}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      )}
+      <AnimatePresence>
+        {displayUrl && !isUploading && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+          >
+            <Button
+              size="sm"
+              variant="destructive"
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 shadow-lg"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeAvatar();
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={handleFileInputChange}
         className="hidden"
       />
 
       {/* Upload Instructions */}
-      <p className="text-xs text-muted-foreground text-center mt-2">
-        Click or drag to upload
+      <p className="text-xs text-muted-foreground text-center mt-2 max-w-32">
+        Click or drag image to upload
+        <br />
+        <span className="text-xs opacity-75">Max 5MB</span>
       </p>
     </div>
   );

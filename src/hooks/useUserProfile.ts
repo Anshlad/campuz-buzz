@@ -1,50 +1,39 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-interface NotificationSettings {
-  posts: boolean;
-  comments: boolean;
-  mentions: boolean;
-  messages: boolean;
-  events: boolean;
-}
-
-export interface UserProfile {
+interface UserProfile {
   id: string;
   user_id: string;
-  display_name: string;
-  bio?: string;
-  avatar_url?: string;
-  major?: string;
-  department?: string;
-  year?: string;
-  role: string;
-  engagement_score: number;
-  school?: string;
-  gpa?: number;
-  graduation_year?: number;
-  skills?: string[];
-  interests?: string[];
-  social_links?: Record<string, string>;
-  privacy_settings?: {
-    email_visible?: boolean;
-    profile_visible?: boolean;
-    academic_info_visible?: boolean;
-    notifications?: NotificationSettings;
-    [key: string]: any;
-  };
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  major: string | null;
+  department: string | null;
+  year: string | null;
+  role: string | null;
+  school: string | null;
+  skills: string[] | null;
+  interests: string[] | null;
+  engagement_score: number | null;
+  gpa: number | null;
+  graduation_year: number | null;
+  social_links: Record<string, any> | null;
+  privacy_settings: Record<string, any> | null;
   created_at: string;
   updated_at: string;
 }
 
 export const useUserProfile = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = async () => {
+  const loadProfile = async () => {
     if (!user) {
       setProfile(null);
       setLoading(false);
@@ -53,120 +42,98 @@ export const useUserProfile = () => {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      setError(null);
+
+      const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        throw error;
+      if (fetchError) {
+        throw fetchError;
       }
 
-      if (data) {
-        // Handle JSON fields properly
-        const profileData = {
-          ...data,
-          social_links: typeof data.social_links === 'string' 
-            ? JSON.parse(data.social_links) 
-            : data.social_links || {},
-          privacy_settings: typeof data.privacy_settings === 'string'
-            ? JSON.parse(data.privacy_settings)
-            : data.privacy_settings || {
-                email_visible: false,
-                profile_visible: true,
-                academic_info_visible: true,
-                notifications: {
-                  posts: true,
-                  comments: true,
-                  mentions: true,
-                  messages: true,
-                  events: true
-                }
-              }
-        };
-        setProfile(profileData);
-      } else {
-        // Create default profile if none exists
-        const defaultProfile = {
-          user_id: user.id,
-          display_name: user.email?.split('@')[0] || 'Anonymous',
-          role: 'student',
-          engagement_score: 0,
-          privacy_settings: {
-            email_visible: false,
-            profile_visible: true,
-            academic_info_visible: true,
-            notifications: {
-              posts: true,
-              comments: true,
-              mentions: true,
-              messages: true,
-              events: true
-            }
-          },
-          social_links: {}
-        };
-
+      if (!data) {
+        // Create a default profile if none exists
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert(defaultProfile)
+          .insert({
+            user_id: user.id,
+            display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
+            role: 'student'
+          })
           .select()
           .single();
 
         if (createError) {
-          console.error('Error creating profile:', createError);
           throw createError;
         }
-        
-        setProfile({ ...newProfile, ...defaultProfile });
+
+        setProfile(newProfile);
+      } else {
+        setProfile(data);
       }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setProfile(null);
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load profile');
     } finally {
       setLoading(false);
     }
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user || !profile) {
-      throw new Error('No user or profile found');
-    }
+    if (!user || !profile) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
+        .update(updates)
+        .eq('user_id', user.id)
+        .select()
+        .single();
 
       if (error) {
-        console.error('Error updating profile:', error);
         throw error;
       }
 
-      // Update local state
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      setProfile(data);
       
-      return true;
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error;
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
+
+      return data;
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      toast({
+        title: "Update failed",
+        description: err instanceof Error ? err.message : 'Failed to update profile',
+        variant: "destructive"
+      });
+      throw err;
     }
   };
 
+  const updateAvatar = async (avatarUrl: string) => {
+    return updateProfile({ avatar_url: avatarUrl });
+  };
+
+  const refetchProfile = () => {
+    loadProfile();
+  };
+
   useEffect(() => {
-    fetchProfile();
+    loadProfile();
   }, [user]);
 
   return {
     profile,
     loading,
+    error,
     updateProfile,
-    refetchProfile: fetchProfile
+    updateAvatar,
+    refetchProfile
   };
 };
