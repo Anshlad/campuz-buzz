@@ -33,6 +33,9 @@ interface FileUploadItem {
   mimeType: string;
   url: string;
   preview?: string;
+  uploadProgress?: number;
+  isUploading?: boolean;
+  error?: string;
 }
 
 interface PostEditorProps {
@@ -242,11 +245,8 @@ export const PostEditor: React.FC<PostEditorProps> = ({
           {/* Location Picker */}
           <LocationPicker
             onLocationSelect={handleLocationSelect}
-            trigger={
-              <Button variant="ghost" size="sm">
-                <MapPin className="h-4 w-4" />
-              </Button>
-            }
+            placeholder="Add location..."
+            selectedLocation={location}
           />
 
           {/* Visibility Selector */}

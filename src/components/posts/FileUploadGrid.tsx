@@ -88,24 +88,27 @@ export const FileUploadGrid: React.FC<FileUploadGridProps> = ({
         'post',
         'current-user', // This should come from auth context
         (progress) => {
-          onFilesChange(prev => 
-            prev.map(f => 
-              f.fileName === file.name && f.isUploading
-                ? { ...f, uploadProgress: progress }
-                : f
-            )
+          const updatedFiles = files.map(f => 
+            f.fileName === file.name && f.isUploading
+              ? { ...f, uploadProgress: progress }
+              : f
           );
+          // Add the new file if it's not in the list yet
+          const fileExists = updatedFiles.some(f => f.fileName === file.name);
+          if (!fileExists) {
+            updatedFiles.push({ ...tempFile, uploadProgress: progress });
+          }
+          onFilesChange(updatedFiles);
         }
       );
 
       // Update file with final result
-      onFilesChange(prev => 
-        prev.map(f => 
-          f.fileName === file.name && f.isUploading
-            ? { ...result, preview }
-            : f
-        )
+      const finalFiles = files.map(f => 
+        f.fileName === file.name && f.isUploading
+          ? { ...result, preview }
+          : f
       );
+      onFilesChange(finalFiles);
 
       toast({
         title: "Upload successful",
@@ -116,13 +119,12 @@ export const FileUploadGrid: React.FC<FileUploadGridProps> = ({
       console.error('Upload failed:', error);
       
       // Update file with error
-      onFilesChange(prev => 
-        prev.map(f => 
-          f.fileName === file.name && f.isUploading
-            ? { ...f, isUploading: false, error: error instanceof Error ? error.message : 'Upload failed' }
-            : f
-        )
+      const errorFiles = files.map(f => 
+        f.fileName === file.name && f.isUploading
+          ? { ...f, isUploading: false, error: error instanceof Error ? error.message : 'Upload failed' }
+          : f
       );
+      onFilesChange(errorFiles);
 
       toast({
         title: "Upload failed",
