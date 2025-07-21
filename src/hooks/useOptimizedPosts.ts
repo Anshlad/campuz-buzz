@@ -10,13 +10,15 @@ export interface OptimizedPost {
   title?: string;
   content: string;
   image_url?: string;
-  post_type: string;
+  post_type: 'text' | 'image' | 'video' | 'poll';
   tags?: string[];
   likes_count: number;
   comments_count: number;
   shares_count: number;
   saves_count: number;
   created_at: string;
+  updated_at?: string;
+  visibility: 'public' | 'friends' | 'private';
   profiles?: {
     display_name: string;
     avatar_url?: string;
@@ -30,6 +32,13 @@ export interface OptimizedPost {
     count: number;
     hasReacted: boolean;
   }>;
+  author: {
+    id: string;
+    display_name: string;
+    avatar_url?: string;
+    major?: string;
+    year?: string;
+  };
 }
 
 interface PostCreationData {
@@ -90,17 +99,31 @@ export const useOptimizedPosts = () => {
 
     const currentUserId = (await supabase.auth.getUser()).data.user?.id;
     
-    return (postsData || []).map(post => ({
-      ...post,
-      profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles,
-      is_saved: false, // TODO: Optimize this query
-      hashtags: [], // TODO: Optimize this query
-      likes_count: post.likes_count || 0,
-      comments_count: post.comments_count || 0,
-      shares_count: post.shares_count || 0,
-      saves_count: post.saves_count || 0,
-      reactions: convertReactions(post.reactions),
-    }));
+    return (postsData || []).map(post => {
+      const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+      
+      return {
+        ...post,
+        post_type: (post.post_type as 'text' | 'image' | 'video' | 'poll') || 'text',
+        updated_at: post.updated_at || post.created_at,
+        visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
+        profiles: profile,
+        is_saved: false, // TODO: Optimize this query
+        hashtags: [], // TODO: Optimize this query
+        likes_count: post.likes_count || 0,
+        comments_count: post.comments_count || 0,
+        shares_count: post.shares_count || 0,
+        saves_count: post.saves_count || 0,
+        reactions: convertReactions(post.reactions),
+        author: {
+          id: post.user_id,
+          display_name: profile?.display_name || 'Anonymous User',
+          avatar_url: profile?.avatar_url,
+          major: profile?.major,
+          year: profile?.year
+        }
+      };
+    });
   }, []);
 
   const { 
@@ -128,7 +151,7 @@ export const useOptimizedPosts = () => {
       if (!user.data.user) throw new Error('Not authenticated');
 
       let imageUrl = null;
-      let postType = postData.post_type || 'text';
+      let postType: 'text' | 'image' | 'video' | 'poll' = postData.post_type || 'text';
       
       if (postData.images && postData.images.length > 0) {
         imageUrl = postData.images[0].url || postData.images[0];
@@ -159,10 +182,15 @@ export const useOptimizedPosts = () => {
 
       if (error) throw error;
 
+      const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+
       // Optimistically update the posts list
       const newPost: OptimizedPost = {
         ...data,
-        profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
+        post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
+        updated_at: data.updated_at || data.created_at,
+        visibility: (data.visibility as 'public' | 'friends' | 'private') || 'public',
+        profiles: profile,
         is_saved: false,
         hashtags: [],
         likes_count: 0,
@@ -170,6 +198,13 @@ export const useOptimizedPosts = () => {
         shares_count: 0,
         saves_count: 0,
         reactions: convertReactions(null),
+        author: {
+          id: data.user_id,
+          display_name: profile?.display_name || 'Anonymous User',
+          avatar_url: profile?.avatar_url,
+          major: profile?.major,
+          year: profile?.year
+        }
       };
 
       setPosts(prevPosts => [newPost, ...prevPosts]);

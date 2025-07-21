@@ -85,44 +85,28 @@ export default function OptimizedHomeFeed() {
                   </motion.div>
                 ) : (
                   <AnimatePresence initial={false}>
-                    {posts.map((post, index) => {
-                      // Transform OptimizedPost to match Post interface
-                      const transformedPost = {
-                        ...post,
-                        updated_at: post.updated_at || post.created_at,
-                        visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
-                        author: post.author || {
-                          id: post.user_id,
-                          display_name: 'Anonymous User',
-                          avatar_url: undefined,
-                          major: undefined,
-                          year: undefined
-                        }
-                      };
-
-                      return (
-                        <motion.div
-                          key={post.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ delay: Math.min(index * 0.05, 0.3) }}
-                        >
-                          <Suspense fallback={<SmartSkeletonLoader type="post" />}>
-                            <ErrorBoundaryWithRetry
-                              fallback={<SmartSkeletonLoader type="post" />}
-                            >
-                              <EnhancedPostCard
-                                post={transformedPost}
-                                onReact={() => {}}
-                                onSave={() => {}}
-                                onShare={() => {}}
-                              />
-                            </ErrorBoundaryWithRetry>
-                          </Suspense>
-                        </motion.div>
-                      );
-                    })}
+                    {posts.map((post, index) => (
+                      <motion.div
+                        key={post.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: Math.min(index * 0.05, 0.3) }}
+                      >
+                        <Suspense fallback={<SmartSkeletonLoader type="post" />}>
+                          <ErrorBoundaryWithRetry
+                            fallback={<SmartSkeletonLoader type="post" />}
+                          >
+                            <EnhancedPostCard
+                              post={post}
+                              onReact={() => {}}
+                              onSave={() => {}}
+                              onShare={() => {}}
+                            />
+                          </ErrorBoundaryWithRetry>
+                        </Suspense>
+                      </motion.div>
+                    ))}
                   </AnimatePresence>
                 )}
 

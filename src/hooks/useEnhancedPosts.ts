@@ -23,7 +23,7 @@ export interface EnhancedPost {
   title?: string;
   content: string;
   image_url?: string;
-  post_type: string;
+  post_type: 'text' | 'image' | 'video' | 'poll';
   tags?: string[];
   likes_count: number;
   comments_count: number;
@@ -31,9 +31,18 @@ export interface EnhancedPost {
   saves_count: number;
   reactions: Record<string, PostReaction>;
   created_at: string;
+  updated_at?: string;
+  visibility: 'public' | 'friends' | 'private';
   profiles?: PostProfile;
   is_saved: boolean;
   hashtags: string[];
+  author: {
+    id: string;
+    display_name: string;
+    avatar_url?: string;
+    major?: string;
+    year?: string;
+  };
 }
 
 interface PostCreationData {
@@ -69,6 +78,8 @@ export const useEnhancedPosts = () => {
         shares_count,
         saves_count,
         created_at,
+        updated_at,
+        visibility,
         profiles:user_id (
           display_name,
           avatar_url,
@@ -82,24 +93,38 @@ export const useEnhancedPosts = () => {
     if (postsError) throw postsError;
 
     // Return basic posts first for immediate display
-    const basicPosts = (postsData || []).map(post => ({
-      ...post,
-      reactions: {
-        like: { reaction_type: 'like', count: 0, hasReacted: false },
-        love: { reaction_type: 'love', count: 0, hasReacted: false },
-        laugh: { reaction_type: 'laugh', count: 0, hasReacted: false },
-        wow: { reaction_type: 'wow', count: 0, hasReacted: false },
-        sad: { reaction_type: 'sad', count: 0, hasReacted: false },
-        angry: { reaction_type: 'angry', count: 0, hasReacted: false }
-      },
-      is_saved: false,
-      hashtags: [],
-      profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles,
-      likes_count: post.likes_count || 0,
-      comments_count: post.comments_count || 0,
-      shares_count: post.shares_count || 0,
-      saves_count: post.saves_count || 0,
-    }));
+    const basicPosts = (postsData || []).map(post => {
+      const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+      
+      return {
+        ...post,
+        post_type: (post.post_type as 'text' | 'image' | 'video' | 'poll') || 'text',
+        updated_at: post.updated_at || post.created_at,
+        visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
+        reactions: {
+          like: { reaction_type: 'like', count: 0, hasReacted: false },
+          love: { reaction_type: 'love', count: 0, hasReacted: false },
+          laugh: { reaction_type: 'laugh', count: 0, hasReacted: false },
+          wow: { reaction_type: 'wow', count: 0, hasReacted: false },
+          sad: { reaction_type: 'sad', count: 0, hasReacted: false },
+          angry: { reaction_type: 'angry', count: 0, hasReacted: false }
+        },
+        is_saved: false,
+        hashtags: [],
+        profiles: profile,
+        author: {
+          id: post.user_id,
+          display_name: profile?.display_name || 'Anonymous User',
+          avatar_url: profile?.avatar_url,
+          major: profile?.major,
+          year: profile?.year
+        },
+        likes_count: post.likes_count || 0,
+        comments_count: post.comments_count || 0,
+        shares_count: post.shares_count || 0,
+        saves_count: post.saves_count || 0,
+      };
+    });
 
     // Load additional data in the background (reactions, saves, hashtags)
     setTimeout(async () => {
@@ -189,7 +214,7 @@ export const useEnhancedPosts = () => {
       }
 
       let imageUrl = null;
-      let postType = postData.post_type || 'text';
+      let postType: 'text' | 'image' | 'video' | 'poll' = postData.post_type || 'text';
       
       if (postData.images && postData.images.length > 0) {
         imageUrl = postData.images[0].url || postData.images[0];
@@ -220,9 +245,14 @@ export const useEnhancedPosts = () => {
 
       if (error) throw error;
 
+      const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+
       // Optimistically add the new post to the beginning of the list
       const newPost: EnhancedPost = {
         ...data,
+        post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
+        updated_at: data.updated_at || data.created_at,
+        visibility: (data.visibility as 'public' | 'friends' | 'private') || 'public',
         reactions: {
           like: { reaction_type: 'like', count: 0, hasReacted: false },
           love: { reaction_type: 'love', count: 0, hasReacted: false },
@@ -233,7 +263,14 @@ export const useEnhancedPosts = () => {
         },
         is_saved: false,
         hashtags: [],
-        profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles,
+        profiles: profile,
+        author: {
+          id: data.user_id,
+          display_name: profile?.display_name || 'Anonymous User',
+          avatar_url: profile?.avatar_url,
+          major: profile?.major,
+          year: profile?.year
+        },
         likes_count: 0,
         comments_count: 0,
         shares_count: 0,
