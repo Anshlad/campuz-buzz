@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { MessageActions } from '@/components/chat/MessageActions';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -22,7 +22,9 @@ import {
   Globe,
   Image as ImageIcon,
   Video,
-  FileText
+  FileText,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 interface PostAuthor {
@@ -69,6 +71,7 @@ interface EnhancedPostCardProps {
   onSave?: (postId: string) => void;
   onEdit?: (postId: string) => void;
   onDelete?: (postId: string) => void;
+  onReact?: (postId: string, reaction: string) => void;
   className?: string;
 }
 
@@ -80,11 +83,11 @@ export const EnhancedPostCard: React.FC<EnhancedPostCardProps> = ({
   onSave,
   onEdit,
   onDelete,
+  onReact,
   className = ''
 }) => {
   const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showActions, setShowActions] = useState(false);
 
   const isOwnPost = user?.id === post.user_id;
   const shouldTruncate = post.content.length > 300;
@@ -107,18 +110,6 @@ export const EnhancedPostCard: React.FC<EnhancedPostCardProps> = ({
       case 'poll': return <FileText className="h-3 w-3" />;
       default: return null;
     }
-  };
-
-  const handleActionClick = (action: string) => {
-    switch (action) {
-      case 'edit':
-        onEdit?.(post.id);
-        break;
-      case 'delete':
-        onDelete?.(post.id);
-        break;
-    }
-    setShowActions(false);
   };
 
   return (
@@ -159,26 +150,30 @@ export const EnhancedPostCard: React.FC<EnhancedPostCardProps> = ({
           </div>
 
           {isOwnPost && (
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowActions(!showActions)}
-                className="h-8 w-8 p-0"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-              
-              {showActions && (
-                <MessageActions
-                  onEdit={() => handleActionClick('edit')}
-                  onDelete={() => handleActionClick('delete')}
-                  canEdit={true}
-                  canDelete={true}
-                  className="absolute right-0 top-8 z-10"
-                />
-              )}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEdit?.(post.id)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => onDelete?.(post.id)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 

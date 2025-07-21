@@ -144,21 +144,37 @@ export default function HomeFeed() {
                   </EnhancedCard>
                 </motion.div>
               ) : (
-                posts.map((post, index) => (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                  >
-                    <EnhancedPostCard
-                      post={post}
-                      onReact={reactToPost}
-                      onSave={savePost}
-                      onShare={sharePost}
-                    />
-                  </motion.div>
-                ))
+                posts.map((post, index) => {
+                  // Transform EnhancedPost to match Post interface
+                  const transformedPost = {
+                    ...post,
+                    updated_at: post.updated_at || post.created_at,
+                    visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
+                    author: post.author || {
+                      id: post.user_id,
+                      display_name: 'Anonymous User',
+                      avatar_url: undefined,
+                      major: undefined,
+                      year: undefined
+                    }
+                  };
+
+                  return (
+                    <motion.div
+                      key={post.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + index * 0.1 }}
+                    >
+                      <EnhancedPostCard
+                        post={transformedPost}
+                        onReact={reactToPost}
+                        onSave={savePost}
+                        onShare={sharePost}
+                      />
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </div>

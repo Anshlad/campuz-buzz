@@ -86,10 +86,18 @@ export default function OptimizedHomeFeed() {
                 ) : (
                   <AnimatePresence initial={false}>
                     {posts.map((post, index) => {
-                      // Convert OptimizedPost to EnhancedPost format - reactions are already properly typed
-                      const enhancedPost = {
+                      // Transform OptimizedPost to match Post interface
+                      const transformedPost = {
                         ...post,
-                        reactions: post.reactions // Already in the correct format
+                        updated_at: post.updated_at || post.created_at,
+                        visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
+                        author: post.author || {
+                          id: post.user_id,
+                          display_name: 'Anonymous User',
+                          avatar_url: undefined,
+                          major: undefined,
+                          year: undefined
+                        }
                       };
 
                       return (
@@ -105,7 +113,7 @@ export default function OptimizedHomeFeed() {
                               fallback={<SmartSkeletonLoader type="post" />}
                             >
                               <EnhancedPostCard
-                                post={enhancedPost}
+                                post={transformedPost}
                                 onReact={() => {}}
                                 onSave={() => {}}
                                 onShare={() => {}}
