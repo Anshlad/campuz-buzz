@@ -134,9 +134,11 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
           ));
           
           // Calculate overall progress
-          const currentFiles = prev;
-          const totalProgress = currentFiles.reduce((sum, f) => sum + f.progress, 0);
-          onProgressChange?.(totalProgress / currentFiles.length);
+          setFiles(currentFiles => {
+            const totalProgress = currentFiles.reduce((sum, f) => sum + f.progress, 0);
+            onProgressChange?.(totalProgress / currentFiles.length);
+            return currentFiles;
+          });
         }
       );
 
