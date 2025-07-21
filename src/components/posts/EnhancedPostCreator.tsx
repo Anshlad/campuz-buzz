@@ -5,11 +5,11 @@ import { EnhancedButton } from '@/components/ui/enhanced-button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { EnhancedFileUpload } from '@/components/common/EnhancedFileUpload';
+import { FileUploadManager } from '@/components/common/FileUploadManager';
+import { EmojiPicker } from '@/components/common/EmojiPicker';
+import { LocationPicker } from '@/components/common/LocationPicker';
 import { 
   Image, 
-  MapPin, 
-  Hash, 
   AtSign, 
   Globe, 
   Lock, 
@@ -29,6 +29,13 @@ interface EnhancedPostCreatorProps {
   onExpandedChange?: (expanded: boolean) => void;
 }
 
+interface Location {
+  id: string;
+  name: string;
+  address: string;
+  coordinates?: { lat: number; lng: number; };
+}
+
 export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   onSubmit,
   placeholder = "What's happening?",
@@ -37,7 +44,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
 }) => {
   const [content, setContent] = useState('');
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState<Location | null>(null);
   const [visibility, setVisibility] = useState<'public' | 'friends' | 'private'>('public');
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [mentions, setMentions] = useState<string[]>([]);
@@ -69,9 +76,30 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
     setMentions(mentionMatches.map(mention => mention.slice(1)));
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    const newContent = content + emoji;
+    setContent(newContent);
+    handleContentChange(newContent);
+    
+    // Focus back to textarea
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      // Set cursor to end
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.setSelectionRange(newContent.length, newContent.length);
+        }
+      }, 0);
+    }
+  };
+
   const handleFilesUploaded = (results: UploadResult[]) => {
     setUploadResults(results);
     console.log('Files uploaded:', results);
+  };
+
+  const handleLocationSelect = (selectedLocation: Location | null) => {
+    setLocation(selectedLocation);
   };
 
   const handleSubmit = async () => {
@@ -98,7 +126,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
       const postData = {
         content: content.trim(),
         images: uploadResults.length > 0 ? uploadResults : undefined,
-        location: location.trim() || undefined,
+        location: location?.name || undefined,
         visibility,
         tags: [...hashtags, ...mentions],
         mentions,
@@ -110,7 +138,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
       // Reset form
       setContent('');
       setUploadResults([]);
-      setLocation('');
+      setLocation(null);
       setVisibility('public');
       setHashtags([]);
       setMentions([]);
@@ -177,12 +205,13 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
                   className="mt-4 space-y-4"
                 >
                   {/* File Upload */}
-                  <EnhancedFileUpload
+                  <FileUploadManager
                     type="post"
                     multiple
                     maxFiles={4}
-                    onFilesUploaded={handleFilesUploaded}
+                    maxSize={10}
                     accept="image/*,video/*"
+                    onFilesUploaded={handleFilesUploaded}
                     className="border-dashed border-2 border-border/50 rounded-lg"
                   />
                   
@@ -213,25 +242,18 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
                     </div>
                   )}
                   
-                  {/* Location Input */}
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Add location..."
-                      className="flex-1 bg-transparent border-none outline-none placeholder:text-muted-foreground"
-                    />
-                  </div>
+                  {/* Location Picker */}
+                  <LocationPicker
+                    onLocationSelect={handleLocationSelect}
+                    placeholder="Add location..."
+                  />
                   
                   {/* Hashtags and Mentions Preview */}
                   {(hashtags.length > 0 || mentions.length > 0) && (
                     <div className="flex flex-wrap gap-2">
                       {hashtags.map((tag) => (
                         <Badge key={`#${tag}`} variant="secondary" className="text-blue-600 bg-blue-100 dark:bg-blue-900/20">
-                          <Hash className="h-3 w-3 mr-1" />
-                          {tag}
+                          #{tag}
                         </Badge>
                       ))}
                       {mentions.map((mention) => (
@@ -256,10 +278,19 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
                 <EnhancedButton variant="ghost" size="sm" onClick={handleExpand}>
                   <Image className="h-4 w-4" />
                 </EnhancedButton>
-                <EnhancedButton variant="ghost" size="sm" onClick={handleExpand}>
-                  <Smile className="h-4 w-4" />
-                </EnhancedButton>
+                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
               </>
+            )}
+            
+            {isExpanded && (
+              <EmojiPicker 
+                onEmojiSelect={handleEmojiSelect}
+                trigger={
+                  <EnhancedButton variant="ghost" size="sm">
+                    <Smile className="h-4 w-4" />
+                  </EnhancedButton>
+                }
+              />
             )}
             
             {/* Visibility Selector */}
