@@ -1,7 +1,7 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { MapPin, Search, Loader2, X } from 'lucide-react';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
 import { EnhancedCard } from '@/components/ui/enhanced-card';
 import { Input } from '@/components/ui/input';
@@ -11,217 +11,233 @@ interface Location {
   id: string;
   name: string;
   address: string;
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
+  coordinates?: { lat: number; lng: number; };
 }
 
 interface LocationPickerProps {
   onLocationSelect: (location: Location | null) => void;
   placeholder?: string;
-  className?: string;
+  selectedLocation?: Location | null;
 }
 
-// Mock location data - in a real app, this would come from a geocoding API
 const MOCK_LOCATIONS: Location[] = [
-  { id: '1', name: 'Main Library', address: 'University Campus, Building A' },
-  { id: '2', name: 'Student Center', address: 'University Campus, Building B' },
-  { id: '3', name: 'Engineering Building', address: 'University Campus, Building C' },
-  { id: '4', name: 'Science Lab', address: 'University Campus, Building D' },
-  { id: '5', name: 'Coffee Shop', address: 'Downtown, Main Street 123' },
-  { id: '6', name: 'Study Room 1', address: 'Library, Floor 2' },
-  { id: '7', name: 'Lecture Hall A', address: 'Academic Building, Floor 1' },
-  { id: '8', name: 'Computer Lab', address: 'IT Building, Floor 3' },
+  { id: '1', name: 'Main Library', address: '123 University Ave, Campus' },
+  { id: '2', name: 'Student Union', address: '456 College St, Campus' },
+  { id: '3', name: 'Engineering Building', address: '789 Tech Dr, Campus' },
+  { id: '4', name: 'Coffee Shop', address: '321 Main St, Downtown' },
 ];
 
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   onLocationSelect,
   placeholder = "Add location...",
-  className = ''
+  selectedLocation
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [gettingCurrentLocation, setGettingCurrentLocation] = useState(false);
   const { toast } = useToast();
 
-  const filteredLocations = MOCK_LOCATIONS.filter(location =>
-    location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    location.address.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+    if (searchTerm.length > 2) {
+      searchLocations(searchTerm);
+    } else {
+      setLocations(MOCK_LOCATIONS);
     }
+  }, [searchTerm]);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
+  const searchLocations = async (query: string) => {
+    setLoading(true);
+    try {
+      // Simulate API call - in real app, use Google Places API or similar
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const filtered = MOCK_LOCATIONS.filter(location =>
+        location.name.toLowerCase().includes(query.toLowerCase()) ||
+        location.address.toLowerCase().includes(query.toLowerCase())
+      );
+      setLocations(filtered);
+    } catch (error) {
+      console.error('Error searching locations:', error);
+      toast({
+        title: "Search failed",
+        description: "Could not search locations. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const getCurrentLocation = async () => {
+  const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast({
-        title: "Location not supported",
-        description: "Your browser doesn't support geolocation.",
+        title: "Geolocation not supported",
+        description: "Your browser doesn't support location services.",
         variant: "destructive"
       });
       return;
     }
 
-    setIsLoading(true);
-    setUseCurrentLocation(true);
-
+    setGettingCurrentLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        // In a real app, you'd reverse geocode these coordinates
-        const currentLocation: Location = {
-          id: 'current',
-          name: 'Current Location',
-          address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-          coordinates: { lat: latitude, lng: longitude }
-        };
-
-        setSelectedLocation(currentLocation);
-        onLocationSelect(currentLocation);
-        setIsOpen(false);
-        setIsLoading(false);
-        setUseCurrentLocation(false);
-
-        toast({
-          title: "Location detected",
-          description: "Your current location has been added."
-        });
+        try {
+          const { latitude, longitude } = position.coords;
+          // Simulate reverse geocoding - in real app, use Google Geocoding API
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const currentLocation: Location = {
+            id: 'current',
+            name: 'Current Location',
+            address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+            coordinates: { lat: latitude, lng: longitude }
+          };
+          
+          onLocationSelect(currentLocation);
+          setIsOpen(false);
+          
+          toast({
+            title: "Location found",
+            description: "Current location selected successfully."
+          });
+        } catch (error) {
+          toast({
+            title: "Location error",
+            description: "Could not get current location details.",
+            variant: "destructive"
+          });
+        } finally {
+          setGettingCurrentLocation(false);
+        }
       },
       (error) => {
-        console.error('Geolocation error:', error);
-        setIsLoading(false);
-        setUseCurrentLocation(false);
+        setGettingCurrentLocation(false);
+        let errorMessage = "Could not access location.";
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Please allow location access.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        }
         
         toast({
-          title: "Location access denied",
-          description: "Please allow location access or select a location manually.",
+          title: "Location access failed",
+          description: errorMessage,
           variant: "destructive"
         });
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000
-      }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
     );
   };
 
   const handleLocationSelect = (location: Location) => {
-    setSelectedLocation(location);
     onLocationSelect(location);
-    setSearchTerm('');
     setIsOpen(false);
+    setSearchTerm('');
   };
 
-  const clearLocation = () => {
-    setSelectedLocation(null);
+  const removeLocation = () => {
     onLocationSelect(null);
-    setSearchTerm('');
   };
 
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
-      {/* Input Field */}
-      <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        
-        {selectedLocation ? (
-          <div className="flex items-center justify-between pl-10 pr-8 py-2 bg-muted rounded-md">
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{selectedLocation.name}</p>
-              <p className="text-sm text-muted-foreground truncate">{selectedLocation.address}</p>
-            </div>
-            <EnhancedButton
-              variant="ghost"
-              size="sm"
-              onClick={clearLocation}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-3 w-3" />
-            </EnhancedButton>
+    <div className="relative">
+      {selectedLocation ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 p-2 bg-muted rounded-lg"
+        >
+          <MapPin className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{selectedLocation.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{selectedLocation.address}</p>
           </div>
-        ) : (
-          <Input
-            ref={inputRef}
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setIsOpen(true);
-            }}
-            onFocus={() => setIsOpen(true)}
-            placeholder={placeholder}
-            className="pl-10"
-          />
-        )}
-      </div>
-
-      {/* Dropdown */}
-      <AnimatePresence>
-        {isOpen && !selectedLocation && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full mt-1 left-0 right-0 z-50"
+          <EnhancedButton
+            variant="ghost"
+            size="sm"
+            onClick={removeLocation}
+            className="h-6 w-6 p-0"
           >
-            <EnhancedCard className="max-h-64 overflow-hidden p-0">
-              {/* Current Location Option */}
-              <div className="p-2 border-b">
-                <EnhancedButton
-                  variant="ghost"
-                  className="w-full justify-start"
-                  onClick={getCurrentLocation}
-                  disabled={isLoading || useCurrentLocation}
-                >
-                  {isLoading || useCurrentLocation ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <MapPin className="h-4 w-4 mr-2" />
-                  )}
-                  {useCurrentLocation ? 'Getting location...' : 'Use current location'}
-                </EnhancedButton>
+            <X className="h-3 w-3" />
+          </EnhancedButton>
+        </motion.div>
+      ) : (
+        <EnhancedButton
+          variant="outline"
+          onClick={() => setIsOpen(true)}
+          className="w-full justify-start text-muted-foreground"
+        >
+          <MapPin className="h-4 w-4 mr-2" />
+          {placeholder}
+        </EnhancedButton>
+      )}
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="absolute top-full mt-2 left-0 right-0 z-50"
+          >
+            <EnhancedCard className="p-4">
+              {/* Search Input */}
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search locations..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                  autoFocus
+                />
+                {loading && (
+                  <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
               </div>
 
-              {/* Search Results */}
-              <div className="max-h-48 overflow-y-auto">
-                {searchTerm && filteredLocations.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No locations found for "{searchTerm}"</p>
-                    <p className="text-xs mt-1">Try a different search term</p>
-                  </div>
+              {/* Current Location Button */}
+              <EnhancedButton
+                variant="outline"
+                onClick={getCurrentLocation}
+                disabled={gettingCurrentLocation}
+                className="w-full mb-3 justify-start"
+              >
+                {gettingCurrentLocation ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  filteredLocations.map((location) => (
+                  <MapPin className="h-4 w-4 mr-2" />
+                )}
+                Use current location
+              </EnhancedButton>
+
+              {/* Location Results */}
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {locations.length === 0 && searchTerm.length > 2 && !loading ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No locations found for "{searchTerm}"
+                  </p>
+                ) : (
+                  locations.map((location) => (
                     <motion.button
                       key={location.id}
-                      whileHover={{ backgroundColor: 'hsl(var(--muted))' }}
-                      className="w-full text-left p-3 hover:bg-muted transition-colors border-b last:border-b-0"
+                      whileHover={{ backgroundColor: "hsl(var(--muted))" }}
                       onClick={() => handleLocationSelect(location)}
+                      className="w-full text-left p-2 rounded-md transition-colors"
                     >
-                      <div className="flex items-start space-x-3">
+                      <div className="flex items-start gap-2">
                         <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{location.name}</p>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-sm font-medium">{location.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
                             {location.address}
                           </p>
                         </div>
@@ -231,32 +247,16 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                 )}
               </div>
 
-              {/* No search term - show popular locations */}
-              {!searchTerm && (
-                <div className="max-h-48 overflow-y-auto">
-                  <div className="p-2 border-b">
-                    <p className="text-sm font-medium text-muted-foreground px-2">Popular locations</p>
-                  </div>
-                  {MOCK_LOCATIONS.slice(0, 5).map((location) => (
-                    <motion.button
-                      key={location.id}
-                      whileHover={{ backgroundColor: 'hsl(var(--muted))' }}
-                      className="w-full text-left p-3 hover:bg-muted transition-colors border-b last:border-b-0"
-                      onClick={() => handleLocationSelect(location)}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{location.name}</p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {location.address}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-              )}
+              {/* Close Button */}
+              <div className="mt-3 pt-3 border-t">
+                <EnhancedButton
+                  variant="ghost"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full"
+                >
+                  Cancel
+                </EnhancedButton>
+              </div>
             </EnhancedCard>
           </motion.div>
         )}
