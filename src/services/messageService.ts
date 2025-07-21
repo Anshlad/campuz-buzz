@@ -10,9 +10,29 @@ export interface Message {
   created_at: string;
   is_edited: boolean;
   edited_at?: string;
-  attachments?: any[];
+  attachments?: MessageAttachment[];
   mentions?: string[];
   reply_to?: string;
+  reactions?: Record<string, string[]>;
+}
+
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  mimeType: string;
+  url: string;
+}
+
+export interface MessageWithAuthor extends Message {
+  author: {
+    id: string;
+    display_name: string;
+    avatar_url?: string;
+  };
+  reply_message?: MessageWithAuthor;
+  thread_replies?: MessageWithAuthor[];
 }
 
 export const editMessage = async (messageId: string, newContent: string): Promise<void> => {
@@ -41,11 +61,68 @@ export const deleteMessage = async (messageId: string): Promise<void> => {
   }
 };
 
+export const addReaction = async (messageId: string, emoji: string, userId: string): Promise<void> => {
+  const { data: message } = await supabase
+    .from('messages')
+    .select('reactions')
+    .eq('id', messageId)
+    .single();
+
+  const reactions = (message?.reactions as Record<string, string[]>) || {};
+  
+  if (!reactions[emoji]) {
+    reactions[emoji] = [];
+  }
+
+  const userIndex = reactions[emoji].indexOf(userId);
+  if (userIndex > -1) {
+    reactions[emoji].splice(userIndex, 1);
+    if (reactions[emoji].length === 0) {
+      delete reactions[emoji];
+    }
+  } else {
+    reactions[emoji].push(userId);
+  }
+
+  const { error } = await supabase
+    .from('messages')
+    .update({ reactions })
+    .eq('id', messageId);
+
+  if (error) {
+    throw new Error(`Failed to add reaction: ${error.message}`);
+  }
+};
+
+export const pinMessage = async (
+  messageId: string,
+  channelId?: string,
+  dmConversationId?: string
+): Promise<void> => {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) {
+    throw new Error('User not authenticated');
+  }
+
+  const { error } = await supabase
+    .from('pinned_messages')
+    .insert({
+      message_id: messageId,
+      channel_id: channelId,
+      dm_conversation_id: dmConversationId,
+      pinned_by: user.user.id
+    });
+
+  if (error) {
+    throw new Error(`Failed to pin message: ${error.message}`);
+  }
+};
+
 export const getMessages = async (
   channelId?: string, 
   conversationId?: string,
   limit = 50
-): Promise<Message[]> => {
+): Promise<MessageWithAuthor[]> => {
   let query = supabase
     .from('messages')
     .select(`
@@ -60,6 +137,7 @@ export const getMessages = async (
       attachments,
       mentions,
       reply_to,
+      reactions,
       profiles:user_id (
         display_name,
         avatar_url
@@ -80,14 +158,22 @@ export const getMessages = async (
     throw new Error(`Failed to fetch messages: ${error.message}`);
   }
 
-  return data || [];
+  return (data || []).map(msg => ({
+    ...msg,
+    attachments: Array.isArray(msg.attachments) ? msg.attachments as MessageAttachment[] : [],
+    author: {
+      id: msg.user_id,
+      display_name: (msg.profiles as any)?.display_name || `User ${msg.user_id.slice(0, 8)}`,
+      avatar_url: (msg.profiles as any)?.avatar_url
+    }
+  })) as MessageWithAuthor[];
 };
 
 export const sendMessage = async (
   content: string,
   channelId?: string,
   conversationId?: string,
-  attachments?: any[],
+  attachments?: MessageAttachment[],
   replyTo?: string
 ): Promise<Message> => {
   const { data: user } = await supabase.auth.getUser();
@@ -115,7 +201,10 @@ export const sendMessage = async (
     throw new Error(`Failed to send message: ${error.message}`);
   }
 
-  return data;
+  return {
+    ...data,
+    attachments: Array.isArray(data.attachments) ? data.attachments as MessageAttachment[] : []
+  } as Message;
 };
 
 // Helper function to extract mentions from message content

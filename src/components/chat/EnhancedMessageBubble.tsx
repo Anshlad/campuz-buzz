@@ -8,7 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { editMessage, deleteMessage, addReaction, pinMessage, type MessageWithAuthor, type MessageAttachment } from '@/services/messageService';
-import { FileUpload } from '@/components/common/FileUpload';
 import { useToast } from '@/hooks/use-toast';
 import { 
   MoreHorizontal, 
@@ -184,7 +183,7 @@ export const EnhancedMessageBubble: React.FC<EnhancedMessageBubbleProps> = ({
     );
   };
 
-  const reactions = message.reactions as Record<string, string[]> || {};
+  const reactions = message.reactions || {};
   const hasReactions = Object.keys(reactions).length > 0;
 
   return (
