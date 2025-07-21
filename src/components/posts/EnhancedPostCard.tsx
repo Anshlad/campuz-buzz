@@ -1,304 +1,314 @@
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { EnhancedCard } from '@/components/ui/enhanced-card';
-import { EnhancedButton } from '@/components/ui/enhanced-button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Heart, 
-  MessageSquare, 
-  Share2, 
-  Bookmark, 
-  BookmarkCheck,
-  Smile,
-  Laugh,
-  ThumbsUp,
-  Eye,
-  Frown,
-  MoreHorizontal 
-} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { MessageActions } from '@/components/chat/MessageActions';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  MoreHorizontal,
+  MapPin,
+  Eye,
+  Users,
+  Lock,
+  Globe,
+  Image as ImageIcon,
+  Video,
+  FileText
+} from 'lucide-react';
 
-interface PostReaction {
-  reaction_type: string;
-  count: number;
-  hasReacted: boolean;
+interface PostAuthor {
+  id: string;
+  display_name: string;
+  avatar_url?: string;
+  major?: string;
+  year?: string;
 }
 
-interface EnhancedPost {
+interface PostImage {
+  url: string;
+  fileName: string;
+  fileType: string;
+  mimeType: string;
+}
+
+interface Post {
   id: string;
-  user_id: string;
-  title?: string;
   content: string;
-  image_url?: string;
-  post_type: string;
-  tags?: string[];
+  created_at: string;
+  updated_at: string;
+  user_id: string;
   likes_count: number;
   comments_count: number;
   shares_count: number;
   saves_count: number;
-  reactions: Record<string, PostReaction>;
-  created_at: string;
-  profiles?: {
-    display_name: string;
-    avatar_url?: string;
-    major?: string;
-    year?: string;
-  };
-  is_saved: boolean;
-  hashtags: string[];
+  visibility: 'public' | 'friends' | 'private';
+  post_type: 'text' | 'image' | 'video' | 'poll';
+  images?: PostImage[];
+  location?: string;
+  tags?: string[];
+  mentions?: string[];
+  is_liked?: boolean;
+  is_saved?: boolean;
+  author: PostAuthor;
 }
 
 interface EnhancedPostCardProps {
-  post: EnhancedPost;
-  onReact: (postId: string, reactionType: string) => void;
-  onSave: (postId: string) => void;
-  onShare: (postId: string) => void;
+  post: Post;
+  onLike?: (postId: string) => void;
+  onComment?: (postId: string) => void;
+  onShare?: (postId: string) => void;
+  onSave?: (postId: string) => void;
+  onEdit?: (postId: string) => void;
+  onDelete?: (postId: string) => void;
+  className?: string;
 }
 
-const reactionEmojis = {
-  like: { icon: ThumbsUp, emoji: '👍' },
-  love: { icon: Heart, emoji: '❤️' },
-  laugh: { icon: Laugh, emoji: '😂' },
-  wow: { icon: Eye, emoji: '😮' },
-  sad: { icon: Frown, emoji: '😢' },
-  angry: { icon: MoreHorizontal, emoji: '😠' }
-};
-
-export const EnhancedPostCard: React.FC<EnhancedPostCardProps> = ({ 
-  post, 
-  onReact, 
-  onSave, 
-  onShare 
+export const EnhancedPostCard: React.FC<EnhancedPostCardProps> = ({
+  post,
+  onLike,
+  onComment,
+  onShare,
+  onSave,
+  onEdit,
+  onDelete,
+  className = ''
 }) => {
-  const [showReactions, setShowReactions] = useState(false);
-  const [showComments, setShowComments] = useState(false);
+  const { user } = useAuth();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
-  const topReactions = Object.entries(post.reactions)
-    .sort(([,a], [,b]) => b.count - a.count)
-    .slice(0, 3);
+  const isOwnPost = user?.id === post.user_id;
+  const shouldTruncate = post.content.length > 300;
+  const displayContent = shouldTruncate && !isExpanded 
+    ? post.content.slice(0, 300) + '...' 
+    : post.content;
 
-  const totalReactions = Object.values(post.reactions).reduce((sum, r) => sum + r.count, 0);
+  const getVisibilityIcon = () => {
+    switch (post.visibility) {
+      case 'public': return <Globe className="h-3 w-3" />;
+      case 'friends': return <Users className="h-3 w-3" />;
+      case 'private': return <Lock className="h-3 w-3" />;
+    }
+  };
+
+  const getMediaIcon = () => {
+    switch (post.post_type) {
+      case 'image': return <ImageIcon className="h-3 w-3" />;
+      case 'video': return <Video className="h-3 w-3" />;
+      case 'poll': return <FileText className="h-3 w-3" />;
+      default: return null;
+    }
+  };
+
+  const handleActionClick = (action: string) => {
+    switch (action) {
+      case 'edit':
+        onEdit?.(post.id);
+        break;
+      case 'delete':
+        onDelete?.(post.id);
+        break;
+    }
+    setShowActions(false);
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <EnhancedCard variant="elevated" className="mb-6 overflow-hidden">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-start space-x-3">
-              <motion.div whileHover={{ scale: 1.05 }}>
-                <Avatar className="h-12 w-12 ring-2 ring-border/50 hover:ring-primary/50 transition-all">
-                  <AvatarImage src={post.profiles?.avatar_url} />
-                  <AvatarFallback className="bg-gradient-to-r from-primary/20 to-accent/20">
-                    {post.profiles?.display_name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </motion.div>
-              <div>
-                <h3 className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
-                  {post.profiles?.display_name || 'Anonymous'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {post.profiles?.major && post.profiles?.year 
-                    ? `${post.profiles.major} • ${post.profiles.year}`
-                    : 'Student'
-                  }
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                </p>
+    <EnhancedCard variant="glass" className={`overflow-hidden ${className}`}>
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start gap-3 flex-1">
+            <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+              <AvatarImage src={post.author.avatar_url} />
+              <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-primary-foreground font-semibold">
+                {post.author.display_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-sm">{post.author.display_name || 'Anonymous'}</h3>
+                {post.author.major && post.author.year && (
+                  <Badge variant="secondary" className="text-xs">
+                    {post.author.major} • {post.author.year}
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+                {getVisibilityIcon()}
+                {getMediaIcon()}
+                {post.location && (
+                  <>
+                    <MapPin className="h-3 w-3" />
+                    <span className="truncate max-w-24">{post.location}</span>
+                  </>
+                )}
               </div>
             </div>
-            <EnhancedButton variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </EnhancedButton>
           </div>
 
-          {/* Title */}
-          {post.title && (
-            <h2 className="text-xl font-bold text-foreground mb-3 leading-tight">{post.title}</h2>
-          )}
-
-          {/* Content */}
-          <div className="mb-4">
-            <p className="text-foreground leading-relaxed mb-3 whitespace-pre-wrap">{post.content}</p>
-            
-            {post.image_url && (
-              <motion.div 
-                className="rounded-xl overflow-hidden bg-muted/50 shadow-lg"
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
+          {isOwnPost && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowActions(!showActions)}
+                className="h-8 w-8 p-0"
               >
-                <img 
-                  src={post.image_url} 
-                  alt="Post content" 
-                  className="w-full h-64 object-cover transition-transform hover:scale-105"
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+              
+              {showActions && (
+                <MessageActions
+                  onEdit={() => handleActionClick('edit')}
+                  onDelete={() => handleActionClick('delete')}
+                  canEdit={true}
+                  canDelete={true}
+                  className="absolute right-0 top-8 z-10"
                 />
-              </motion.div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="space-y-4">
+          <div className="prose prose-sm max-w-none">
+            <p className="whitespace-pre-wrap break-words">{displayContent}</p>
+            {shouldTruncate && (
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-0 h-auto text-primary"
+              >
+                {isExpanded ? 'Show less' : 'Show more'}
+              </Button>
             )}
           </div>
 
-          {/* Hashtags */}
-          {post.hashtags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {post.hashtags.map((tag) => (
-                <Badge 
-                  key={tag} 
-                  variant="secondary" 
-                  className="text-xs cursor-pointer hover:bg-primary/20 hover:text-primary transition-colors"
+          {/* Media */}
+          {post.images && post.images.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
+              {post.images.slice(0, 4).map((image, index) => (
+                <motion.div
+                  key={index}
+                  className="relative aspect-square overflow-hidden bg-muted"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 300 }}
                 >
-                  #{tag}
-                </Badge>
+                  <img
+                    src={image.url}
+                    alt={image.fileName}
+                    className="w-full h-full object-cover"
+                  />
+                  {index === 3 && post.images.length > 4 && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="text-white font-medium">
+                        +{post.images.length - 4} more
+                      </span>
+                    </div>
+                  )}
+                </motion.div>
               ))}
             </div>
           )}
 
           {/* Tags */}
           {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-1">
               {post.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
+                <Badge
+                  key={tag}
+                  variant="outline"
+                  className="text-xs text-blue-600 border-blue-200 hover:bg-blue-50 cursor-pointer"
+                >
+                  #{tag}
                 </Badge>
               ))}
             </div>
           )}
+        </div>
 
-          {/* Reaction Summary */}
-          {totalReactions > 0 && (
-            <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-              <div className="flex -space-x-1">
-                {topReactions.map(([type]) => (
-                  <motion.span 
-                    key={type} 
-                    className="text-lg"
-                    whileHover={{ scale: 1.2 }}
-                  >
-                    {reactionEmojis[type as keyof typeof reactionEmojis]?.emoji}
-                  </motion.span>
-                ))}
-              </div>
-              <span>{totalReactions} reactions</span>
-              {post.comments_count > 0 && (
-                <>
-                  <span>•</span>
-                  <span>{post.comments_count} comments</span>
-                </>
-              )}
-              {post.shares_count > 0 && (
-                <>
-                  <span>•</span>
-                  <span>{post.shares_count} shares</span>
-                </>
-              )}
-            </div>
-          )}
+        <Separator className="my-4" />
 
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-border/50">
-            <div className="flex items-center space-x-2">
-              {/* Like Button with Reaction Picker */}
-              <div className="relative">
-                <EnhancedButton 
-                  variant="ghost" 
-                  size="sm"
-                  onMouseEnter={() => setShowReactions(true)}
-                  onMouseLeave={() => setShowReactions(false)}
-                  onClick={() => onReact(post.id, 'like')}
-                  className={`flex items-center space-x-2 ${
-                    post.reactions.like?.hasReacted ? 'text-primary' : 'text-muted-foreground'
-                  }`}
-                >
-                  <ThumbsUp className={`h-4 w-4 ${post.reactions.like?.hasReacted ? 'fill-current' : ''}`} />
-                  <span>{totalReactions || 0}</span>
-                </EnhancedButton>
+        {/* Engagement Stats */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+          <div className="flex items-center gap-4">
+            {post.likes_count > 0 && (
+              <span className="flex items-center gap-1">
+                <Heart className="h-3 w-3 fill-red-500 text-red-500" />
+                {post.likes_count}
+              </span>
+            )}
+            {post.comments_count > 0 && (
+              <span>{post.comments_count} comments</span>
+            )}
+            {post.shares_count > 0 && (
+              <span>{post.shares_count} shares</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            <span>124 views</span>
+          </div>
+        </div>
 
-                {/* Reaction Picker */}
-                <AnimatePresence>
-                  {showReactions && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                      className="absolute bottom-full left-0 mb-2 bg-background/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-xl p-2 flex space-x-1 z-10"
-                    >
-                      {Object.entries(reactionEmojis).map(([type, { emoji }]) => (
-                        <motion.button
-                          key={type}
-                          onClick={() => {
-                            onReact(post.id, type);
-                            setShowReactions(false);
-                          }}
-                          className="text-xl hover:scale-125 transition-transform p-1 rounded-lg hover:bg-accent/50"
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          {emoji}
-                        </motion.button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              
-              <EnhancedButton 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setShowComments(!showComments)}
-                className="flex items-center space-x-2 text-muted-foreground hover:text-primary"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>{post.comments_count}</span>
-              </EnhancedButton>
-              
-              <EnhancedButton 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => onShare(post.id)}
-                className="flex items-center space-x-2 text-muted-foreground hover:text-primary"
-              >
-                <Share2 className="h-4 w-4" />
-                <span>{post.shares_count}</span>
-              </EnhancedButton>
-            </div>
-
-            <EnhancedButton
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
               variant="ghost"
               size="sm"
-              onClick={() => onSave(post.id)}
-              className={`${post.is_saved ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500'}`}
+              onClick={() => onLike?.(post.id)}
+              className={`gap-2 ${post.is_liked ? 'text-red-500' : ''}`}
             >
-              {post.is_saved ? (
-                <BookmarkCheck className="h-4 w-4 fill-current" />
-              ) : (
-                <Bookmark className="h-4 w-4" />
-              )}
-            </EnhancedButton>
+              <Heart className={`h-4 w-4 ${post.is_liked ? 'fill-current' : ''}`} />
+              <span className="hidden sm:inline">Like</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onComment?.(post.id)}
+              className="gap-2"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Comment</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onShare?.(post.id)}
+              className="gap-2"
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
           </div>
 
-          {/* Comments Section */}
-          <AnimatePresence>
-            {showComments && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-4 pt-4 border-t border-border/50"
-              >
-                <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
-                  Comments section coming soon...
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onSave?.(post.id)}
+            className={`gap-2 ${post.is_saved ? 'text-primary' : ''}`}
+          >
+            <Bookmark className={`h-4 w-4 ${post.is_saved ? 'fill-current' : ''}`} />
+          </Button>
         </div>
-      </EnhancedCard>
-    </motion.div>
+      </div>
+    </EnhancedCard>
   );
 };
