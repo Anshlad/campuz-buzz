@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -6,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { chatService, type MessageWithAuthor, type Channel, type MessageAttachment } from '@/services/chatService';
+import { chatService, type Channel } from '@/services/chatService';
+import { getMessages, sendMessage, type MessageWithAuthor, type MessageAttachment } from '@/services/messageService';
 import { EnhancedMessageBubble } from './EnhancedMessageBubble';
 import { TypingIndicator } from './TypingIndicator';
 import { VoiceChatButton } from './VoiceChatButton';
@@ -63,13 +65,33 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setMessages(prev => prev.filter(msg => msg.id !== messageId));
   };
 
+  const handleReply = (message: MessageWithAuthor) => {
+    setReplyTo(message);
+  };
+
   useEffect(() => {
     if (channel?.id || dmConversationId) {
       loadMessages();
       
       const unsubscribe = chatService.subscribeToMessages(
         (newMessage) => {
-          setMessages(prev => [...prev, newMessage]);
+          // Convert chatService message to messageService format
+          const convertedMessage: MessageWithAuthor = {
+            id: newMessage.id,
+            content: newMessage.content,
+            user_id: newMessage.user_id,
+            channel_id: newMessage.channel_id,
+            dm_conversation_id: newMessage.dm_conversation_id,
+            created_at: newMessage.created_at,
+            is_edited: newMessage.is_edited || false,
+            edited_at: newMessage.edited_at,
+            attachments: Array.isArray(newMessage.attachments) ? newMessage.attachments : [],
+            mentions: newMessage.mentions || [],
+            reply_to: newMessage.reply_to,
+            reactions: newMessage.reactions as Record<string, string[]> || {},
+            author: newMessage.author
+          };
+          setMessages(prev => [...prev, convertedMessage]);
         },
         channel?.id,
         dmConversationId
@@ -95,7 +117,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const loadMessages = async () => {
     try {
       setIsLoading(true);
-      const data = await chatService.getMessages(channel?.id, dmConversationId);
+      const data = await getMessages(channel?.id, dmConversationId);
       setMessages(data);
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -113,12 +135,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (!messageInput.trim() || !user) return;
 
     try {
-      await chatService.sendMessage(
+      await sendMessage(
         messageInput.trim(),
         channel?.id,
         dmConversationId,
-        replyTo?.id,
-        attachments
+        attachments,
+        replyTo?.id
       );
       
       setMessageInput('');
@@ -197,7 +219,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 message={message}
                 isOwnMessage={message.user_id === user?.id}
                 showAvatar={index === 0 || messages[index - 1].user_id !== message.user_id}
-                onReply={setReplyTo}
+                onReply={handleReply}
                 onMessageUpdated={handleMessageUpdated}
                 onMessageDeleted={handleMessageDeleted}
               />

@@ -23,6 +23,7 @@ export interface MessageAttachment {
   fileType: string;
   mimeType: string;
   url: string;
+  [key: string]: any; // Index signature for Json compatibility
 }
 
 export interface MessageWithAuthor extends Message {
@@ -160,7 +161,7 @@ export const getMessages = async (
 
   return (data || []).map(msg => ({
     ...msg,
-    attachments: Array.isArray(msg.attachments) ? msg.attachments as MessageAttachment[] : [],
+    attachments: Array.isArray(msg.attachments) ? (msg.attachments as unknown as MessageAttachment[]) : [],
     author: {
       id: msg.user_id,
       display_name: (msg.profiles as any)?.display_name || `User ${msg.user_id.slice(0, 8)}`,
@@ -186,7 +187,7 @@ export const sendMessage = async (
     user_id: user.user.id,
     channel_id: channelId,
     dm_conversation_id: conversationId,
-    attachments: attachments || [],
+    attachments: attachments as any || [],
     reply_to: replyTo,
     mentions: extractMentions(content),
   };
@@ -203,7 +204,7 @@ export const sendMessage = async (
 
   return {
     ...data,
-    attachments: Array.isArray(data.attachments) ? data.attachments as MessageAttachment[] : []
+    attachments: Array.isArray(data.attachments) ? (data.attachments as unknown as MessageAttachment[]) : []
   } as Message;
 };
 
