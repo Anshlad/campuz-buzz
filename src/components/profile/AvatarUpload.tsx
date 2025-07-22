@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -48,16 +47,12 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     }
 
     // Validate file
-    const validationError = fileUploadService.validateFile(
-      file, 
-      5, 
-      ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    );
+    const validationResult = fileUploadService.validateFile(file, 'avatar');
     
-    if (validationError) {
+    if (!validationResult.valid) {
       toast({
         title: "Invalid file",
-        description: validationError,
+        description: validationResult.error,
         variant: "destructive"
       });
       return;
