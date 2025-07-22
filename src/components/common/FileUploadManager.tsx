@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, File, Image, Video, FileText, Check, AlertCircle, Loader2 } from 'lucide-react';
@@ -62,27 +61,8 @@ export const FileUploadManager: React.FC<FileUploadManagerProps> = ({
   }, []);
 
   const validateFile = (file: File): string | null => {
-    // Size validation
-    if (file.size > maxSize * 1024 * 1024) {
-      return `File size exceeds ${maxSize}MB limit`;
-    }
-
-    // Type validation
-    if (accept) {
-      const acceptedTypes = accept.split(',').map(t => t.trim());
-      const isAccepted = acceptedTypes.some(acceptedType => {
-        if (acceptedType.startsWith('.')) {
-          return file.name.toLowerCase().endsWith(acceptedType.toLowerCase());
-        }
-        return file.type.match(acceptedType);
-      });
-      
-      if (!isAccepted) {
-        return `File type not supported. Accepted: ${accept}`;
-      }
-    }
-
-    return null;
+    const validation = fileUploadService.validateFile(file, type);
+    return validation.valid ? null : validation.error || 'Invalid file';
   };
 
   const handleFileSelect = useCallback(async (selectedFiles: FileList | null) => {

@@ -9,10 +9,15 @@ export interface UploadResult {
   url: string;
 }
 
-export type UploadType = 'avatar' | 'post' | 'attachment' | 'community';
+export type FileUploadType = 'avatar' | 'post' | 'attachment' | 'community';
+
+interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
 
 class FileUploadService {
-  private getBucketName(type: UploadType): string {
+  private getBucketName(type: FileUploadType): string {
     switch (type) {
       case 'avatar':
         return 'avatars';
@@ -36,7 +41,7 @@ class FileUploadService {
 
   async uploadFile(
     file: File,
-    type: UploadType,
+    type: FileUploadType,
     userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
@@ -88,7 +93,7 @@ class FileUploadService {
     }
   }
 
-  async deleteFile(url: string, type: UploadType): Promise<void> {
+  async deleteFile(url: string, type: FileUploadType): Promise<void> {
     const bucketName = this.getBucketName(type);
     
     // Extract file path from URL
@@ -111,7 +116,7 @@ class FileUploadService {
 
   async uploadMultipleFiles(
     files: File[],
-    type: UploadType,
+    type: FileUploadType,
     userId: string,
     onProgress?: (progress: number) => void
   ): Promise<UploadResult[]> {
@@ -138,15 +143,44 @@ class FileUploadService {
     return results;
   }
 
-  validateFile(file: File, maxSizeInMB: number = 10, allowedTypes?: string[]): string | null {
+  validateFile(file: File, type: FileUploadType): ValidationResult {
+    // Define limits based on type
+    let maxSizeInMB: number;
+    let allowedTypes: string[];
+
+    switch (type) {
+      case 'avatar':
+        maxSizeInMB = 5;
+        allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        break;
+      case 'post':
+        maxSizeInMB = 10;
+        allowedTypes = ['image/*', 'video/*'];
+        break;
+      case 'attachment':
+        maxSizeInMB = 25;
+        allowedTypes = []; // Allow all types
+        break;
+      case 'community':
+        maxSizeInMB = 5;
+        allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        break;
+      default:
+        maxSizeInMB = 10;
+        allowedTypes = [];
+    }
+
     // Check file size
     const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
     if (file.size > maxSizeInBytes) {
-      return `File size must be less than ${maxSizeInMB}MB`;
+      return {
+        valid: false,
+        error: `File size must be less than ${maxSizeInMB}MB`
+      };
     }
 
     // Check file type if specified
-    if (allowedTypes && allowedTypes.length > 0) {
+    if (allowedTypes.length > 0) {
       const isAllowed = allowedTypes.some(type => {
         if (type.endsWith('/*')) {
           return file.type.startsWith(type.slice(0, -1));
@@ -155,11 +189,14 @@ class FileUploadService {
       });
 
       if (!isAllowed) {
-        return `File type not allowed. Allowed types: ${allowedTypes.join(', ')}`;
+        return {
+          valid: false,
+          error: `File type not allowed. Allowed types: ${allowedTypes.join(', ')}`
+        };
       }
     }
 
-    return null;
+    return { valid: true };
   }
 }
 

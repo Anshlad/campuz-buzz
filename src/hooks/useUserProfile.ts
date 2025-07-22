@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
   user_id: string;
   display_name: string | null;
@@ -70,9 +70,17 @@ export const useUserProfile = () => {
           throw createError;
         }
 
-        setProfile(newProfile);
+        setProfile({
+          ...newProfile,
+          social_links: (newProfile.social_links as Record<string, any>) || {},
+          privacy_settings: (newProfile.privacy_settings as Record<string, any>) || {}
+        });
       } else {
-        setProfile(data);
+        setProfile({
+          ...data,
+          social_links: (data.social_links as Record<string, any>) || {},
+          privacy_settings: (data.privacy_settings as Record<string, any>) || {}
+        });
       }
     } catch (err) {
       console.error('Error loading profile:', err);
@@ -97,7 +105,11 @@ export const useUserProfile = () => {
         throw error;
       }
 
-      setProfile(data);
+      setProfile({
+        ...data,
+        social_links: (data.social_links as Record<string, any>) || {},
+        privacy_settings: (data.privacy_settings as Record<string, any>) || {}
+      });
       
       toast({
         title: "Profile updated",
