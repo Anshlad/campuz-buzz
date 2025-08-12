@@ -1408,6 +1408,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_moderate_community: {
+        Args: { community_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
       can_view_academic_info: {
         Args: { target_user_id: string }
         Returns: boolean
@@ -1444,6 +1448,14 @@ export type Database = {
       increment_engagement_score: {
         Args: { user_uuid: string; points?: number }
         Returns: undefined
+      }
+      is_community_member: {
+        Args: { community_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_study_group_member: {
+        Args: { group_uuid: string; user_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {
