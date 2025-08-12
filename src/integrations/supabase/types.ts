@@ -1116,6 +1116,36 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       study_group_members: {
         Row: {
           id: string
@@ -1361,6 +1391,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_security_settings: {
+        Row: {
+          account_locked_until: string | null
+          created_at: string
+          failed_login_attempts: number | null
+          id: string
+          password_changed_at: string | null
+          security_questions_set: boolean | null
+          two_factor_enabled: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_locked_until?: string | null
+          created_at?: string
+          failed_login_attempts?: number | null
+          id?: string
+          password_changed_at?: string | null
+          security_questions_set?: boolean | null
+          two_factor_enabled?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_locked_until?: string | null
+          created_at?: string
+          failed_login_attempts?: number | null
+          id?: string
+          password_changed_at?: string | null
+          security_questions_set?: boolean | null
+          two_factor_enabled?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       voice_sessions: {
         Row: {

@@ -16,6 +16,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Security event logging
+const logSecurityEvent = async (eventType: string, metadata: any = {}) => {
+  try {
+    await supabase.from('security_events').insert({
+      event_type: eventType,
+      ip_address: null, // Client-side IP detection would require external service
+      user_agent: navigator.userAgent,
+      metadata
+    });
+  } catch (error) {
+    console.error('Failed to log security event:', error);
+  }
+};
+
+// Password strength validation
+const validatePasswordStrength = (password: string): { isStrong: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  
+  if (password.length < 8) errors.push('Password must be at least 8 characters long');
+  if (!/[a-z]/.test(password)) errors.push('Password must contain lowercase letters');
+  if (!/[A-Z]/.test(password)) errors.push('Password must contain uppercase letters');
+  if (!/[0-9]/.test(password)) errors.push('Password must contain numbers');
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain special characters');
+  
+  return {
+    isStrong: errors.length === 0,
+    errors
+  };
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -37,11 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
+        // Log security events
         if (event === 'SIGNED_IN') {
-          // Create or update profile
+          await logSecurityEvent('user_login', { success: true });
           if (session?.user) {
             await createOrUpdateProfile(session.user);
           }
+        } else if (event === 'SIGNED_OUT') {
+          await logSecurityEvent('user_logout', { success: true });
         }
       }
     );
@@ -64,7 +97,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user_id: user.id,
             display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
             avatar_url: user.user_metadata?.avatar_url,
-            role: 'student'
+            role: 'student',
+            privacy_settings: {
+              email_visible: false,
+              profile_visible: true,
+              academic_info_visible: true,
+              notifications: {
+                posts: true,
+                comments: true,
+                mentions: true,
+                messages: true,
+                events: true
+              }
+            }
           });
 
         if (error) {
@@ -78,6 +123,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, userData?: any) => {
     try {
+      // Validate password strength
+      const passwordValidation = validatePasswordStrength(password);
+      if (!passwordValidation.isStrong) {
+        throw new Error(`Password requirements not met: ${passwordValidation.errors.join(', ')}`);
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -88,11 +139,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
 
+      await logSecurityEvent('user_signup_attempt', { email, success: true });
+
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account."
       });
     } catch (error: any) {
+      await logSecurityEvent('user_signup_attempt', { email, success: false, error: error.message });
+      
       toast({
         title: "Error creating account",
         description: error.message,
@@ -116,6 +171,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been signed in successfully."
       });
     } catch (error: any) {
+      await logSecurityEvent('user_login_attempt', { email, success: false, error: error.message });
+      
       toast({
         title: "Error signing in",
         description: error.message,
@@ -148,6 +205,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email);
       if (error) throw error;
+
+      await logSecurityEvent('password_reset_request', { email });
 
       toast({
         title: "Password reset sent",

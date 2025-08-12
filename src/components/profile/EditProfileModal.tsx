@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Camera } from 'lucide-react';
+import { SecureForm } from '@/components/common/SecureForm';
+import { useRateLimit } from '@/hooks/useRateLimit';
 
 interface UserProfile {
   id: string;
@@ -52,8 +54,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Rate limiting for profile updates (max 5 updates per 10 minutes)
+  const { checkRateLimit, isBlocked } = useRateLimit({
+    maxAttempts: 5,
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    blockDurationMs: 5 * 60 * 1000 // 5 minute block
+  });
+
+  const handleSecureSubmit = async (formData: any) => {
+    if (!checkRateLimit()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -84,6 +96,35 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }));
   };
 
+  const profileValidator = (data: any) => {
+    const errors: string[] = [];
+    
+    if (!data.name || data.name.trim().length < 1) {
+      errors.push('Name is required');
+    }
+    
+    if (data.name && data.name.length > 100) {
+      errors.push('Name cannot exceed 100 characters');
+    }
+    
+    if (data.bio && data.bio.length > 500) {
+      errors.push('Bio cannot exceed 500 characters');
+    }
+    
+    // Check for potentially malicious content
+    const dangerousPatterns = [/<script/i, /javascript:/i, /on\w+=/i];
+    const allText = `${data.name} ${data.bio} ${data.major}`;
+    
+    if (dangerousPatterns.some(pattern => pattern.test(allText))) {
+      errors.push('Invalid characters detected');
+    }
+
+    return {
+      success: errors.length === 0,
+      error: errors.length > 0 ? { message: errors.join(', ') } : undefined
+    };
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -91,7 +132,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <SecureForm 
+          onSubmit={handleSecureSubmit} 
+          validationType="custom"
+          customValidator={profileValidator}
+          className="space-y-6"
+        >
           {/* Profile Picture */}
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
@@ -107,7 +153,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 <Camera className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Click to change profile picture
             </p>
           </div>
@@ -118,9 +164,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
+                name="name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 required
+                maxLength={100}
               />
             </div>
 
@@ -131,9 +179,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 type="email"
                 value={user.email}
                 disabled
-                className="bg-gray-50 dark:bg-gray-800"
+                className="bg-muted"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Email cannot be changed
               </p>
             </div>
@@ -143,13 +191,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
+              name="bio"
               value={formData.bio}
               onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
               placeholder="Tell us about yourself..."
               rows={3}
               maxLength={500}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               {formData.bio.length}/500 characters
             </p>
           </div>
@@ -180,9 +229,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <Label htmlFor="major">Major</Label>
               <Input
                 id="major"
+                name="major"
                 value={formData.major}
                 onChange={(e) => setFormData(prev => ({ ...prev, major: e.target.value }))}
                 placeholder="Your major"
+                maxLength={100}
               />
             </div>
 
@@ -214,7 +265,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Profile Visibility</Label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     Allow others to view your profile
                   </p>
                 </div>
@@ -227,7 +278,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Email Visibility</Label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     Show your email on your profile
                   </p>
                 </div>
@@ -240,7 +291,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Groups Visibility</Label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     Show your joined groups and study sessions
                   </p>
                 </div>
@@ -256,11 +307,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading || isBlocked}
+            >
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
-        </form>
+        </SecureForm>
       </DialogContent>
     </Dialog>
   );
