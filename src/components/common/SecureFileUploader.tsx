@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Upload, Shield, AlertTriangle, Check } from 'lucide-react';
+import { Upload, Shield, AlertTriangle } from 'lucide-react';
 import { enhancedSecureUpload, SecureUploadOptions } from '@/utils/secureFileUpload';
 import { useToast } from '@/hooks/use-toast';
 
@@ -97,23 +97,23 @@ export const SecureFileUploader: React.FC<SecureFileUploaderProps> = ({
         {...getRootProps()}
         className={`
           border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-          ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-gray-400'}
+          ${isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-border/60'}
           ${disabled || uploading ? 'cursor-not-allowed opacity-50' : ''}
         `}
       >
         <input {...getInputProps()} />
         
         <div className="flex flex-col items-center space-y-2">
-          <Upload className="h-8 w-8 text-gray-400" />
+          <Upload className="h-8 w-8 text-muted-foreground" />
           
           {isDragActive ? (
             <p className="text-primary">Drop the file here...</p>
           ) : (
             <div>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Drag & drop a file here, or click to select
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground/60 mt-1">
                 Max size: {Math.round((uploadOptions.maxSizeBytes || 10 * 1024 * 1024) / 1024 / 1024)}MB
               </p>
             </div>
