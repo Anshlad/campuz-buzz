@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
@@ -1408,6 +1408,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_academic_info: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      can_view_profile: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
       cleanup_old_typing_indicators: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1415,6 +1423,14 @@ export type Database = {
       extract_hashtags: {
         Args: { content: string }
         Returns: string[]
+      }
+      get_public_profile_info: {
+        Args: { target_user_id: string }
+        Returns: {
+          user_id: string
+          display_name: string
+          avatar_url: string
+        }[]
       }
       get_study_suggestions: {
         Args: { user_uuid: string }
