@@ -16,10 +16,7 @@ export const useEvents = (filters?: {
   const {
     data,
     isLoading,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage
+    error
   } = useQuery({
     queryKey: ['events', filters, page],
     queryFn: () => EventService.getEvents(page, limit, filters),

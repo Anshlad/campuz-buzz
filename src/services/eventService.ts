@@ -107,7 +107,7 @@ export class EventService {
   }
 
   // Create event
-  static async createEvent(eventData: Partial<Event>): Promise<Event> {
+  static async createEvent(eventData: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'attendee_count'>): Promise<Event> {
     try {
       const { data, error } = await supabase
         .from('events')
@@ -128,7 +128,7 @@ export class EventService {
   }
 
   // Update event
-  static async updateEvent(eventId: string, updates: Partial<Event>): Promise<Event> {
+  static async updateEvent(eventId: string, updates: Partial<Omit<Event, 'id' | 'created_at' | 'created_by'>>): Promise<Event> {
     try {
       const { data, error } = await supabase
         .from('events')
@@ -164,7 +164,7 @@ export class EventService {
 
       if (error) throw error;
 
-      return data;
+      return data as EventRSVP;
     } catch (error) {
       console.error('Error RSVPing to event:', error);
       throw error;
@@ -178,7 +178,7 @@ export class EventService {
         .from('event_rsvps')
         .select(`
           *,
-          profiles!inner(
+          profile:profiles!inner(
             user_id,
             display_name,
             avatar_url
@@ -189,7 +189,7 @@ export class EventService {
 
       if (error) throw error;
 
-      return data || [];
+      return (data || []) as Array<EventRSVP & { profile: any }>;
     } catch (error) {
       console.error('Error fetching event attendees:', error);
       return [];
