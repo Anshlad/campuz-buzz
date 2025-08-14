@@ -41,7 +41,7 @@ export const useSecurityMonitoring = () => {
       setLoading(true);
 
       // Load recent security events
-      const { data: events, error: eventsError } = await supabase
+      const { data: eventsData, error: eventsError } = await supabase
         .from('security_events')
         .select('*')
         .eq('user_id', user.id)
@@ -49,7 +49,18 @@ export const useSecurityMonitoring = () => {
         .limit(10);
 
       if (eventsError) throw eventsError;
-      setSecurityEvents(events || []);
+      
+      // Transform the data to match our interface
+      const transformedEvents: SecurityEvent[] = (eventsData || []).map(event => ({
+        id: event.id,
+        event_type: event.event_type,
+        ip_address: event.ip_address as string | null,
+        user_agent: event.user_agent as string | null,
+        metadata: event.metadata as Record<string, any>,
+        created_at: event.created_at
+      }));
+      
+      setSecurityEvents(transformedEvents);
 
       // Load security settings
       const { data: settings, error: settingsError } = await supabase
