@@ -1,274 +1,227 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Users, Calendar, BookOpen, Plus, Filter } from 'lucide-react';
+import { TrendingUp, Users, Calendar, Hash, UserPlus } from 'lucide-react';
+import { useAdvancedSearch } from '@/hooks/useAdvancedSearch';
+import { AdvancedSearchBar } from '@/components/search/AdvancedSearchBar';
+import { SearchResults } from '@/components/search/SearchResults';
 
-interface SearchResult {
-  id: string;
-  type: 'user' | 'group' | 'event';
-  name: string;
-  description?: string;
-  avatar?: string;
-  members?: number;
-  date?: string;
-  major?: string;
-  year?: string;
-  tags?: string[];
-}
+export default function Explore() {
+  const {
+    query,
+    debouncedQuery,
+    filters,
+    results,
+    suggestions,
+    total,
+    trendingTopics,
+    recommendedCommunities,
+    isLoading,
+    loadingTrending,
+    loadingRecommended,
+    updateQuery,
+    updateFilters,
+    clearSearch
+  } = useAdvancedSearch();
 
-export const Explore = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-
-  const mockResults: SearchResult[] = [
-    {
-      id: '1',
-      type: 'user',
-      name: 'Sarah Johnson',
-      description: 'Computer Science Junior passionate about AI and machine learning',
-      avatar: '/placeholder.svg',
-      major: 'Computer Science',
-      year: 'Junior',
-      tags: ['AI', 'Machine Learning', 'Python']
-    },
-    {
-      id: '2',
-      type: 'group',
-      name: 'Advanced Algorithms Study Group',
-      description: 'Weekly study sessions for CS 451 - Advanced Algorithms',
-      avatar: '/placeholder.svg',
-      members: 15,
-      tags: ['Computer Science', 'Algorithms', 'Study Group']
-    },
-    {
-      id: '3',
-      type: 'event',
-      name: 'Spring Career Fair 2024',
-      description: 'Meet with top tech companies and explore internship opportunities',
-      date: 'March 15, 2024',
-      tags: ['Career', 'Networking', 'Technology']
-    },
-    {
-      id: '4',
-      type: 'user',
-      name: 'Mike Chen',
-      description: 'Business major with interests in entrepreneurship and startups',
-      avatar: '/placeholder.svg',
-      major: 'Business',
-      year: 'Senior',
-      tags: ['Business', 'Entrepreneurship', 'Marketing']
-    },
-    {
-      id: '5',
-      type: 'group',
-      name: 'Web Development Workshop',
-      description: 'Learn modern web technologies and build projects together',
-      avatar: '/placeholder.svg',
-      members: 28,
-      tags: ['Web Development', 'JavaScript', 'React']
-    },
-    {
-      id: '6',
-      type: 'event',
-      name: 'AI/ML Research Symposium',
-      description: 'Student research presentations and industry speaker sessions',
-      date: 'April 2, 2024',
-      tags: ['Research', 'AI', 'Machine Learning']
-    }
-  ];
-
-  const allTags = Array.from(new Set(mockResults.flatMap(result => result.tags || [])));
-
-  const filteredResults = mockResults.filter(result => {
-    const matchesSearch = searchQuery === '' || 
-      result.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesTab = activeTab === 'all' || result.type === activeTab;
-    
-    const matchesFilters = selectedFilters.length === 0 || 
-      selectedFilters.some(filter => result.tags?.includes(filter));
-    
-    return matchesSearch && matchesTab && matchesFilters;
-  });
-
-  const toggleFilter = (tag: string) => {
-    setSelectedFilters(prev => 
-      prev.includes(tag) 
-        ? prev.filter(f => f !== tag)
-        : [...prev, tag]
-    );
-  };
-
-  const getResultIcon = (type: string) => {
-    switch (type) {
-      case 'user': return Users;
-      case 'group': return BookOpen;
-      case 'event': return Calendar;
-      default: return Search;
-    }
-  };
+  const [activeTab, setActiveTab] = useState('discover');
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Explore CampuzBuzz</h1>
-        <p className="text-gray-600">Discover people, groups, and events in your college community</p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold tracking-tight">Explore</h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          Discover new content, connect with people, and find communities that match your interests
+        </p>
       </div>
 
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for people, groups, events..."
-              className="pl-12 text-lg h-12"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <AdvancedSearchBar
+        query={query}
+        filters={filters}
+        suggestions={suggestions}
+        onQueryChange={updateQuery}
+        onFiltersChange={updateFilters}
+        onSuggestionClick={updateQuery}
+        onClear={clearSearch}
+      />
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-2 mb-3">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filter by tags:</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {allTags.map((tag) => (
-              <Badge
-                key={tag}
-                variant={selectedFilters.includes(tag) ? "default" : "secondary"}
-                className="cursor-pointer"
-                onClick={() => toggleFilter(tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-            {selectedFilters.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedFilters([])}
-                className="text-xs"
-              >
-                Clear filters
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">All ({mockResults.length})</TabsTrigger>
-          <TabsTrigger value="user">People ({mockResults.filter(r => r.type === 'user').length})</TabsTrigger>
-          <TabsTrigger value="group">Groups ({mockResults.filter(r => r.type === 'group').length})</TabsTrigger>
-          <TabsTrigger value="event">Events ({mockResults.filter(r => r.type === 'event').length})</TabsTrigger>
+          <TabsTrigger value="discover">Discover</TabsTrigger>
+          <TabsTrigger value="search">Search</TabsTrigger>
+          <TabsTrigger value="trending">Trending</TabsTrigger>
+          <TabsTrigger value="people">People</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6">
-          {filteredResults.length === 0 ? (
+        <TabsContent value="discover" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Trending Topics */}
             <Card>
-              <CardContent className="p-12 text-center">
-                <div className="text-gray-400 mb-4">
-                  <Search className="h-16 w-16 mx-auto mb-4" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
-                <p className="text-gray-500">
-                  {searchQuery 
-                    ? `No results for "${searchQuery}". Try different keywords or filters.`
-                    : 'Try searching for people, groups, or events.'
-                  }
-                </p>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2" />
+                  Trending Topics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingTrending ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-8 bg-muted rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {trendingTopics.slice(0, 8).map((topic, index) => (
+                      <div
+                        key={topic.topic}
+                        className="flex items-center justify-between p-2 hover:bg-muted rounded-md cursor-pointer"
+                        onClick={() => updateQuery(`#${topic.topic}`)}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {index + 1}
+                          </span>
+                          <Hash className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm font-medium">{topic.topic}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {topic.count}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {filteredResults.map((result) => {
-                const IconComponent = getResultIcon(result.type);
-                
-                return (
-                  <Card key={result.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="relative">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={result.avatar} />
-                            <AvatarFallback>{result.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1">
-                            <IconComponent className="h-3 w-3 text-gray-500" />
-                          </div>
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{result.name}</h3>
-                          
-                          {result.type === 'user' && (
-                            <p className="text-sm text-gray-500">{result.major} • {result.year}</p>
-                          )}
-                          
-                          {result.type === 'group' && result.members && (
-                            <p className="text-sm text-gray-500">{result.members} members</p>
-                          )}
-                          
-                          {result.type === 'event' && result.date && (
-                            <p className="text-sm text-gray-500">{result.date}</p>
-                          )}
-                          
-                          {result.description && (
-                            <p className="text-sm text-gray-700 mt-1 line-clamp-2">{result.description}</p>
-                          )}
-                          
-                          {result.tags && result.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {result.tags.slice(0, 3).map((tag) => (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                              {result.tags.length > 3 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{result.tags.length - 3}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex flex-col space-y-2">
-                          {result.type === 'user' && (
-                            <Button size="sm" variant="outline">Connect</Button>
-                          )}
-                          {result.type === 'group' && (
-                            <Button size="sm">Join Group</Button>
-                          )}
-                          {result.type === 'event' && (
-                            <Button size="sm">RSVP</Button>
-                          )}
+
+            {/* Recommended Communities */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="h-5 w-5 mr-2" />
+                  Recommended Communities
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingRecommended ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-muted rounded-full animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-muted rounded animate-pulse" />
+                          <div className="h-3 bg-muted rounded w-2/3 animate-pulse" />
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recommendedCommunities.map((community) => (
+                      <div key={community.id} className="flex items-center space-x-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback>
+                            {community.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium line-clamp-1">
+                            {community.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {community.member_count} members
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline">
+                          Join
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="w-full justify-start">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Browse Events
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Users className="h-4 w-4 mr-2" />
+                  Find Study Groups
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Connect with Peers
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="search">
+          {debouncedQuery ? (
+            <SearchResults
+              results={results}
+              isLoading={isLoading}
+              total={total}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                <Hash className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Start your search</h3>
+              <p className="text-muted-foreground">
+                Use the search bar above to find posts, users, communities, and events
+              </p>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="trending">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {trendingTopics.map((topic, index) => (
+              <Card key={topic.topic} className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="secondary">#{index + 1}</Badge>
+                    <Badge variant="outline">{topic.count} mentions</Badge>
+                  </div>
+                  <h3 className="font-medium mb-1">#{topic.topic}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Trending topic with {topic.count} mentions
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="people">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+              <UserPlus className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">People You May Know</h3>
+            <p className="text-muted-foreground mb-4">
+              This feature will show suggested connections based on your interests and mutual connections
+            </p>
+            <Button variant="outline">Coming Soon</Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
   );
-};
+}

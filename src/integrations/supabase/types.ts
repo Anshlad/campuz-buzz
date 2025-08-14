@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      automated_moderation_rules: {
+        Row: {
+          action: string
+          created_at: string | null
+          created_by: string
+          id: string
+          is_active: boolean | null
+          name: string
+          pattern: string
+          rule_type: string
+          severity: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          pattern: string
+          rule_type: string
+          severity?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          pattern?: string
+          rule_type?: string
+          severity?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -68,6 +107,7 @@ export type Database = {
           is_private: boolean | null
           member_count: number | null
           name: string
+          search_vector: unknown | null
           updated_at: string
         }
         Insert: {
@@ -79,6 +119,7 @@ export type Database = {
           is_private?: boolean | null
           member_count?: number | null
           name: string
+          search_vector?: unknown | null
           updated_at?: string
         }
         Update: {
@@ -90,6 +131,7 @@ export type Database = {
           is_private?: boolean | null
           member_count?: number | null
           name?: string
+          search_vector?: unknown | null
           updated_at?: string
         }
         Relationships: []
@@ -307,6 +349,54 @@ export type Database = {
         }
         Relationships: []
       }
+      community_reports: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          evidence_urls: string[] | null
+          id: string
+          reason: string
+          reported_by: string
+          reported_community_id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          status: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          evidence_urls?: string[] | null
+          id?: string
+          reason: string
+          reported_by: string
+          reported_community_id: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          evidence_urls?: string[] | null
+          id?: string
+          reason?: string
+          reported_by?: string
+          reported_community_id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       community_roles: {
         Row: {
           can_create_posts: boolean | null
@@ -356,6 +446,56 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities_enhanced"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_flags: {
+        Row: {
+          auto_actioned: boolean | null
+          confidence_score: number | null
+          content_id: string
+          content_type: string
+          created_at: string | null
+          flag_type: string
+          id: string
+          reviewed: boolean | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rule_id: string | null
+        }
+        Insert: {
+          auto_actioned?: boolean | null
+          confidence_score?: number | null
+          content_id: string
+          content_type: string
+          created_at?: string | null
+          flag_type: string
+          id?: string
+          reviewed?: boolean | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_id?: string | null
+        }
+        Update: {
+          auto_actioned?: boolean | null
+          confidence_score?: number | null
+          content_id?: string
+          content_type?: string
+          created_at?: string | null
+          flag_type?: string
+          id?: string
+          reviewed?: boolean | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_flags_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automated_moderation_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -512,6 +652,7 @@ export type Database = {
           max_attendees: number | null
           meeting_link: string | null
           outlook_calendar_id: string | null
+          search_vector: unknown | null
           start_time: string
           tags: string[] | null
           title: string
@@ -533,6 +674,7 @@ export type Database = {
           max_attendees?: number | null
           meeting_link?: string | null
           outlook_calendar_id?: string | null
+          search_vector?: unknown | null
           start_time: string
           tags?: string[] | null
           title: string
@@ -554,6 +696,7 @@ export type Database = {
           max_attendees?: number | null
           meeting_link?: string | null
           outlook_calendar_id?: string | null
+          search_vector?: unknown | null
           start_time?: string
           tags?: string[] | null
           title?: string
@@ -748,6 +891,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      moderation_actions: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          duration: unknown | null
+          expires_at: string | null
+          id: string
+          moderator_id: string
+          notes: string | null
+          reason: string
+          reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          duration?: unknown | null
+          expires_at?: string | null
+          id?: string
+          moderator_id: string
+          notes?: string | null
+          reason: string
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          duration?: unknown | null
+          expires_at?: string | null
+          id?: string
+          moderator_id?: string
+          notes?: string | null
+          reason?: string
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
       }
       moderation_logs: {
         Row: {
@@ -971,30 +1162,39 @@ export type Database = {
       }
       post_reports: {
         Row: {
+          category: string | null
           created_at: string
           description: string | null
+          evidence_urls: string[] | null
           id: string
           post_id: string
           reason: string
           reported_by: string
+          severity: string | null
           status: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
           description?: string | null
+          evidence_urls?: string[] | null
           id?: string
           post_id: string
           reason: string
           reported_by: string
+          severity?: string | null
           status?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string
           description?: string | null
+          evidence_urls?: string[] | null
           id?: string
           post_id?: string
           reason?: string
           reported_by?: string
+          severity?: string | null
           status?: string | null
         }
         Relationships: []
@@ -1044,6 +1244,7 @@ export type Database = {
           post_type: string | null
           reactions: Json | null
           saves_count: number | null
+          search_vector: unknown | null
           shares_count: number | null
           tags: string[] | null
           title: string | null
@@ -1066,6 +1267,7 @@ export type Database = {
           post_type?: string | null
           reactions?: Json | null
           saves_count?: number | null
+          search_vector?: unknown | null
           shares_count?: number | null
           tags?: string[] | null
           title?: string | null
@@ -1088,6 +1290,7 @@ export type Database = {
           post_type?: string | null
           reactions?: Json | null
           saves_count?: number | null
+          search_vector?: unknown | null
           shares_count?: number | null
           tags?: string[] | null
           title?: string | null
@@ -1113,6 +1316,7 @@ export type Database = {
           privacy_settings: Json | null
           role: string | null
           school: string | null
+          search_vector: unknown | null
           skills: string[] | null
           social_links: Json | null
           updated_at: string
@@ -1134,6 +1338,7 @@ export type Database = {
           privacy_settings?: Json | null
           role?: string | null
           school?: string | null
+          search_vector?: unknown | null
           skills?: string[] | null
           social_links?: Json | null
           updated_at?: string
@@ -1155,6 +1360,7 @@ export type Database = {
           privacy_settings?: Json | null
           role?: string | null
           school?: string | null
+          search_vector?: unknown | null
           skills?: string[] | null
           social_links?: Json | null
           updated_at?: string
@@ -1323,6 +1529,33 @@ export type Database = {
           },
         ]
       }
+      trending_topics: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_mentioned: string | null
+          mention_count: number | null
+          topic: string
+          trend_score: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_mentioned?: string | null
+          mention_count?: number | null
+          topic: string
+          trend_score?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_mentioned?: string | null
+          mention_count?: number | null
+          topic?: string
+          trend_score?: number | null
+        }
+        Relationships: []
+      }
       typing_indicators: {
         Row: {
           channel_id: string | null
@@ -1438,6 +1671,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_reports: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          evidence_urls: string[] | null
+          id: string
+          reason: string
+          reported_by: string
+          reported_user_id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          status: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          evidence_urls?: string[] | null
+          id?: string
+          reason: string
+          reported_by: string
+          reported_user_id: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          evidence_urls?: string[] | null
+          id?: string
+          reason?: string
+          reported_by?: string
+          reported_user_id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          status?: string | null
+        }
+        Relationships: []
       }
       user_security_settings: {
         Row: {
@@ -1558,6 +1839,26 @@ export type Database = {
           relevance_score: number
         }[]
       }
+      gtrgm_compress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_decompress: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_in: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      gtrgm_options: {
+        Args: { "": unknown }
+        Returns: undefined
+      }
+      gtrgm_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       increment_engagement_score: {
         Args: { user_uuid: string; points?: number }
         Returns: undefined
@@ -1569,6 +1870,18 @@ export type Database = {
       is_study_group_member: {
         Args: { group_uuid: string; user_uuid: string }
         Returns: boolean
+      }
+      set_limit: {
+        Args: { "": number }
+        Returns: number
+      }
+      show_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      show_trgm: {
+        Args: { "": string }
+        Returns: string[]
       }
     }
     Enums: {
