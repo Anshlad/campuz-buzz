@@ -1,0 +1,119 @@
+
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { EventService, Event, EventRSVP } from '@/services/eventService';
+import { useAuth } from '@/contexts/AuthContext';
+
+export const useEvents = (filters?: {
+  community_id?: string;
+  event_type?: string;
+  upcoming_only?: boolean;
+}) => {
+  const [page, setPage] = useState(0);
+  const limit = 10;
+
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useQuery({
+    queryKey: ['events', filters, page],
+    queryFn: () => EventService.getEvents(page, limit, filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  return {
+    events: data?.events || [],
+    total: data?.total || 0,
+    isLoading,
+    error,
+    loadMore: () => setPage(p => p + 1),
+    hasMore: page * limit < (data?.total || 0)
+  };
+};
+
+export const useEvent = (eventId: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['event', eventId, user?.id],
+    queryFn: () => EventService.getEvent(eventId, user?.id),
+    enabled: !!eventId,
+  });
+};
+
+export const useEventAttendees = (eventId: string) => {
+  return useQuery({
+    queryKey: ['event-attendees', eventId],
+    queryFn: () => EventService.getEventAttendees(eventId),
+    enabled: !!eventId,
+  });
+};
+
+export const useEventRSVP = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: ({ eventId, status }: { eventId: string; status: 'going' | 'maybe' | 'not_going' }) =>
+      EventService.rsvpToEvent(eventId, user!.id, status),
+    onSuccess: (_, variables) => {
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['event', variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', variables.eventId] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    },
+  });
+};
+
+export const useEventRealtime = (eventId?: string) => {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!eventId) return;
+
+    // Subscribe to RSVP changes
+    const rsvpChannel = supabase
+      .channel('event-rsvps')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_rsvps',
+          filter: `event_id=eq.${eventId}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+          queryClient.invalidateQueries({ queryKey: ['event-attendees', eventId] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to event changes
+    const eventChannel = supabase
+      .channel('events')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'events',
+          filter: `id=eq.${eventId}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(rsvpChannel);
+      supabase.removeChannel(eventChannel);
+    };
+  }, [eventId, queryClient]);
+};

@@ -425,6 +425,44 @@ export type Database = {
         }
         Relationships: []
       }
+      event_notifications: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          notification_type: string
+          scheduled_for: string
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          notification_type: string
+          scheduled_for: string
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          notification_type?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_rsvps: {
         Row: {
           created_at: string | null
@@ -459,54 +497,63 @@ export type Database = {
       }
       events: {
         Row: {
+          attendee_count: number | null
           community_id: string | null
           created_at: string | null
           created_by: string
           description: string | null
           end_time: string
           event_type: string | null
+          google_calendar_id: string | null
           id: string
           is_public: boolean | null
           is_virtual: boolean | null
           location: string | null
           max_attendees: number | null
           meeting_link: string | null
+          outlook_calendar_id: string | null
           start_time: string
           tags: string[] | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          attendee_count?: number | null
           community_id?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
           end_time: string
           event_type?: string | null
+          google_calendar_id?: string | null
           id?: string
           is_public?: boolean | null
           is_virtual?: boolean | null
           location?: string | null
           max_attendees?: number | null
           meeting_link?: string | null
+          outlook_calendar_id?: string | null
           start_time: string
           tags?: string[] | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          attendee_count?: number | null
           community_id?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
           end_time?: string
           event_type?: string | null
+          google_calendar_id?: string | null
           id?: string
           is_public?: boolean | null
           is_virtual?: boolean | null
           location?: string | null
           max_attendees?: number | null
           meeting_link?: string | null
+          outlook_calendar_id?: string | null
           start_time?: string
           tags?: string[] | null
           title?: string
