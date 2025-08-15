@@ -43,28 +43,28 @@ export class SearchService {
 
     try {
       // Search posts
-      if (!filters.type || filters.type === 'all' || filters.type === 'posts') {
+      if (!filters.type || filters.type.length === 0 || filters.type.includes('posts')) {
         const { data: posts, count } = await this.searchPosts(query, filters, page, limit);
         results.push(...posts);
         total += count || 0;
       }
 
       // Search users
-      if (!filters.type || filters.type === 'all' || filters.type === 'users') {
+      if (!filters.type || filters.type.length === 0 || filters.type.includes('users')) {
         const { data: users, count } = await this.searchUsers(query, filters, page, limit);
         results.push(...users);
         total += count || 0;
       }
 
       // Search communities
-      if (!filters.type || filters.type === 'all' || filters.type === 'communities') {
+      if (!filters.type || filters.type.length === 0 || filters.type.includes('communities')) {
         const { data: communities, count } = await this.searchCommunities(query, filters, page, limit);
         results.push(...communities);
         total += count || 0;
       }
 
       // Search events
-      if (!filters.type || filters.type === 'all' || filters.type === 'events') {
+      if (!filters.type || filters.type.length === 0 || filters.type.includes('events')) {
         const { data: events, count } = await this.searchEvents(query, filters, page, limit);
         results.push(...events);
         total += count || 0;
@@ -129,9 +129,17 @@ export class SearchService {
       type: 'post' as const,
       title: post.title || post.content.substring(0, 100) + '...',
       content: post.content,
+      description: post.content,
       avatar_url: (post.profiles as any)?.avatar_url,
       created_at: post.created_at,
+      tags: post.tags,
+      likes_count: post.likes_count,
+      comments_count: post.comments_count,
       relevance_score: 1,
+      author: {
+        display_name: (post.profiles as any)?.display_name || 'Anonymous',
+        avatar_url: (post.profiles as any)?.avatar_url
+      },
       metadata: {
         author: (post.profiles as any)?.display_name,
         likes: post.likes_count,
@@ -170,7 +178,9 @@ export class SearchService {
       id: profile.user_id,
       type: 'user' as const,
       title: profile.display_name || 'Anonymous User',
+      subtitle: `${profile.major || ''} ${profile.year ? `• ${profile.year}` : ''}`.trim(),
       content: profile.bio || '',
+      description: profile.bio || '',
       avatar_url: profile.avatar_url,
       created_at: profile.created_at,
       relevance_score: 1,
@@ -210,8 +220,11 @@ export class SearchService {
       id: community.id,
       type: 'community' as const,
       title: community.name,
+      subtitle: community.category,
       content: community.description || '',
+      description: community.description || '',
       created_at: community.created_at,
+      member_count: community.member_count,
       relevance_score: community.member_count || 0,
       metadata: {
         category: community.category,
@@ -257,6 +270,10 @@ export class SearchService {
       type: 'event' as const,
       title: event.title,
       content: event.description || '',
+      description: event.description || '',
+      date: event.start_time,
+      location: event.location,
+      tags: event.tags,
       created_at: event.created_at,
       relevance_score: event.attendee_count || 0,
       metadata: {
