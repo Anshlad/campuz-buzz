@@ -37,6 +37,15 @@ export interface OptimizedUserProfile {
   updated_at: string;
 }
 
+// Helper function to safely convert Json to Record<string, any>
+const convertJsonToRecord = (json: any): Record<string, any> | null => {
+  if (!json) return null;
+  if (typeof json === 'object' && json !== null) {
+    return json as Record<string, any>;
+  }
+  return null;
+};
+
 export const useOptimizedProfile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<OptimizedUserProfile | null>(null);
@@ -78,12 +87,23 @@ export const useOptimizedProfile = () => {
           .single();
 
         if (createError) throw createError;
-        return newProfile as OptimizedUserProfile;
+        
+        // Convert the data to match our interface
+        return {
+          ...newProfile,
+          social_links: convertJsonToRecord(newProfile.social_links),
+          privacy_settings: convertJsonToRecord(newProfile.privacy_settings)
+        } as OptimizedUserProfile;
       }
       throw error;
     }
 
-    return data as OptimizedUserProfile;
+    // Convert the data to match our interface
+    return {
+      ...data,
+      social_links: convertJsonToRecord(data.social_links),
+      privacy_settings: convertJsonToRecord(data.privacy_settings)
+    } as OptimizedUserProfile;
   }, [user]);
 
   const { 
@@ -126,7 +146,14 @@ export const useOptimizedProfile = () => {
 
       if (error) throw error;
 
-      setProfile(data as OptimizedUserProfile);
+      // Convert the data to match our interface
+      const convertedProfile: OptimizedUserProfile = {
+        ...data,
+        social_links: convertJsonToRecord(data.social_links),
+        privacy_settings: convertJsonToRecord(data.privacy_settings)
+      } as OptimizedUserProfile;
+      
+      setProfile(convertedProfile);
       return true;
     } catch (error) {
       // Revert optimistic update on error

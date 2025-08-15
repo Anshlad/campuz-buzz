@@ -26,6 +26,15 @@ export interface UserProfile {
   updated_at: string;
 }
 
+// Helper function to safely convert Json to Record<string, any>
+const convertJsonToRecord = (json: any): Record<string, any> | null => {
+  if (!json) return null;
+  if (typeof json === 'object' && json !== null) {
+    return json as Record<string, any>;
+  }
+  return null;
+};
+
 export const useUserProfile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -77,12 +86,25 @@ export const useUserProfile = () => {
             .single();
 
           if (createError) throw createError;
-          setProfile(newProfile);
+          
+          // Convert the data to match our interface
+          const convertedProfile: UserProfile = {
+            ...newProfile,
+            social_links: convertJsonToRecord(newProfile.social_links),
+            privacy_settings: convertJsonToRecord(newProfile.privacy_settings)
+          };
+          setProfile(convertedProfile);
         } else {
           throw error;
         }
       } else {
-        setProfile(data);
+        // Convert the data to match our interface
+        const convertedProfile: UserProfile = {
+          ...data,
+          social_links: convertJsonToRecord(data.social_links),
+          privacy_settings: convertJsonToRecord(data.privacy_settings)
+        };
+        setProfile(convertedProfile);
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -115,13 +137,20 @@ export const useUserProfile = () => {
 
       if (error) throw error;
 
-      setProfile(data);
+      // Convert the data to match our interface
+      const convertedProfile: UserProfile = {
+        ...data,
+        social_links: convertJsonToRecord(data.social_links),
+        privacy_settings: convertJsonToRecord(data.privacy_settings)
+      };
+      setProfile(convertedProfile);
+      
       toast({
         title: "Profile updated!",
         description: "Your changes have been saved successfully."
       });
 
-      return data;
+      return convertedProfile;
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast({

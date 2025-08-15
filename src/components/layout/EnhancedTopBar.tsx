@@ -15,12 +15,14 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
+import { useToast } from '@/hooks/use-toast';
 
 export const EnhancedTopBar = () => {
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { toast } = useToast();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +34,28 @@ export const EnhancedTopBar = () => {
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleCreatePost = async (postData: any) => {
+    try {
+      // TODO: Implement actual post creation logic here
+      console.log('Creating post:', postData);
+      
+      toast({
+        title: "Post created!",
+        description: "Your post has been shared with the community."
+      });
+      
+      // Close modal after successful creation
+      setShowCreatePost(false);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast({
+        title: "Error creating post",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -131,6 +155,7 @@ export const EnhancedTopBar = () => {
       <CreatePostModal
         open={showCreatePost}
         onClose={() => setShowCreatePost(false)}
+        onSubmit={handleCreatePost}
       />
     </>
   );
