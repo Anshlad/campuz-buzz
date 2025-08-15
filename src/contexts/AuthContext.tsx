@@ -1,10 +1,8 @@
 
-// TODO: TEMPORARY BYPASS - Authentication is disabled. Restore original functionality later.
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MOCK_USER, MOCK_SESSION } from '@/utils/mockUser';
 
 interface AuthContextType {
   user: User | null;
@@ -18,72 +16,199 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// TODO: TEMPORARY BYPASS - All auth functions are mocked
 const logSecurityEvent = async (eventType: string, metadata: any = {}) => {
-  console.log('MOCK: Security event would be logged:', eventType, metadata);
+  try {
+    const { error } = await supabase
+      .from('security_events')
+      .insert({
+        event_type: eventType,
+        metadata,
+        ip_address: '127.0.0.1', // In production, get real IP
+        user_agent: navigator.userAgent
+      });
+    
+    if (error) console.error('Security event log error:', error);
+  } catch (error) {
+    console.error('Failed to log security event:', error);
+  }
 };
 
 const validatePasswordStrength = (password: string): { isStrong: boolean; errors: string[] } => {
-  // TODO: TEMPORARY BYPASS - Always return valid for demo
-  return { isStrong: true, errors: [] };
+  const errors: string[] = [];
+  
+  if (password.length < 8) errors.push('Password must be at least 8 characters long');
+  if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
+  if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
+  if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
+  if (!/[^A-Za-z0-9]/.test(password)) errors.push('Password must contain at least one special character');
+  
+  return { isStrong: errors.length === 0, errors };
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // TODO: TEMPORARY BYPASS - Always return mock user and session
-  const [user, setUser] = useState<User | null>(MOCK_USER);
-  const [session, setSession] = useState<Session | null>(MOCK_SESSION);
-  const [loading, setLoading] = useState(false); // No loading needed for mock
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // TODO: TEMPORARY BYPASS - Skip all Supabase auth initialization
-    console.log('AUTH BYPASS: Using mock user data instead of Supabase auth');
-    
-    // Simulate auth initialization complete
-    setUser(MOCK_USER);
-    setSession(MOCK_SESSION);
-    setLoading(false);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth event:', event);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(() => {
+            createOrUpdateProfile(session.user);
+          }, 0);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const createOrUpdateProfile = async (user: User) => {
-    // TODO: TEMPORARY BYPASS - Skip profile creation
-    console.log('MOCK: Profile would be created/updated for user:', user.id);
+    try {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!existingProfile) {
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
+            role: 'student',
+            engagement_score: 0,
+            privacy_settings: {
+              email_visible: false,
+              profile_visible: true,
+              academic_info_visible: true,
+              notifications: {
+                posts: true,
+                comments: true,
+                mentions: true,
+                messages: true,
+                events: true
+              }
+            }
+          });
+
+        if (error) throw error;
+        console.log('Profile created successfully');
+      }
+    } catch (error) {
+      console.error('Error creating/updating profile:', error);
+    }
   };
 
   const signUp = async (email: string, password: string, userData?: any) => {
-    // TODO: TEMPORARY BYPASS - Mock successful signup
-    console.log('MOCK: Signup would be processed for:', email);
-    toast({
-      title: "Demo Mode",
-      description: "Authentication is bypassed. You're already signed in as demo user."
-    });
+    try {
+      const validation = validatePasswordStrength(password);
+      if (!validation.isStrong) {
+        throw new Error(validation.errors.join(', '));
+      }
+
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: userData
+        }
+      });
+
+      if (error) throw error;
+
+      await logSecurityEvent('user_signup_attempt', { email });
+
+      toast({
+        title: "Account created!",
+        description: "Please check your email to verify your account."
+      });
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      await logSecurityEvent('user_signup_failed', { error: error.message });
+      throw error;
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    // TODO: TEMPORARY BYPASS - Mock successful signin
-    console.log('MOCK: Signin would be processed for:', email);
-    toast({
-      title: "Demo Mode",
-      description: "Authentication is bypassed. You're already signed in as demo user."
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      await logSecurityEvent('user_signin_success', { email });
+
+      toast({
+        title: "Welcome back!",
+        description: "You have been signed in successfully."
+      });
+    } catch (error: any) {
+      console.error('Signin error:', error);
+      await logSecurityEvent('user_signin_failed', { error: error.message });
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    // TODO: TEMPORARY BYPASS - Mock signout (but don't actually sign out)
-    console.log('MOCK: Signout would be processed');
-    toast({
-      title: "Demo Mode",
-      description: "Authentication is bypassed. Cannot sign out in demo mode."
-    });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      await logSecurityEvent('user_signout');
+
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully."
+      });
+    } catch (error: any) {
+      console.error('Signout error:', error);
+      throw error;
+    }
   };
 
   const resetPassword = async (email: string) => {
-    // TODO: TEMPORARY BYPASS - Mock password reset
-    console.log('MOCK: Password reset would be sent to:', email);
-    toast({
-      title: "Demo Mode",
-      description: "Authentication is bypassed. Password reset not available."
-    });
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+
+      if (error) throw error;
+
+      await logSecurityEvent('password_reset_requested', { email });
+
+      toast({
+        title: "Reset email sent",
+        description: "Please check your email for password reset instructions."
+      });
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
   };
 
   const value = {

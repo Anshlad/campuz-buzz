@@ -1,10 +1,8 @@
 
-// TODO: TEMPORARY BYPASS - useOptimizedProfile returns mock data instead of Supabase data
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRetryableQuery } from './useRetryableQuery';
-import { MOCK_PROFILE } from '@/utils/mockUser';
 
 export interface OptimizedUserProfile {
   id: string;
@@ -41,14 +39,51 @@ export interface OptimizedUserProfile {
 
 export const useOptimizedProfile = () => {
   const { user } = useAuth();
-  // TODO: TEMPORARY BYPASS - Always return mock profile
-  const [profile, setProfile] = useState<OptimizedUserProfile | null>(MOCK_PROFILE as OptimizedUserProfile);
+  const [profile, setProfile] = useState<OptimizedUserProfile | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchProfile = useCallback(async (): Promise<OptimizedUserProfile | null> => {
-    // TODO: TEMPORARY BYPASS - Return mock data instead of Supabase call
-    console.log('MOCK: Profile fetch bypassed, using mock data');
-    return MOCK_PROFILE as OptimizedUserProfile;
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Create profile if it doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
+            role: 'student',
+            engagement_score: 0,
+            privacy_settings: {
+              email_visible: false,
+              profile_visible: true,
+              academic_info_visible: true,
+              notifications: {
+                posts: true,
+                comments: true,
+                mentions: true,
+                messages: true,
+                events: true
+              }
+            }
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        return newProfile as OptimizedUserProfile;
+      }
+      throw error;
+    }
+
+    return data as OptimizedUserProfile;
   }, [user]);
 
   const { 
@@ -63,16 +98,14 @@ export const useOptimizedProfile = () => {
   });
 
   useEffect(() => {
-    // TODO: TEMPORARY BYPASS - Always use mock profile
-    setProfile(MOCK_PROFILE as OptimizedUserProfile);
+    if (fetchedProfile) {
+      setProfile(fetchedProfile);
+    }
   }, [fetchedProfile]);
 
   const updateProfile = useCallback(async (updates: Partial<OptimizedUserProfile>) => {
-    // TODO: TEMPORARY BYPASS - Mock profile update
-    console.log('MOCK: Profile update would be processed:', updates);
-    
     if (!user || !profile) {
-      throw new Error('No user or profile found (demo mode)');
+      throw new Error('No user or profile found');
     }
 
     try {
@@ -81,10 +114,24 @@ export const useOptimizedProfile = () => {
       // Optimistically update local state
       setProfile(prev => prev ? { ...prev, ...updates } : null);
 
-      console.log('MOCK: Profile updated locally in demo mode');
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProfile(data as OptimizedUserProfile);
       return true;
     } catch (error) {
-      console.error('Mock update error:', error);
+      // Revert optimistic update on error
+      setProfile(profile);
+      console.error('Profile update error:', error);
       throw error;
     } finally {
       setIsUpdating(false);
@@ -93,8 +140,8 @@ export const useOptimizedProfile = () => {
 
   return {
     profile,
-    loading: false, // No loading for mock data
-    error: null, // No errors in mock mode
+    loading,
+    error,
     updateProfile,
     refetchProfile: retry,
     isUpdating,

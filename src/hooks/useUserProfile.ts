@@ -1,10 +1,8 @@
 
-// TODO: TEMPORARY BYPASS - useUserProfile returns mock data instead of Supabase data
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MOCK_PROFILE } from '@/utils/mockUser';
 
 export interface UserProfile {
   id: string;
@@ -31,32 +29,108 @@ export interface UserProfile {
 export const useUserProfile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  // TODO: TEMPORARY BYPASS - Always return mock profile
-  const [profile, setProfile] = useState<UserProfile | null>(MOCK_PROFILE);
-  const [loading, setLoading] = useState(false); // No loading for mock data
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = async () => {
-    // TODO: TEMPORARY BYPASS - Skip Supabase calls, use mock data
-    console.log('MOCK: Profile loading bypassed, using mock data');
-    setProfile(MOCK_PROFILE);
-    setLoading(false);
-    setError(null);
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Profile doesn't exist, create one
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: user.id,
+              display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
+              role: 'student',
+              engagement_score: 0,
+              privacy_settings: {
+                email_visible: false,
+                profile_visible: true,
+                academic_info_visible: true,
+                notifications: {
+                  posts: true,
+                  comments: true,
+                  mentions: true,
+                  messages: true,
+                  events: true
+                }
+              }
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setProfile(newProfile);
+        } else {
+          throw error;
+        }
+      } else {
+        setProfile(data);
+      }
+    } catch (error: any) {
+      console.error('Error loading profile:', error);
+      setError(error.message);
+      toast({
+        title: "Error loading profile",
+        description: "Please try refreshing the page.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    // TODO: TEMPORARY BYPASS - Mock profile update
-    console.log('MOCK: Profile update would be processed:', updates);
-    
-    if (profile) {
-      setProfile({ ...profile, ...updates });
-      toast({
-        title: "Demo Mode",
-        description: "Profile updated locally (no database changes in demo mode)."
-      });
+    if (!user || !profile) {
+      throw new Error('No user or profile found');
     }
 
-    return profile;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setProfile(data);
+      toast({
+        title: "Profile updated!",
+        description: "Your changes have been saved successfully."
+      });
+
+      return data;
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive"
+      });
+      throw error;
+    }
   };
 
   const updateAvatar = async (avatarUrl: string) => {
@@ -68,7 +142,6 @@ export const useUserProfile = () => {
   };
 
   useEffect(() => {
-    // TODO: TEMPORARY BYPASS - Load mock profile immediately
     loadProfile();
   }, [user]);
 
