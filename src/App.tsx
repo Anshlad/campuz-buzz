@@ -1,6 +1,7 @@
 
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthGuard } from '@/components/auth/AuthGuard';
@@ -9,6 +10,18 @@ import { Toaster } from '@/components/ui/toaster';
 import { SmartSkeletonLoader } from '@/components/common/SmartSkeletonLoader';
 import { ErrorBoundaryWithRetry } from '@/components/common/ErrorBoundaryWithRetry';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
+
+// Create a QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 3,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Lazy load main components for better performance
 const EnhancedAppLayout = lazy(() => import('@/components/layout/EnhancedAppLayout').then(module => ({ default: module.EnhancedAppLayout })));
@@ -68,26 +81,28 @@ function App() {
 
   return (
     <ErrorBoundaryWithRetry>
-      <AuthProvider>
-        <ThemeProvider defaultTheme="dark" storageKey="campuzbuzz_theme">
-          <BrowserRouter>
-            <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-              <Routes>
-                <Route path="/auth" element={<AuthPages />} />
-                <Route path="/*" element={
-                  <AuthGuard>
-                    <Suspense fallback={<AppLoadingFallback />}>
-                      <EnhancedAppLayout />
-                    </Suspense>
-                  </AuthGuard>
-                } />
-              </Routes>
-            </div>
-            <Toaster />
-            <PWAInstallPrompt />
-          </BrowserRouter>
-        </ThemeProvider>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider defaultTheme="dark" storageKey="campuzbuzz_theme">
+            <BrowserRouter>
+              <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+                <Routes>
+                  <Route path="/auth" element={<AuthPages />} />
+                  <Route path="/*" element={
+                    <AuthGuard>
+                      <Suspense fallback={<AppLoadingFallback />}>
+                        <EnhancedAppLayout />
+                      </Suspense>
+                    </AuthGuard>
+                  } />
+                </Routes>
+              </div>
+              <Toaster />
+              <PWAInstallPrompt />
+            </BrowserRouter>
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </ErrorBoundaryWithRetry>
   );
 }
