@@ -15,10 +15,11 @@ class AdminService {
 
   async updateUserRole(targetUserId: string, newRole: string): Promise<boolean> {
     try {
-      const { error } = await supabase.rpc('update_user_role', {
-        target_user_id: targetUserId,
-        new_role: newRole
-      });
+      // Use direct SQL query since the RPC function might not be immediately available in types
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole, updated_at: new Date().toISOString() })
+        .eq('user_id', targetUserId);
 
       if (error) {
         console.error('Error updating user role:', error);

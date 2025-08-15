@@ -177,7 +177,7 @@ const ChartTooltipContent = React.forwardRef<
         ref={ref}
         className={`rounded-lg border bg-background p-2 shadow-sm ${className || ''}`}
       >
-        <div className={`grid gap-2 ${labelClassName || ''}`}>
+        <div className={labelClassName || ''}>
           {tooltipLabel ? (
             <div className="font-medium text-foreground">
               {tooltipLabel}
