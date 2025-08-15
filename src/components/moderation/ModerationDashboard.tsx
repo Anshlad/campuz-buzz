@@ -15,7 +15,7 @@ import {
   XCircle,
   Clock,
   Ban,
-  Mute,
+  VolumeX,
   Trash2
 } from 'lucide-react';
 import { useModeration } from '@/hooks/useModeration';

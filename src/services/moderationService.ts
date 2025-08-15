@@ -79,7 +79,11 @@ export class ModerationService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      severity: data.severity as 'low' | 'medium' | 'high' | 'critical',
+      status: data.status as 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+    } as PostReport;
   }
 
   static async createUserReport(reportData: {
@@ -105,7 +109,11 @@ export class ModerationService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      severity: data.severity as 'low' | 'medium' | 'high' | 'critical',
+      status: data.status as 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+    } as UserReport;
   }
 
   static async getPostReports(status?: string, page = 1, limit = 20): Promise<{
@@ -138,8 +146,14 @@ export class ModerationService {
 
     if (error) throw error;
 
+    const reports = (data || []).map(report => ({
+      ...report,
+      severity: report.severity as 'low' | 'medium' | 'high' | 'critical',
+      status: report.status as 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+    })) as PostReport[];
+
     return {
-      reports: data || [],
+      reports,
       total: count || 0
     };
   }
@@ -170,8 +184,14 @@ export class ModerationService {
 
     if (error) throw error;
 
+    const reports = (data || []).map(report => ({
+      ...report,
+      severity: report.severity as 'low' | 'medium' | 'high' | 'critical',
+      status: report.status as 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+    })) as UserReport[];
+
     return {
-      reports: data || [],
+      reports,
       total: count || 0
     };
   }
@@ -212,10 +232,16 @@ export class ModerationService {
 
     if (error) throw error;
 
-    // Execute the action
-    await this.executeModerationAction(data);
+    const typedData = {
+      ...data,
+      target_type: data.target_type as 'user' | 'post' | 'community' | 'comment',
+      action_type: data.action_type as 'warn' | 'mute' | 'ban' | 'remove_content' | 'suspend'
+    } as ModerationAction;
 
-    return data;
+    // Execute the action
+    await this.executeModerationAction(typedData);
+
+    return typedData;
   }
 
   private static async executeModerationAction(action: ModerationAction) {
@@ -256,8 +282,14 @@ export class ModerationService {
 
     if (error) throw error;
 
+    const actions = (data || []).map(action => ({
+      ...action,
+      target_type: action.target_type as 'user' | 'post' | 'community' | 'comment',
+      action_type: action.action_type as 'warn' | 'mute' | 'ban' | 'remove_content' | 'suspend'
+    })) as ModerationAction[];
+
     return {
-      actions: data || [],
+      actions,
       total: count || 0
     };
   }
@@ -281,7 +313,11 @@ export class ModerationService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      rule_type: data.rule_type as 'keyword' | 'regex' | 'ml_toxicity' | 'spam_detection',
+      action: data.action as 'flag' | 'remove' | 'shadowban'
+    } as AutoModerationRule;
   }
 
   static async getAutoModerationRules(): Promise<AutoModerationRule[]> {
@@ -291,7 +327,11 @@ export class ModerationService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(rule => ({
+      ...rule,
+      rule_type: rule.rule_type as 'keyword' | 'regex' | 'ml_toxicity' | 'spam_detection',
+      action: rule.action as 'flag' | 'remove' | 'shadowban'
+    })) as AutoModerationRule[];
   }
 
   static async updateAutoModerationRule(id: string, updates: Partial<AutoModerationRule>): Promise<AutoModerationRule> {
@@ -303,7 +343,11 @@ export class ModerationService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      rule_type: data.rule_type as 'keyword' | 'regex' | 'ml_toxicity' | 'spam_detection',
+      action: data.action as 'flag' | 'remove' | 'shadowban'
+    } as AutoModerationRule;
   }
 
   // Content Analysis
