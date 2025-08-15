@@ -1,13 +1,16 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useFixedPosts } from '@/hooks/useFixedPosts';
 import { PostCard } from '@/components/posts/PostCard';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 export const FixedHomeFeed = () => {
   const { posts, loading, handleCreatePost, handleLikePost } = useFixedPosts();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   if (loading) {
     return (
@@ -31,9 +34,28 @@ export const FixedHomeFeed = () => {
     );
   }
 
+  const handlePostSubmit = async (postData: any) => {
+    await handleCreatePost(postData);
+    setShowCreateModal(false);
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <CreatePostModal onPostCreated={handleCreatePost} />
+      <Card className="p-6">
+        <Button 
+          onClick={() => setShowCreateModal(true)}
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create a Post
+        </Button>
+      </Card>
+
+      <CreatePostModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handlePostSubmit}
+      />
       
       <div className="space-y-6">
         {posts.length === 0 ? (
@@ -48,7 +70,6 @@ export const FixedHomeFeed = () => {
               post={{
                 id: post.id,
                 author: {
-                  id: post.user_id,
                   name: post.profiles?.display_name || 'Anonymous User',
                   avatar: post.profiles?.avatar_url,
                   major: post.profiles?.major || '',
