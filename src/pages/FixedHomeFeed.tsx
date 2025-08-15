@@ -81,12 +81,9 @@ export const FixedHomeFeed = () => {
                 likes: post.likes_count,
                 comments: post.comments_count,
                 tags: post.tags || [],
-                isLiked: false, // We'll implement this later
-                type: 'general'
+                isLiked: false
               }}
               onLike={() => handleLikePost(post.id)}
-              onComment={() => {}}
-              onShare={() => {}}
             />
           ))
         )}
