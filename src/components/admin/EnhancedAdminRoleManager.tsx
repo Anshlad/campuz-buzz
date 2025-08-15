@@ -29,12 +29,14 @@ export const EnhancedAdminRoleManager: React.FC = () => {
   
   const adminService = useEnhancedAdminService();
 
+  // Generate consistent client ID for rate limiting
+  const clientId = `role-update-${window.navigator.userAgent}`;
+
   const handleRoleUpdate = async () => {
     // Clear previous errors
     setValidationError('');
     
     // Check rate limiting
-    const clientId = `role-update-${window.navigator.userAgent}`;
     if (!roleUpdateLimiter.checkLimit(clientId)) {
       setValidationError('Too many role update attempts. Please wait before trying again.');
       return;
@@ -227,7 +229,7 @@ export const EnhancedAdminRoleManager: React.FC = () => {
               </Button>
               
               <div className="text-sm text-muted-foreground">
-                Rate limit: {roleUpdateLimiter.getRemainingAttempts(clientId || 'default')} attempts remaining this minute
+                Rate limit: {roleUpdateLimiter.getRemainingAttempts(clientId)} attempts remaining this minute
               </div>
             </div>
           </CardContent>
