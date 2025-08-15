@@ -10,7 +10,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 // Import pages
 import HomeFeed from '@/pages/HomeFeed';
 import { Chat } from '@/pages/Chat';
-import { Communities } from '@/pages/Communities';
+import Communities from '@/pages/Communities';
 import StudyGroups from '@/pages/StudyGroups';
 import { EventCalendar } from '@/pages/EventCalendar';
 import { Announcements } from '@/pages/Announcements';

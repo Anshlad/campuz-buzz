@@ -284,11 +284,6 @@ const Communities = () => {
       <CreateStudyGroupModal
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSubmit={async (data) => {
-          // TODO: Implement community creation
-          console.log('Creating community:', data);
-          setShowCreateModal(false);
-        }}
       />
     </div>
   );
