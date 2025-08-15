@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -201,7 +202,7 @@ const ChartTooltipContent = React.forwardRef<
                   ) : (
                     <>
                       {itemConfig?.icon ? (
-                        <itemConfig.icon className="h-2.5 w-2.5 shrink-0" />
+                        <itemConfig.icon />
                       ) : (
                         !hideIndicator && (
                           <div
@@ -279,7 +280,7 @@ const ChartLegendContent = React.forwardRef<
             }`}
           >
             {itemConfig?.icon && !hideIcon ? (
-              <itemConfig.icon className="h-3 w-3 shrink-0" />
+              <itemConfig.icon />
             ) : (
               <div
                 className="h-2 w-2 shrink-0 rounded-[2px]"
@@ -335,3 +336,4 @@ export {
   ChartLegend,
   ChartLegendContent,
 }
+
