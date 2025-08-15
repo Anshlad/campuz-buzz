@@ -1,8 +1,10 @@
 
+// TODO: TEMPORARY BYPASS - useUserProfile returns mock data instead of Supabase data
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { MOCK_PROFILE } from '@/utils/mockUser';
 
 export interface UserProfile {
   id: string;
@@ -29,103 +31,32 @@ export interface UserProfile {
 export const useUserProfile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  // TODO: TEMPORARY BYPASS - Always return mock profile
+  const [profile, setProfile] = useState<UserProfile | null>(MOCK_PROFILE);
+  const [loading, setLoading] = useState(false); // No loading for mock data
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = async () => {
-    if (!user) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      if (!data) {
-        // Create a default profile if none exists
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
-            role: 'student'
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          throw createError;
-        }
-
-        setProfile({
-          ...newProfile,
-          social_links: (newProfile.social_links as Record<string, any>) || {},
-          privacy_settings: (newProfile.privacy_settings as Record<string, any>) || {}
-        });
-      } else {
-        setProfile({
-          ...data,
-          social_links: (data.social_links as Record<string, any>) || {},
-          privacy_settings: (data.privacy_settings as Record<string, any>) || {}
-        });
-      }
-    } catch (err) {
-      console.error('Error loading profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load profile');
-    } finally {
-      setLoading(false);
-    }
+    // TODO: TEMPORARY BYPASS - Skip Supabase calls, use mock data
+    console.log('MOCK: Profile loading bypassed, using mock data');
+    setProfile(MOCK_PROFILE);
+    setLoading(false);
+    setError(null);
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user || !profile) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      setProfile({
-        ...data,
-        social_links: (data.social_links as Record<string, any>) || {},
-        privacy_settings: (data.privacy_settings as Record<string, any>) || {}
-      });
-      
+    // TODO: TEMPORARY BYPASS - Mock profile update
+    console.log('MOCK: Profile update would be processed:', updates);
+    
+    if (profile) {
+      setProfile({ ...profile, ...updates });
       toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
+        title: "Demo Mode",
+        description: "Profile updated locally (no database changes in demo mode)."
       });
-
-      return data;
-    } catch (err) {
-      console.error('Error updating profile:', err);
-      toast({
-        title: "Update failed",
-        description: err instanceof Error ? err.message : 'Failed to update profile',
-        variant: "destructive"
-      });
-      throw err;
     }
+
+    return profile;
   };
 
   const updateAvatar = async (avatarUrl: string) => {
@@ -137,6 +68,7 @@ export const useUserProfile = () => {
   };
 
   useEffect(() => {
+    // TODO: TEMPORARY BYPASS - Load mock profile immediately
     loadProfile();
   }, [user]);
 

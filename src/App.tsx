@@ -1,4 +1,5 @@
 
+// TODO: TEMPORARY BYPASS - Authentication checks disabled in routing
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -63,7 +64,7 @@ function App() {
           <BrowserRouter>
             <div className="min-h-screen bg-background text-foreground">
               <Routes>
-                <Route path="/auth" element={<AuthPages />} />
+                {/* TODO: TEMPORARY BYPASS - Removed /auth route, always show main app */}
                 <Route path="/*" element={
                   <AuthGuard>
                     <Suspense fallback={<AppLoadingFallback />}>

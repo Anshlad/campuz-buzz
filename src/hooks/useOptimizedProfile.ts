@@ -1,8 +1,10 @@
 
+// TODO: TEMPORARY BYPASS - useOptimizedProfile returns mock data instead of Supabase data
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRetryableQuery } from './useRetryableQuery';
+import { MOCK_PROFILE } from '@/utils/mockUser';
 
 export interface OptimizedUserProfile {
   id: string;
@@ -39,75 +41,14 @@ export interface OptimizedUserProfile {
 
 export const useOptimizedProfile = () => {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<OptimizedUserProfile | null>(null);
+  // TODO: TEMPORARY BYPASS - Always return mock profile
+  const [profile, setProfile] = useState<OptimizedUserProfile | null>(MOCK_PROFILE as OptimizedUserProfile);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchProfile = useCallback(async (): Promise<OptimizedUserProfile | null> => {
-    if (!user) return null;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle(); // Use maybeSingle to avoid errors when no profile exists
-
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
-
-    if (!data) {
-      // Create default profile
-      const defaultProfile = {
-        user_id: user.id,
-        display_name: user.email?.split('@')[0] || 'Anonymous',
-        role: 'student',
-        engagement_score: 0,
-        privacy_settings: {
-          email_visible: false,
-          profile_visible: true,
-          academic_info_visible: true,
-          notifications: {
-            posts: true,
-            comments: true,
-            mentions: true,
-            messages: true,
-            events: true
-          }
-        },
-        social_links: {}
-      };
-
-      const { data: newProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert(defaultProfile)
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      return { ...newProfile, ...defaultProfile };
-    }
-
-    // Handle JSON fields properly
-    return {
-      ...data,
-      social_links: typeof data.social_links === 'string' 
-        ? JSON.parse(data.social_links) 
-        : data.social_links || {},
-      privacy_settings: typeof data.privacy_settings === 'string'
-        ? JSON.parse(data.privacy_settings)
-        : data.privacy_settings || {
-            email_visible: false,
-            profile_visible: true,
-            academic_info_visible: true,
-            notifications: {
-              posts: true,
-              comments: true,
-              mentions: true,
-              messages: true,
-              events: true
-            }
-          }
-    };
+    // TODO: TEMPORARY BYPASS - Return mock data instead of Supabase call
+    console.log('MOCK: Profile fetch bypassed, using mock data');
+    return MOCK_PROFILE as OptimizedUserProfile;
   }, [user]);
 
   const { 
@@ -122,14 +63,16 @@ export const useOptimizedProfile = () => {
   });
 
   useEffect(() => {
-    if (fetchedProfile) {
-      setProfile(fetchedProfile);
-    }
+    // TODO: TEMPORARY BYPASS - Always use mock profile
+    setProfile(MOCK_PROFILE as OptimizedUserProfile);
   }, [fetchedProfile]);
 
   const updateProfile = useCallback(async (updates: Partial<OptimizedUserProfile>) => {
+    // TODO: TEMPORARY BYPASS - Mock profile update
+    console.log('MOCK: Profile update would be processed:', updates);
+    
     if (!user || !profile) {
-      throw new Error('No user or profile found');
+      throw new Error('No user or profile found (demo mode)');
     }
 
     try {
@@ -138,25 +81,10 @@ export const useOptimizedProfile = () => {
       // Optimistically update local state
       setProfile(prev => prev ? { ...prev, ...updates } : null);
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (error) {
-        // Revert optimistic update on error
-        setProfile(prev => prev ? { ...prev, ...Object.fromEntries(
-          Object.keys(updates).map(key => [key, (profile as any)[key]])
-        ) } : null);
-        throw error;
-      }
-
+      console.log('MOCK: Profile updated locally in demo mode');
       return true;
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Mock update error:', error);
       throw error;
     } finally {
       setIsUpdating(false);
@@ -165,8 +93,8 @@ export const useOptimizedProfile = () => {
 
   return {
     profile,
-    loading,
-    error,
+    loading: false, // No loading for mock data
+    error: null, // No errors in mock mode
     updateProfile,
     refetchProfile: retry,
     isUpdating,
