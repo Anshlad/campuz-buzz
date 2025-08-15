@@ -1,206 +1,186 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Core Colors */
-  --background: 210 20% 98%;
-  --foreground: 215 25% 27%;
-  --card: 210 20% 98%;
-  --card-foreground: 215 25% 27%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 215 25% 27%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 210 40% 98%;
-  --secondary-foreground: 215 25% 27%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 13% 65%;
-  --accent: 210 40% 94%;
-  --accent-foreground: 215 25% 27%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
-  --radius: 0.75rem;
-
-  /* Sidebar Colors */
-  --sidebar-background: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
-  --sidebar-primary: 240 5.9% 10%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
-
-  /* Campus Theme Colors */
-  --royal-blue: 221 83% 53%;
-  --maroon: 0 63% 31%;
-  --cream: 41 86% 83%;
-  --dark-gray: 215 25% 27%;
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 263.4 70% 50.4%;
+    --radius: 0.75rem;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
 }
 
-.dark {
-  /* Core Colors - Dark Mode */
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 224 71% 4%;
-  --card-foreground: 213 31% 91%;
-  --popover: 224 71% 4%;
-  --popover-foreground: 213 31% 91%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 222.2 84% 4.9%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 223 47% 11%;
-  --muted-foreground: 215.4 16.3% 56.9%;
-  --accent: 216 34% 17%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --ring: 216 34% 17%;
-
-  /* Sidebar Colors - Dark Mode */
-  --sidebar-background: 240 5.9% 10%;
-  --sidebar-foreground: 240 4.8% 95.9%;
-  --sidebar-primary: 224 71.4% 4.1%;
-  --sidebar-primary-foreground: 210 20% 98%;
-  --sidebar-accent: 240 3.7% 15.9%;
-  --sidebar-accent-foreground: 240 4.8% 95.9%;
-  --sidebar-border: 240 3.7% 15.9%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
-
-  /* Campus Theme Colors - Dark Mode */
-  --royal-blue: 221 83% 53%;
-  --maroon: 0 63% 31%;
-  --cream: 41 86% 83%;
-  --dark-gray: 215 25% 27%;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
 }
 
-* {
-  border-color: hsl(var(--border));
+/* PWA and Mobile Specific Styles */
+@supports (padding: max(0px)) {
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  
+  .pt-safe {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+  
+  .pl-safe {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+  }
+  
+  .pr-safe {
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+  
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+/* Enhanced mobile touch targets */
+@media (max-width: 768px) {
+  button, 
+  a, 
+  input, 
+  textarea, 
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Smooth scrolling for mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Disable zoom on inputs */
+  input, 
+  textarea, 
+  select {
+    font-size: 16px;
+  }
+  
+  /* Better tap highlighting */
+  * {
+    -webkit-tap-highlight-color: rgba(139, 92, 246, 0.1);
+  }
 }
 
-/* Mobile safe area support */
-.safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom);
+/* PWA display mode styles */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  
+  /* Hide scrollbars in standalone mode */  
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Smooth transitions for route changes */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateX(20px);
 }
 
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 3px;
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
 }
 
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
+.page-transition-exit {
+  opacity: 1;
+  transform: translateX(0);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
-}
-
-/* Role badges */
-.badge-admin {
-  @apply bg-red-500 text-white;
-}
-
-.badge-professor {
-  @apply bg-blue-500 text-white;
-}
-
-.badge-mentor {
-  @apply bg-green-500 text-white;
-}
-
-.badge-student {
-  @apply bg-gray-500 text-white;
-}
-
-/* Animated underline effect */
-.animated-underline {
-  position: relative;
-}
-
-.animated-underline::after {
-  content: '';
-  position: absolute;
-  width: 0;
-  height: 2px;
-  bottom: -4px;
-  left: 50%;
-  background-color: hsl(var(--primary));
-  transition: all 0.3s ease;
-  transform: translateX(-50%);
-}
-
-.animated-underline:hover::after {
-  width: 100%;
-}
-
-/* Mobile navigation styles */
-.mobile-nav {
-  @apply fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border;
-  @apply flex items-center justify-around px-2 py-2 safe-area-pb;
-}
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
 }
 
 /* Loading animations */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Responsive utilities */
-@media (max-width: 768px) {
-  .mobile-hidden {
-    display: none !important;
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
   }
 }
 
-@media (min-width: 769px) {
-  .desktop-hidden {
-    display: none !important;
-  }
+.shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--muted-foreground) / 0.1) 50%, hsl(var(--muted)) 100%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
 }
 
-/* Focus styles */
-*:focus-visible {
-  outline: 2px solid hsl(var(--ring));
+/* Enhanced focus styles for accessibility */
+.focus-visible:focus-visible {
+  outline: 2px solid hsl(var(--primary));
   outline-offset: 2px;
 }
 
-/* Smooth transitions */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+/* Pull-to-refresh styles */
+.ptr-element {
+  pointer-events: none;
+  font-size: 0.85em;
+  font-weight: bold;
+  top: 0;
+  height: 0;
+  transition: height 0.3s, min-height 0.3s;
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  align-content: stretch;
+}
+
+.ptr-element div {
+  padding: 10px;
+  width: 100%;
+}
+
+.ptr-text-pulldown,
+.ptr-text-refresh {
+  display: block;
+}
+
+.ptr-text-release {
+  display: none;
 }

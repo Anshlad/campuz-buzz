@@ -1,13 +1,15 @@
 
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus, Wifi, WifiOff } from 'lucide-react';
 import { SmartSkeletonLoader } from '@/components/common/SmartSkeletonLoader';
 import { ErrorBoundaryWithRetry } from '@/components/common/ErrorBoundaryWithRetry';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
 import { useOptimizedPosts } from '@/hooks/useOptimizedPosts';
 import { EnhancedPostCreator } from '@/components/posts/EnhancedPostCreator';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
+import { usePWA } from '@/hooks/usePWA';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Lazy load components for better performance
 const EnhancedPostCard = lazy(() => import('@/components/posts/EnhancedPostCard').then(module => ({ default: module.EnhancedPostCard })));
@@ -17,17 +19,33 @@ const TrendingSidebar = lazy(() => import('@/components/feed/TrendingSidebar'));
 export default function OptimizedHomeFeed() {
   const [showPostCreator, setShowPostCreator] = useState(false);
   const { posts, loading, error, retry, createPost, isCreating } = useOptimizedPosts();
+  const { isOnline } = usePWA();
+  const [showOfflineAlert, setShowOfflineAlert] = useState(false);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setShowOfflineAlert(true);
+      const timer = setTimeout(() => setShowOfflineAlert(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline]);
 
   if (error && !posts.length) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center max-w-md">
+          <div className="mb-4">
+            <WifiOff className="h-12 w-12 mx-auto text-muted-foreground" />
+          </div>
           <h2 className="text-xl font-semibold mb-2">Unable to load feed</h2>
           <p className="text-muted-foreground mb-4">
-            Check your internet connection and try again.
+            {!isOnline 
+              ? "You're offline. Check your internet connection." 
+              : "Something went wrong. Please try again."
+            }
           </p>
-          <EnhancedButton onClick={retry}>
-            Try Again
+          <EnhancedButton onClick={retry} disabled={!isOnline}>
+            {isOnline ? 'Try Again' : 'Offline'}
           </EnhancedButton>
         </div>
       </div>
@@ -36,15 +54,36 @@ export default function OptimizedHomeFeed() {
 
   return (
     <ErrorBoundaryWithRetry>
-      <div className="min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen pb-20 md:pb-0">
+        {/* Offline Alert */}
+        <AnimatePresence>
+          {showOfflineAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              className="fixed top-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-96"
+            >
+              <Alert className="bg-orange-500/10 border-orange-500/20">
+                <WifiOff className="h-4 w-4 text-orange-500" />
+                <AlertDescription className="text-orange-600 dark:text-orange-400">
+                  You're offline. Some features may be limited.
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             
             {/* Left Sidebar - Profile Quick View */}
-            <div className="lg:col-span-1">
-              <Suspense fallback={<SmartSkeletonLoader type="profile" />}>
-                <ProfileSidebar />
-              </Suspense>
+            <div className="lg:col-span-1 hidden lg:block">
+              <div className="sticky top-6">
+                <Suspense fallback={<SmartSkeletonLoader type="profile" />}>
+                  <ProfileSidebar />
+                </Suspense>
+              </div>
             </div>
 
             {/* Main Feed */}
@@ -61,6 +100,7 @@ export default function OptimizedHomeFeed() {
                   placeholder="What's on your mind?"
                   expanded={showPostCreator}
                   onExpandedChange={setShowPostCreator}
+                  disabled={!isOnline}
                 />
               </motion.div>
 
@@ -78,7 +118,10 @@ export default function OptimizedHomeFeed() {
                     <p className="text-muted-foreground mb-4">
                       Be the first to share something with the community!
                     </p>
-                    <EnhancedButton onClick={() => setShowPostCreator(true)}>
+                    <EnhancedButton 
+                      onClick={() => setShowPostCreator(true)}
+                      disabled={!isOnline}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Create Post
                     </EnhancedButton>
@@ -120,10 +163,12 @@ export default function OptimizedHomeFeed() {
             </div>
 
             {/* Right Sidebar - Trending & Suggestions */}
-            <div className="lg:col-span-1">
-              <Suspense fallback={<SmartSkeletonLoader type="community" count={3} />}>
-                <TrendingSidebar />
-              </Suspense>
+            <div className="lg:col-span-1 hidden lg:block">
+              <div className="sticky top-6">
+                <Suspense fallback={<SmartSkeletonLoader type="community" count={3} />}>
+                  <TrendingSidebar />
+                </Suspense>
+              </div>
             </div>
           </div>
         </div>
@@ -131,8 +176,19 @@ export default function OptimizedHomeFeed() {
         {/* Mobile FAB */}
         <FloatingActionButton 
           onClick={() => setShowPostCreator(true)}
-          disabled={isCreating}
+          disabled={isCreating || !isOnline}
         />
+
+        {/* Online status indicator */}
+        {!isOnline && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed bottom-20 right-4 md:bottom-4 bg-orange-500/10 border border-orange-500/20 rounded-full p-2"
+          >
+            <WifiOff className="h-4 w-4 text-orange-500" />
+          </motion.div>
+        )}
       </div>
     </ErrorBoundaryWithRetry>
   );
