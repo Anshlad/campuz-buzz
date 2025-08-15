@@ -101,10 +101,10 @@ class RealtimeChatService {
 
     return messages.map(msg => ({
       ...msg,
-      author: profiles?.find(p => p.user_id === msg.user_id) || {
+      author: {
         id: msg.user_id,
-        display_name: 'Unknown User',
-        avatar_url: undefined
+        display_name: profiles?.find(p => p.user_id === msg.user_id)?.display_name || 'Unknown User',
+        avatar_url: profiles?.find(p => p.user_id === msg.user_id)?.avatar_url
       }
     })).reverse() as MessageWithAuthor[];
   }
@@ -180,10 +180,10 @@ class RealtimeChatService {
 
           const messageWithAuthor: MessageWithAuthor = {
             ...payload.new as ChatMessage,
-            author: profile || {
+            author: {
               id: payload.new.user_id,
-              display_name: 'Unknown User',
-              avatar_url: undefined
+              display_name: profile?.display_name || 'Unknown User',
+              avatar_url: profile?.avatar_url
             }
           };
 
