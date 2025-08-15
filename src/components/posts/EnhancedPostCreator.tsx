@@ -12,6 +12,7 @@ interface EnhancedPostCreatorProps {
   placeholder?: string;
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
+  disabled?: boolean;
 }
 
 interface Location {
@@ -34,7 +35,8 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   onSubmit,
   placeholder = "What's happening?",
   expanded,
-  onExpandedChange
+  onExpandedChange,
+  disabled = false
 }) => {
   const [isExpanded, setIsExpanded] = useState(expanded || false);
   const [loading, setLoading] = useState(false);
@@ -43,6 +45,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   const { toast } = useToast();
 
   const handleExpand = () => {
+    if (disabled) return;
     const newExpanded = !isExpanded;
     setIsExpanded(newExpanded);
     onExpandedChange?.(newExpanded);
@@ -56,6 +59,8 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
     hashtags: string[];
     mentions: string[];
   }) => {
+    if (disabled) return;
+    
     if (!data.content.trim() && data.files.length === 0) {
       toast({
         title: "Content required",
@@ -107,7 +112,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   if (!isExpanded) {
     // Collapsed state - simple input that expands when clicked
     return (
-      <EnhancedCard variant="glass" className="overflow-hidden">
+      <EnhancedCard variant="glass" className={`overflow-hidden ${disabled ? 'opacity-50' : ''}`}>
         <div className="p-4">
           <div className="flex gap-3">
             <Avatar className="h-10 w-10 ring-2 ring-primary/20">
@@ -118,10 +123,14 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
             </Avatar>
             
             <div 
-              className="flex-1 bg-muted/50 rounded-full px-4 py-3 cursor-pointer hover:bg-muted/70 transition-colors"
+              className={`flex-1 bg-muted/50 rounded-full px-4 py-3 transition-colors ${
+                disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-muted/70'
+              }`}
               onClick={handleExpand}
             >
-              <span className="text-muted-foreground">{placeholder}</span>
+              <span className="text-muted-foreground">
+                {disabled ? 'Offline - Please connect to create posts' : placeholder}
+              </span>
             </div>
           </div>
         </div>
@@ -130,7 +139,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
   }
 
   return (
-    <EnhancedCard variant="glass" className="overflow-hidden">
+    <EnhancedCard variant="glass" className={`overflow-hidden ${disabled ? 'opacity-50' : ''}`}>
       <div className="p-4">
         <div className="flex gap-3">
           <Avatar className="h-10 w-10 ring-2 ring-primary/20 flex-shrink-0">
@@ -154,7 +163,7 @@ export const EnhancedPostCreator: React.FC<EnhancedPostCreatorProps> = ({
               placeholder={placeholder}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
-              isLoading={loading}
+              isLoading={loading || disabled}
               submitText="Post"
             />
           </div>
