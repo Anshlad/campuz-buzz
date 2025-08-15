@@ -100,12 +100,6 @@ export const LoginForm = () => {
         >
           {loading ? 'Signing In...' : 'Sign In'}
         </Button>
-
-        <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Demo credentials:</p>
-          <p>Email: student@college.edu | Password: password</p>
-          <p>Admin: admin@college.edu | Password: admin</p>
-        </div>
       </form>
     </>
   );
