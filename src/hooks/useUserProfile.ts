@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 
 export interface UserProfile {
@@ -26,15 +26,6 @@ export interface UserProfile {
   updated_at: string;
 }
 
-// Helper function to safely convert Json to Record<string, any>
-const convertJsonToRecord = (json: any): Record<string, any> | null => {
-  if (!json) return null;
-  if (typeof json === 'object' && json !== null) {
-    return json as Record<string, any>;
-  }
-  return null;
-};
-
 export const useUserProfile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -53,59 +44,16 @@ export const useUserProfile = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // Profile doesn't exist, create one
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              user_id: user.id,
-              display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
-              role: 'student',
-              engagement_score: 0,
-              privacy_settings: {
-                email_visible: false,
-                profile_visible: true,
-                academic_info_visible: true,
-                notifications: {
-                  posts: true,
-                  comments: true,
-                  mentions: true,
-                  messages: true,
-                  events: true
-                }
-              }
-            })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          
-          // Convert the data to match our interface
-          const convertedProfile: UserProfile = {
-            ...newProfile,
-            social_links: convertJsonToRecord(newProfile.social_links),
-            privacy_settings: convertJsonToRecord(newProfile.privacy_settings)
-          };
-          setProfile(convertedProfile);
-        } else {
-          throw error;
-        }
-      } else {
-        // Convert the data to match our interface
-        const convertedProfile: UserProfile = {
-          ...data,
-          social_links: convertJsonToRecord(data.social_links),
-          privacy_settings: convertJsonToRecord(data.privacy_settings)
-        };
-        setProfile(convertedProfile);
+      let profileData = await databaseService.getProfile(user.id);
+      
+      if (!profileData) {
+        // Create profile if it doesn't exist
+        profileData = await databaseService.createProfile(user.id, {
+          display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User'
+        });
       }
+      
+      setProfile(profileData as UserProfile);
     } catch (error: any) {
       console.error('Error loading profile:', error);
       setError(error.message);
@@ -125,32 +73,15 @@ export const useUserProfile = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Convert the data to match our interface
-      const convertedProfile: UserProfile = {
-        ...data,
-        social_links: convertJsonToRecord(data.social_links),
-        privacy_settings: convertJsonToRecord(data.privacy_settings)
-      };
-      setProfile(convertedProfile);
+      const updatedProfile = await databaseService.updateProfile(user.id, updates);
+      setProfile(updatedProfile as UserProfile);
       
       toast({
         title: "Profile updated!",
         description: "Your changes have been saved successfully."
       });
 
-      return convertedProfile;
+      return updatedProfile;
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast({

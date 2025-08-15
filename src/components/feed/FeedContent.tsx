@@ -1,90 +1,82 @@
 
 import React from 'react';
-import { PostCard } from '@/components/posts/PostCard';
-import { Button } from '@/components/ui/button';
+import { EnhancedPostCard } from '@/components/posts/EnhancedPostCard';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, PenTool } from 'lucide-react';
-import { Post } from '@/hooks/usePosts';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EnhancedPost } from '@/hooks/useEnhancedPosts';
+import { Loader2 } from 'lucide-react';
 
 interface FeedContentProps {
-  posts: Post[];
+  posts: EnhancedPost[];
   loading: boolean;
-  onCreatePostClick: () => void;
-  onLikePost: (postId: string) => void;
+  onLike: (postId: string) => void;
+  onSave: (postId: string) => void;
+  onShare: (postId: string) => void;
 }
 
 export const FeedContent: React.FC<FeedContentProps> = ({
   posts,
   loading,
-  onCreatePostClick,
-  onLikePost
+  onLike,
+  onSave,
+  onShare
 }) => {
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
-        </div>
+      <div className="space-y-6">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+              <div className="flex items-center space-x-4 mt-4">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <div className="text-muted-foreground">
+            <h3 className="text-lg font-medium mb-2">No posts yet</h3>
+            <p>Be the first to share something with the community!</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Quick Post Card */}
-      <Card>
-        <CardContent className="p-4">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start text-muted-foreground"
-            onClick={onCreatePostClick}
-          >
-            <PenTool className="h-4 w-4 mr-2" />
-            What's on your mind?
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Posts */}
-      {posts.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <h3 className="text-lg font-medium mb-2">No posts yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Be the first to share something with your campus community!
-            </p>
-            <Button onClick={onCreatePostClick}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create First Post
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        posts.map((post) => (
-          <PostCard 
-            key={post.id} 
-            post={{
-              id: post.id,
-              author: {
-                name: post.profiles?.display_name || 'Anonymous',
-                avatar: post.profiles?.avatar_url || '',
-                major: post.profiles?.major || '',
-                year: post.profiles?.year || ''
-              },
-              content: post.content,
-              image: post.image_url,
-              timestamp: post.created_at,
-              likes: post.likes_count,
-              comments: post.comments_count,
-              tags: post.tags || [],
-              isLiked: false // TODO: Check if user liked this post
-            }}
-            onLike={() => onLikePost(post.id)} 
-          />
-        ))
-      )}
+      {posts.map((post) => (
+        <EnhancedPostCard
+          key={post.id}
+          post={post}
+          onLike={() => onLike(post.id)}
+          onSave={() => onSave(post.id)}
+          onShare={() => onShare(post.id)}
+        />
+      ))}
     </div>
   );
 };
+
+export default FeedContent;
