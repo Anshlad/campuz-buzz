@@ -15,7 +15,7 @@ import StudyGroups from '@/pages/StudyGroups';
 import { EventCalendar } from '@/pages/EventCalendar';
 import { Announcements } from '@/pages/Announcements';
 import Profile from '@/pages/Profile';
-import { Explore } from '@/pages/Explore';
+import Explore from '@/pages/Explore';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 

@@ -15,7 +15,7 @@ import StudyGroups from '@/pages/StudyGroups';
 import { EventCalendar } from '@/pages/EventCalendar';
 import { Announcements } from '@/pages/Announcements';
 import Profile from '@/pages/Profile';
-import { Explore } from '@/pages/Explore';
+import Explore from '@/pages/Explore';
 import NotFound from '@/pages/NotFound';
 
 export const AppLayout: React.FC = () => {

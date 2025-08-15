@@ -1,42 +1,41 @@
 
 import React from 'react';
 import { SearchResult } from '@/services/searchService';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Users, Heart, MessageCircle, User, Building } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Calendar, MapPin, Users, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface SearchResultsProps {
+export interface SearchResultsProps {
   results: SearchResult[];
   isLoading: boolean;
   total: number;
-  onLoadMore?: () => void;
-  hasMore?: boolean;
 }
 
 export const SearchResults: React.FC<SearchResultsProps> = ({
   results,
   isLoading,
-  total,
-  onLoadMore,
-  hasMore
+  total
 }) => {
-  if (isLoading && results.length === 0) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-10 h-10 bg-muted rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
-                  <div className="h-3 bg-muted rounded w-full" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <div className="flex items-center space-x-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
                 </div>
               </div>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-3/4" />
             </CardContent>
           </Card>
         ))}
@@ -47,158 +46,170 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
   if (results.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-          <User className="h-8 w-8 text-muted-foreground" />
+        <div className="text-muted-foreground">
+          <h3 className="text-lg font-medium mb-2">No results found</h3>
+          <p>Try adjusting your search terms or filters</p>
         </div>
-        <h3 className="text-lg font-medium mb-2">No results found</h3>
-        <p className="text-muted-foreground">Try adjusting your search terms or filters</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-muted-foreground mb-4">
-        {total} results found
+      <div className="text-sm text-muted-foreground">
+        Found {total} results
       </div>
       
       {results.map((result) => (
-        <SearchResultCard key={`${result.type}-${result.id}`} result={result} />
+        <Card key={`${result.type}-${result.id}`} className="hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            {result.type === 'post' && (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={result.author?.avatar_url} />
+                      <AvatarFallback>
+                        {result.author?.display_name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{result.author?.display_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(result.created_at!).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline">Post</Badge>
+                </div>
+                
+                {result.title && (
+                  <h3 className="text-lg font-semibold">{result.title}</h3>
+                )}
+                
+                <p className="text-muted-foreground line-clamp-3">
+                  {result.description}
+                </p>
+                
+                {result.tags && result.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {result.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                  <div className="flex items-center space-x-1">
+                    <Heart className="h-4 w-4" />
+                    <span>{result.likes_count || 0}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <MessageCircle className="h-4 w-4" />
+                    <span>{result.comments_count || 0}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {result.type === 'user' && (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={result.avatar_url} />
+                      <AvatarFallback>
+                        {result.title?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">{result.title}</h3>
+                      <p className="text-sm text-muted-foreground">{result.subtitle}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline">User</Badge>
+                </div>
+                
+                {result.description && (
+                  <p className="text-muted-foreground line-clamp-2">
+                    {result.description}
+                  </p>
+                )}
+                
+                <Button size="sm">Connect</Button>
+              </div>
+            )}
+
+            {result.type === 'community' && (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={result.avatar_url} />
+                      <AvatarFallback>
+                        {result.title?.charAt(0) || 'C'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">{result.title}</h3>
+                      <p className="text-sm text-muted-foreground">{result.subtitle}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline">Community</Badge>
+                </div>
+                
+                {result.description && (
+                  <p className="text-muted-foreground line-clamp-2">
+                    {result.description}
+                  </p>
+                )}
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>{result.member_count || 0} members</span>
+                  </div>
+                  <Button size="sm">Join</Button>
+                </div>
+              </div>
+            )}
+
+            {result.type === 'event' && (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-semibold">{result.title}</h3>
+                  <Badge variant="outline">Event</Badge>
+                </div>
+                
+                {result.description && (
+                  <p className="text-muted-foreground line-clamp-2">
+                    {result.description}
+                  </p>
+                )}
+                
+                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                  {result.date && (
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{new Date(result.date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {result.location && (
+                    <div className="flex items-center space-x-1">
+                      <MapPin className="h-4 w-4" />
+                      <span>{result.location}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <Button size="sm">RSVP</Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       ))}
-      
-      {hasMore && onLoadMore && (
-        <div className="text-center pt-4">
-          <Button
-            variant="outline"
-            onClick={onLoadMore}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Load More'}
-          </Button>
-        </div>
-      )}
     </div>
-  );
-};
-
-const SearchResultCard: React.FC<{ result: SearchResult }> = ({ result }) => {
-  const getTypeIcon = () => {
-    switch (result.type) {
-      case 'user':
-        return <User className="h-4 w-4" />;
-      case 'community':
-        return <Building className="h-4 w-4" />;
-      case 'event':
-        return <Calendar className="h-4 w-4" />;
-      default:
-        return <MessageCircle className="h-4 w-4" />;
-    }
-  };
-
-  const getTypeColor = () => {
-    switch (result.type) {
-      case 'user':
-        return 'bg-blue-100 text-blue-800';
-      case 'community':
-        return 'bg-green-100 text-green-800';
-      case 'event':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer">
-      <CardContent className="p-4">
-        <div className="flex items-start space-x-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={result.avatar_url} />
-            <AvatarFallback>
-              {result.title.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2 mb-1">
-              <Badge variant="secondary" className={`text-xs ${getTypeColor()}`}>
-                {getTypeIcon()}
-                <span className="ml-1 capitalize">{result.type}</span>
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(result.created_at), { addSuffix: true })}
-              </span>
-            </div>
-            
-            <h3 className="font-medium text-sm mb-1 line-clamp-1">
-              {result.title}
-            </h3>
-            
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-              {result.content}
-            </p>
-            
-            {/* Type-specific metadata */}
-            {result.type === 'post' && result.metadata && (
-              <div className="flex items-center space-x-4 text-xs text-muted-foreground">
-                {result.metadata.author && (
-                  <span>by {result.metadata.author}</span>
-                )}
-                {result.metadata.likes > 0 && (
-                  <span className="flex items-center">
-                    <Heart className="h-3 w-3 mr-1" />
-                    {result.metadata.likes}
-                  </span>
-                )}
-                {result.metadata.comments > 0 && (
-                  <span className="flex items-center">
-                    <MessageCircle className="h-3 w-3 mr-1" />
-                    {result.metadata.comments}
-                  </span>
-                )}
-              </div>
-            )}
-            
-            {result.type === 'user' && result.metadata && (
-              <div className="text-xs text-muted-foreground">
-                {result.metadata.major && (
-                  <span>{result.metadata.major}</span>
-                )}
-                {result.metadata.school && (
-                  <span> • {result.metadata.school}</span>
-                )}
-              </div>
-            )}
-            
-            {result.type === 'community' && result.metadata && (
-              <div className="flex items-center text-xs text-muted-foreground">
-                <Users className="h-3 w-3 mr-1" />
-                {result.metadata.member_count} members
-                {result.metadata.category && (
-                  <span className="ml-2">• {result.metadata.category}</span>
-                )}
-              </div>
-            )}
-            
-            {result.type === 'event' && result.metadata && (
-              <div className="text-xs text-muted-foreground space-y-1">
-                {result.metadata.start_time && (
-                  <div className="flex items-center">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {new Date(result.metadata.start_time).toLocaleDateString()}
-                  </div>
-                )}
-                {result.metadata.location && (
-                  <div className="flex items-center">
-                    <MapPin className="h-3 w-3 mr-1" />
-                    {result.metadata.location}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 };
