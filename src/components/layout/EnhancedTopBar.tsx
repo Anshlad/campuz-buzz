@@ -17,7 +17,7 @@ export const EnhancedTopBar = () => {
   const { profile } = useUserProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isOnline, isInstallable, installApp } = usePWA();
+  const { isOnline, canInstall, installApp } = usePWA();
   const [showSearch, setShowSearch] = useState(false);
 
   return (
@@ -101,7 +101,7 @@ export const EnhancedTopBar = () => {
           </motion.div>
 
           {/* Install App Button */}
-          {isInstallable && (
+          {canInstall && (
             <Button
               variant="outline"
               size="sm"

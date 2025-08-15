@@ -1,21 +1,36 @@
 
 // TODO: TEMPORARY BYPASS - Remove this file when authentication is restored
-export const MOCK_USER = {
+import { User, Session } from '@supabase/supabase-js';
+
+export const MOCK_USER: User = {
   id: 'mock-user-id-12345',
   email: 'demo@campuzbuzz.com',
+  aud: 'authenticated',
+  role: 'authenticated',
+  email_confirmed_at: new Date().toISOString(),
+  phone: null,
+  confirmed_at: new Date().toISOString(),
+  last_sign_in_at: new Date().toISOString(),
+  app_metadata: {
+    provider: 'email',
+    providers: ['email']
+  },
   user_metadata: {
     full_name: 'Demo User',
     avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
     display_name: 'Demo User'
   },
+  identities: [],
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
 
-export const MOCK_SESSION = {
+export const MOCK_SESSION: Session = {
   access_token: 'mock-access-token',
   refresh_token: 'mock-refresh-token',
+  expires_in: 3600,
   expires_at: Date.now() / 1000 + 3600, // 1 hour from now
+  token_type: 'bearer',
   user: MOCK_USER
 };
 

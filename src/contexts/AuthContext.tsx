@@ -30,8 +30,8 @@ const validatePasswordStrength = (password: string): { isStrong: boolean; errors
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // TODO: TEMPORARY BYPASS - Always return mock user and session
-  const [user, setUser] = useState<User | null>(MOCK_USER as User);
-  const [session, setSession] = useState<Session | null>(MOCK_SESSION as Session);
+  const [user, setUser] = useState<User | null>(MOCK_USER);
+  const [session, setSession] = useState<Session | null>(MOCK_SESSION);
   const [loading, setLoading] = useState(false); // No loading needed for mock
   const { toast } = useToast();
 
@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('AUTH BYPASS: Using mock user data instead of Supabase auth');
     
     // Simulate auth initialization complete
-    setUser(MOCK_USER as User);
-    setSession(MOCK_SESSION as Session);
+    setUser(MOCK_USER);
+    setSession(MOCK_SESSION);
     setLoading(false);
   }, []);
 
