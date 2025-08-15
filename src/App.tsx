@@ -25,17 +25,27 @@ const AppLoadingFallback = () => (
 
 function App() {
   useEffect(() => {
+    // Prevent flash of unstyled content during theme initialization
+    document.documentElement.classList.add('loading');
+    
+    // Remove loading class after theme is applied
+    const timer = setTimeout(() => {
+      document.documentElement.classList.remove('loading');
+    }, 100);
+
     // Add PWA manifest to head
     const link = document.createElement('link');
     link.rel = 'manifest';
     link.href = '/manifest.json';
     document.head.appendChild(link);
 
-    // Add PWA theme color
-    const themeColorMeta = document.createElement('meta');
-    themeColorMeta.name = 'theme-color';
-    themeColorMeta.content = '#8b5cf6';
-    document.head.appendChild(themeColorMeta);
+    // Add PWA theme color (will be updated by ThemeProvider)
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeColorMeta);
+    }
 
     // Add apple-mobile-web-app-capable for iOS
     const appleMeta = document.createElement('meta');
@@ -50,8 +60,8 @@ function App() {
     document.head.appendChild(appleStatusMeta);
 
     return () => {
+      clearTimeout(timer);
       document.head.removeChild(link);
-      document.head.removeChild(themeColorMeta);
       document.head.removeChild(appleMeta);
       document.head.removeChild(appleStatusMeta);
     };
@@ -60,9 +70,9 @@ function App() {
   return (
     <ErrorBoundaryWithRetry>
       <AuthProvider>
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <ThemeProvider defaultTheme="dark" storageKey="campuzbuzz_theme">
           <BrowserRouter>
-            <div className="min-h-screen bg-background text-foreground">
+            <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
               <Routes>
                 {/* TODO: TEMPORARY BYPASS - Removed /auth route, always show main app */}
                 <Route path="/*" element={
