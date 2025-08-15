@@ -15,6 +15,7 @@ const Explore: React.FC = () => {
     query,
     results,
     suggestions,
+    total,
     trendingTopics,
     recommendedCommunities,
     isLoading,
@@ -37,7 +38,7 @@ const Explore: React.FC = () => {
       </div>
 
       {query ? (
-        <SearchResults results={results} isLoading={isLoading} />
+        <SearchResults results={results} isLoading={isLoading} total={total} />
       ) : (
         <Tabs defaultValue="trending" className="space-y-6">
           <TabsList>

@@ -88,7 +88,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                 )}
                 
                 <p className="text-muted-foreground line-clamp-3">
-                  {result.description}
+                  {result.description || result.content}
                 </p>
                 
                 {result.tags && result.tags.length > 0 && (

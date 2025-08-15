@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SearchFilters {
-  type?: 'all' | 'posts' | 'users' | 'communities' | 'events';
+  type?: string[];
   dateRange?: 'all' | 'day' | 'week' | 'month' | 'year';
   sortBy?: 'relevance' | 'recent' | 'popular';
   location?: string;
@@ -13,10 +12,22 @@ export interface SearchResult {
   id: string;
   type: 'post' | 'user' | 'community' | 'event';
   title: string;
+  subtitle?: string;
   content: string;
+  description?: string;
   avatar_url?: string;
   created_at: string;
+  date?: string;
+  location?: string;
+  tags?: string[];
+  likes_count?: number;
+  comments_count?: number;
+  member_count?: number;
   relevance_score?: number;
+  author?: {
+    display_name: string;
+    avatar_url?: string;
+  };
   metadata: any;
 }
 

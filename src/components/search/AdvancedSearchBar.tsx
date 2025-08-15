@@ -43,7 +43,10 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
     onFiltersChange({});
   };
 
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  const activeFilterCount = Object.values(filters).filter(value => {
+    if (Array.isArray(value)) return value.length > 0;
+    return Boolean(value);
+  }).length;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -136,7 +139,7 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
                         <SelectValue placeholder="Any time" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="day">Today</SelectItem>
                         <SelectItem value="week">This week</SelectItem>
                         <SelectItem value="month">This month</SelectItem>
                         <SelectItem value="year">This year</SelectItem>
@@ -155,8 +158,8 @@ export const AdvancedSearchBar: React.FC<AdvancedSearchBarProps> = ({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="relevance">Relevance</SelectItem>
-                        <SelectItem value="date">Date</SelectItem>
-                        <SelectItem value="popularity">Popularity</SelectItem>
+                        <SelectItem value="recent">Date</SelectItem>
+                        <SelectItem value="popular">Popularity</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
