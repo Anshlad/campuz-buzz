@@ -1822,6 +1822,10 @@ export type Database = {
         Args: { content: string }
         Returns: string[]
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_public_profile_info: {
         Args: { target_user_id: string }
         Returns: {
