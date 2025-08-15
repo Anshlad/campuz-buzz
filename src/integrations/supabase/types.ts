@@ -53,6 +53,122 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          attachments: Json | null
+          content: string
+          created_at: string | null
+          edited_at: string | null
+          id: string
+          message_type: string | null
+          reply_to: string | null
+          room_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          content: string
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          message_type?: string | null
+          reply_to?: string | null
+          room_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string
+          created_at?: string | null
+          edited_at?: string | null
+          id?: string
+          message_type?: string | null
+          reply_to?: string | null
+          room_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          id: string
+          joined_at: string | null
+          last_read_at: string | null
+          role: string | null
+          room_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          last_read_at?: string | null
+          role?: string | null
+          room_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          last_read_at?: string | null
+          role?: string | null
+          room_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_private: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -1591,6 +1707,35 @@ export type Database = {
             columns: ["dm_conversation_id"]
             isOneToOne: false
             referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      typing_status: {
+        Row: {
+          id: string
+          room_id: string | null
+          started_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          room_id?: string | null
+          started_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          room_id?: string | null
+          started_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_status_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
             referencedColumns: ["id"]
           },
         ]
