@@ -5,13 +5,30 @@ import { NotificationService } from '@/services/notificationService';
 
 const PAGE_SIZE = 20;
 
+// Utility function to safely convert JSON to PostReactions
+const safeParseReactions = (reactions: any): PostReactions => {
+  if (!reactions || typeof reactions !== 'object' || Array.isArray(reactions)) {
+    return {};
+  }
+  
+  const result: PostReactions = {};
+  for (const [key, value] of Object.entries(reactions)) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      const reaction = value as any;
+      result[key] = {
+        count: typeof reaction.count === 'number' ? reaction.count : 0,
+        users: Array.isArray(reaction.users) ? reaction.users : [],
+        hasReacted: typeof reaction.hasReacted === 'boolean' ? reaction.hasReacted : false,
+      };
+    }
+  }
+  return result;
+};
+
 // Utility function to transform database post to client post
 const transformDatabasePostToPost = (post: DatabasePost, profile: Profile | undefined): EnhancedPostData => {
   // Safely parse reactions from database JSON
-  let reactions: PostReactions = {};
-  if (post.reactions && typeof post.reactions === 'object' && post.reactions !== null) {
-    reactions = post.reactions as PostReactions;
-  }
+  const reactions = safeParseReactions(post.reactions);
 
   return {
     ...post,
@@ -98,9 +115,15 @@ export class EnhancedPostsService {
         return null;
       }
 
+      // TypeScript assertion after null check
+      const validPost = post as DatabasePost;
+      
       // Safely access profiles with null check
-      const profile = post.profiles && Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-      return transformDatabasePostToPost(post as DatabasePost, profile);
+      const profile = validPost.profiles && Array.isArray(validPost.profiles) 
+        ? validPost.profiles[0] 
+        : validPost.profiles;
+      
+      return transformDatabasePostToPost(validPost, profile);
     }).filter((post): post is EnhancedPostData => post !== null);
   }
 
@@ -148,10 +171,7 @@ export class EnhancedPostsService {
       }
 
       // Safely parse reactions with proper type checking
-      let reactions: PostReactions = {};
-      if (data.reactions && typeof data.reactions === 'object' && data.reactions !== null && !Array.isArray(data.reactions)) {
-        reactions = data.reactions as PostReactions;
-      }
+      const reactions = safeParseReactions(data.reactions);
 
       return {
         ...data,
