@@ -202,62 +202,42 @@ export const useFastPosts = () => {
       if (!currentPost) return;
 
       const wasLiked = currentPost.is_liked;
-      const currentCount = currentPost.likes_count;
 
-      // Optimistic update
+      // Optimistic update first
       setPosts(prev => prev.map(p => {
         if (p.id === postId) {
           return {
             ...p,
             is_liked: !wasLiked,
-            likes_count: wasLiked ? Math.max(0, currentCount - 1) : currentCount + 1
+            likes_count: wasLiked 
+              ? Math.max(0, p.likes_count - 1) 
+              : p.likes_count + 1
           };
         }
         return p;
       }));
 
+      // Then update database
       if (wasLiked) {
         // Unlike
-        const { error } = await supabase
+        await supabase
           .from('likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', user.id);
-        
-        if (error) throw error;
       } else {
         // Like
-        const { error } = await supabase
+        await supabase
           .from('likes')
           .insert({
             post_id: postId,
             user_id: user.id
           });
-        
-        if (error) throw error;
-      }
-
-      // Refresh the post to get accurate count from database
-      const { data: updatedPost } = await supabase
-        .from('posts')
-        .select('likes_count')
-        .eq('id', postId)
-        .single();
-
-      if (updatedPost) {
-        setPosts(prev => prev.map(p => {
-          if (p.id === postId) {
-            return {
-              ...p,
-              likes_count: updatedPost.likes_count || 0
-            };
-          }
-          return p;
-        }));
       }
 
     } catch (error) {
       console.error('Error toggling like:', error);
+      
       // Revert optimistic update on error
       const originalPost = posts.find(p => p.id === postId);
       if (originalPost) {
