@@ -49,7 +49,7 @@ interface PostCreationData {
   location?: string;
   tags?: string[];
   mentions?: string[];
-  visibility: 'public' | 'private' | 'community';
+  visibility: 'public' | 'friends' | 'private';
 }
 
 // Helper function to convert Json reactions to our expected format
@@ -167,7 +167,7 @@ export const useOptimizedPosts = () => {
           image_url: imageUrl,
           post_type: postType,
           tags: postData.tags || [],
-          visibility: postData.visibility || 'public'
+          visibility: (postData.visibility as 'public' | 'friends' | 'private') || 'public'
         })
         .select(`
           *,

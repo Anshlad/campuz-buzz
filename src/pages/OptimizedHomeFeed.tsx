@@ -4,7 +4,7 @@ import { Plus, Wifi, WifiOff, Bell } from 'lucide-react';
 import { SmartSkeletonLoader } from '@/components/common/SmartSkeletonLoader';
 import { ErrorBoundaryWithRetry } from '@/components/common/ErrorBoundaryWithRetry';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
-import { useRealtimePosts } from '@/hooks/useRealtimePosts';
+import { useOptimizedPosts } from '@/hooks/useOptimizedPosts';
 import { realtimeNotificationsService } from '@/services/realtimeNotificationsService';
 import { EnhancedPostCreator } from '@/components/posts/EnhancedPostCreator';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
@@ -20,7 +20,7 @@ const TrendingSidebar = lazy(() => import('@/components/feed/TrendingSidebar'));
 export default function OptimizedHomeFeed() {
   const { user } = useAuth();
   const [showPostCreator, setShowPostCreator] = useState(false);
-  const { posts, loading, error, createPost, isCreating, retry, subscribeToPostUpdates } = useRealtimePosts();
+  const { posts, loading, error, createPost, isCreating, retry } = useOptimizedPosts();
   const { isOnline } = usePWA();
   const [showOfflineAlert, setShowOfflineAlert] = useState(false);
   const [newPostsAvailable, setNewPostsAvailable] = useState(0);
@@ -61,14 +61,7 @@ export default function OptimizedHomeFeed() {
     };
   }, [user]);
 
-  // Subscribe to individual post updates for real-time reactions/comments
-  useEffect(() => {
-    const subscriptions = posts.map(post => subscribeToPostUpdates(post.id));
-    
-    return () => {
-      subscriptions.forEach(unsub => unsub?.());
-    };
-  }, [posts, subscribeToPostUpdates]);
+  // TODO: Add real-time post updates later
 
   if (error && !posts.length) {
     return (
