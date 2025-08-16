@@ -47,7 +47,7 @@ class EnhancedSearchService {
         }
       }
 
-      // Search posts
+      // Search posts with proper join
       if (!filters?.type || filters.type === 'post') {
         const { data: posts } = await supabase
           .from('posts')
@@ -57,24 +57,28 @@ class EnhancedSearchService {
             content,
             user_id,
             created_at,
-            profiles!inner(display_name, avatar_url)
+            profiles!posts_user_id_fkey(display_name, avatar_url)
           `)
           .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
           .limit(limit);
 
         if (posts) {
-          results.push(...posts.map(post => ({
-            id: post.id,
-            type: 'post' as const,
-            title: post.title || 'Untitled Post',
-            description: post.content?.substring(0, 200) + '...',
-            imageUrl: undefined,
-            metadata: {
-              ...post,
-              author: post.profiles?.display_name || 'Anonymous',
-              authorAvatar: post.profiles?.avatar_url
-            }
-          })));
+          results.push(...posts.map(post => {
+            // Safely access profile data
+            const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+            return {
+              id: post.id,
+              type: 'post' as const,
+              title: post.title || 'Untitled Post',
+              description: post.content?.substring(0, 200) + '...',
+              imageUrl: undefined,
+              metadata: {
+                ...post,
+                author: profile?.display_name || 'Anonymous',
+                authorAvatar: profile?.avatar_url
+              }
+            };
+          }));
         }
       }
 
@@ -112,7 +116,7 @@ class EnhancedSearchService {
             type: 'event' as const,
             title: event.title,
             description: event.description,
-            imageUrl: event.image_url,
+            imageUrl: undefined, // events table doesn't have image_url field
             metadata: event
           })));
         }
@@ -215,7 +219,7 @@ class EnhancedSearchService {
             created_at,
             tags,
             user_id,
-            profiles!inner(display_name, avatar_url)
+            profiles!posts_user_id_fkey(display_name, avatar_url)
           `)
           .or(`title.ilike.%${query}%,content.ilike.%${query}%`);
 
@@ -230,24 +234,27 @@ class EnhancedSearchService {
         }
 
         if (author) {
-          postQuery = postQuery.eq('profiles.display_name', author);
+          // We'll filter by author after getting the results since we need to join
         }
 
         const { data: posts } = await postQuery.limit(limit);
 
         if (posts) {
-          results.push(...posts.map(post => ({
-            id: post.id,
-            type: 'post' as const,
-            title: post.title || 'Untitled Post',
-            description: post.content?.substring(0, 200) + '...',
-            imageUrl: undefined,
-            metadata: {
-              ...post,
-              author: post.profiles?.display_name || 'Anonymous',
-              authorAvatar: post.profiles?.avatar_url
-            }
-          })));
+          results.push(...posts.map(post => {
+            const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+            return {
+              id: post.id,
+              type: 'post' as const,
+              title: post.title || 'Untitled Post',
+              description: post.content?.substring(0, 200) + '...',
+              imageUrl: undefined,
+              metadata: {
+                ...post,
+                author: profile?.display_name || 'Anonymous',
+                authorAvatar: profile?.avatar_url
+              }
+            };
+          }).filter(post => !author || post.metadata.author === author));
         }
       }
 
