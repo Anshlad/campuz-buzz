@@ -198,10 +198,11 @@ export const useFastPosts = () => {
         return;
       }
 
-      const post = posts.find(p => p.id === postId);
-      if (!post) return;
+      const currentPost = posts.find(p => p.id === postId);
+      if (!currentPost) return;
 
-      const wasLiked = post.is_liked;
+      const wasLiked = currentPost.is_liked;
+      const currentCount = currentPost.likes_count;
 
       // Optimistic update
       setPosts(prev => prev.map(p => {
@@ -209,7 +210,7 @@ export const useFastPosts = () => {
           return {
             ...p,
             is_liked: !wasLiked,
-            likes_count: wasLiked ? p.likes_count - 1 : p.likes_count + 1
+            likes_count: wasLiked ? Math.max(0, currentCount - 1) : currentCount + 1
           };
         }
         return p;
@@ -224,12 +225,6 @@ export const useFastPosts = () => {
           .eq('user_id', user.id);
         
         if (error) throw error;
-
-        // Update likes count in posts table
-        await supabase
-          .from('posts')
-          .update({ likes_count: post.likes_count - 1 })
-          .eq('id', postId);
       } else {
         // Like
         const { error } = await supabase
@@ -240,24 +235,43 @@ export const useFastPosts = () => {
           });
         
         if (error) throw error;
+      }
 
-        // Update likes count in posts table
-        await supabase
-          .from('posts')
-          .update({ likes_count: post.likes_count + 1 })
-          .eq('id', postId);
+      // Refresh the post to get accurate count from database
+      const { data: updatedPost } = await supabase
+        .from('posts')
+        .select('likes_count')
+        .eq('id', postId)
+        .single();
+
+      if (updatedPost) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              likes_count: updatedPost.likes_count || 0
+            };
+          }
+          return p;
+        }));
       }
 
     } catch (error) {
       console.error('Error toggling like:', error);
       // Revert optimistic update on error
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId) {
-          const post = posts.find(p => p.id === postId);
-          return post ? { ...post } : p;
-        }
-        return p;
-      }));
+      const originalPost = posts.find(p => p.id === postId);
+      if (originalPost) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              is_liked: originalPost.is_liked,
+              likes_count: originalPost.likes_count
+            };
+          }
+          return p;
+        }));
+      }
       
       toast({
         title: "Error",
