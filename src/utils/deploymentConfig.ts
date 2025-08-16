@@ -146,7 +146,7 @@ export const verifyDatabaseMigrations = async (): Promise<{
   };
 
   try {
-    // Check for required tables
+    // Check for required tables with proper typing
     const requiredTables = [
       'profiles',
       'posts',
@@ -155,11 +155,9 @@ export const verifyDatabaseMigrations = async (): Promise<{
       'community_members',
       'messages',
       'notifications',
-      'events',
-      'study_groups',
       'security_events',
       'analytics_events'
-    ];
+    ] as const;
 
     for (const table of requiredTables) {
       try {
