@@ -1,50 +1,100 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { enhancedPostsService } from '@/services/enhancedPostsService';
-import { EnhancedPostData, PostFilter } from '@/types/posts';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { EnhancedPostsService, PostFilter } from '@/services/enhancedPostsService';
+import { Post } from '@/types/posts';
 
 export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
-  const [posts, setPosts] = useState<EnhancedPostData[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [filter, setFilter] = useState<PostFilter>(initialFilter);
   const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
+  const [filter, setFilter] = useState<PostFilter>(initialFilter);
   const { toast } = useToast();
 
-  const loadPosts = useCallback(async (resetPosts = false) => {
+  // Load posts with real-time updates
+  const loadPosts = useCallback(async (refresh = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (refresh) {
+        setLoading(true);
+        setError(null);
+      }
+
+      const data = await EnhancedPostsService.getPosts(filter);
       
-      const currentPage = resetPosts ? 1 : page;
-      const newPosts = await enhancedPostsService.getPosts(filter, currentPage);
-      
-      if (resetPosts) {
-        setPosts(newPosts);
-        setPage(2);
+      if (refresh) {
+        setPosts(data);
       } else {
-        setPosts(prev => [...prev, ...newPosts]);
-        setPage(prev => prev + 1);
+        setPosts(prev => [...prev, ...data]);
       }
       
-      setHasMore(newPosts.length === 20); // Assuming 20 is the limit
+      setHasMore(data.length === 20); // Assuming page size of 20
     } catch (err) {
-      const error = err as Error;
-      setError(error);
+      console.error('Error loading posts:', err);
+      setError(err as Error);
       toast({
         title: "Error loading posts",
-        description: error.message,
+        description: "Please try again later.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
-  }, [filter, page, toast]);
+  }, [filter, toast]);
+
+  // Real-time subscription
+  useEffect(() => {
+    // Subscribe to new posts
+    const channel = supabase
+      .channel('posts_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'posts'
+        },
+        async (payload) => {
+          console.log('New post created:', payload);
+          // Reload posts to get the new one with proper joins
+          await loadPosts(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'posts'
+        },
+        async (payload) => {
+          console.log('Post updated:', payload);
+          // Update specific post in the list
+          setPosts(prev => prev.map(post => 
+            post.id === payload.new.id 
+              ? { ...post, ...payload.new } as Post
+              : post
+          ));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadPosts]);
+
+  // Initial load
+  useEffect(() => {
+    loadPosts(true);
+  }, [loadPosts]);
+
+  const updateFilter = useCallback((newFilter: Partial<PostFilter>) => {
+    setFilter(prev => ({ ...prev, ...newFilter }));
+  }, []);
 
   const refreshPosts = useCallback(() => {
-    setPage(1);
     loadPosts(true);
   }, [loadPosts]);
 
@@ -54,54 +104,50 @@ export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
     }
   }, [loading, hasMore, loadPosts]);
 
-  const updateFilter = useCallback((newFilter: Partial<PostFilter>) => {
-    setFilter(prev => ({ ...prev, ...newFilter }));
-    setPage(1);
-  }, []);
-
-  const handlePostUpdate = useCallback((updatedPost: EnhancedPostData) => {
-    setPosts(prev => {
-      const existingIndex = prev.findIndex(p => p.id === updatedPost.id);
-      if (existingIndex >= 0) {
-        const newPosts = [...prev];
-        newPosts[existingIndex] = updatedPost;
-        return newPosts;
-      } else {
-        // New post, add to beginning
-        return [updatedPost, ...prev];
-      }
-    });
-  }, []);
-
+  // Enhanced post interactions with notifications
   const handlePostReaction = useCallback(async (postId: string, reactionType: string) => {
     try {
-      await enhancedPostsService.reactToPost(postId, reactionType);
+      await EnhancedPostsService.reactToPost(postId, reactionType);
       
-      // Optimistically update UI
+      // Optimistic update
       setPosts(prev => prev.map(post => {
         if (post.id === postId) {
           const reactions = { ...post.reactions };
-          const currentReaction = reactions[reactionType] || { count: 0, users: [] };
+          const reaction = reactions[reactionType];
           
-          if (post.user_reaction === reactionType) {
-            // Remove reaction
-            currentReaction.count = Math.max(0, currentReaction.count - 1);
-            return { ...post, user_reaction: undefined, reactions };
+          if (reaction?.hasReacted) {
+            reaction.count = Math.max(0, reaction.count - 1);
+            reaction.hasReacted = false;
           } else {
-            // Add or change reaction
-            if (post.user_reaction && reactions[post.user_reaction]) {
-              reactions[post.user_reaction].count = Math.max(0, reactions[post.user_reaction].count - 1);
+            // Remove other reactions first
+            Object.values(reactions).forEach(r => {
+              if (r.hasReacted) {
+                r.count = Math.max(0, r.count - 1);
+                r.hasReacted = false;
+              }
+            });
+            
+            // Add new reaction
+            if (reaction) {
+              reaction.count += 1;
+              reaction.hasReacted = true;
             }
-            currentReaction.count += 1;
-            return { ...post, user_reaction: reactionType, reactions: { ...reactions, [reactionType]: currentReaction } };
           }
+          
+          return { ...post, reactions };
         }
         return post;
       }));
+
+      toast({
+        title: "Reaction updated",
+        description: "Your reaction has been recorded."
+      });
     } catch (error) {
+      console.error('Error reacting to post:', error);
       toast({
         title: "Error",
-        description: "Failed to react to post",
+        description: "Failed to update reaction.",
         variant: "destructive"
       });
     }
@@ -109,23 +155,24 @@ export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
 
   const handlePostSave = useCallback(async (postId: string) => {
     try {
-      await enhancedPostsService.savePost(postId);
+      await EnhancedPostsService.savePost(postId);
       
-      // Optimistically update UI
+      // Optimistic update
       setPosts(prev => prev.map(post => 
         post.id === postId 
           ? { ...post, is_saved: !post.is_saved }
           : post
       ));
-      
+
       toast({
-        title: "Success",
-        description: "Post saved successfully"
+        title: "Post saved",
+        description: "Post has been saved to your collection."
       });
     } catch (error) {
+      console.error('Error saving post:', error);
       toast({
         title: "Error",
-        description: "Failed to save post",
+        description: "Failed to save post.",
         variant: "destructive"
       });
     }
@@ -133,51 +180,21 @@ export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
 
   const handlePostShare = useCallback(async (postId: string) => {
     try {
-      await enhancedPostsService.sharePost(postId);
-      
-      // Update shares count
-      setPosts(prev => prev.map(post => 
-        post.id === postId 
-          ? { ...post, shares_count: post.shares_count + 1 }
-          : post
-      ));
-      
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Check out this post',
-          url: `${window.location.origin}/post/${postId}`
-        });
-      } else {
-        await navigator.clipboard.writeText(`${window.location.origin}/post/${postId}`);
-        toast({
-          title: "Success",
-          description: "Link copied to clipboard"
-        });
-      }
+      await EnhancedPostsService.sharePost(postId);
     } catch (error) {
+      console.error('Error sharing post:', error);
       toast({
         title: "Error",
-        description: "Failed to share post",
+        description: "Failed to share post.",
         variant: "destructive"
       });
     }
   }, [toast]);
 
-  // Set up real-time subscriptions
-  useEffect(() => {
-    const unsubscribe = enhancedPostsService.subscribeToPostUpdates(handlePostUpdate);
-    return () => {
-      unsubscribe();
-    };
-  }, [handlePostUpdate]);
-
-  // Load initial posts
-  useEffect(() => {
-    refreshPosts();
-  }, [filter]);
+  const memoizedPosts = useMemo(() => posts, [posts]);
 
   return {
-    posts,
+    posts: memoizedPosts,
     loading,
     error,
     hasMore,

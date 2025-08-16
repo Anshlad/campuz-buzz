@@ -1,126 +1,125 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Bell, Search, MessageSquare, User, Menu, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Plus, MessageSquare } from 'lucide-react';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-import { motion } from 'framer-motion';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from 'next-themes';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
-export const TopBar: React.FC = () => {
-  const navigate = useNavigate();
-  const { profile } = useUserProfile();
+interface TopBarProps {
+  onMenuClick?: () => void;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
+  const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
-
-  const handleLogoClick = () => {
-    window.location.reload();
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/explore?q=${encodeURIComponent(searchQuery)}`);
+    // TODO: Implement search functionality
+    console.log('Searching for:', searchQuery);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
   return (
-    <motion.header 
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="bg-background/95 backdrop-blur-md border-b border-border px-4 lg:px-6 py-3 sticky top-0 z-30"
-    >
-      <div className="flex items-center justify-between">
-        {/* Mobile sidebar trigger */}
-        <div className="flex items-center space-x-4">
-          <SidebarTrigger className="md:hidden" />
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mr-2 md:hidden"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
 
-          {/* Logo - Desktop only, hidden when sidebar is visible */}
-          <motion.button 
-            onClick={handleLogoClick}
-            className="hidden lg:flex items-center space-x-3 hover:opacity-80 transition-opacity"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <img 
-              src="/lovable-uploads/e51f26a6-a9d4-4b1f-a787-2f24bdc5c8bf.png" 
-              alt="CampuzBuzz Logo" 
-              className="h-8 w-8 object-contain"
-            />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              CampuzBuzz
-            </span>
-          </motion.button>
+        {/* Logo */}
+        <div className="mr-4">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            CampuzBuzz
+          </h1>
         </div>
 
-        {/* Search bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4 lg:mx-8">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input 
+        {/* Search */}
+        <div className="flex-1 max-w-md mx-4">
+          <form onSubmit={handleSearch} className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search posts, users, communities..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search posts, people, groups..." 
-              className="pl-10 bg-muted/50 border-border/50 focus:bg-background focus:border-primary transition-all duration-200 rounded-full"
+              className="pl-10"
             />
-          </div>
-        </form>
+          </form>
+        </div>
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
-          {/* Quick Actions - Desktop */}
-          <div className="hidden md:flex items-center space-x-2">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="hover:bg-accent relative"
-                onClick={() => navigate('/create')}
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
-            </motion.div>
-            
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="hover:bg-accent relative"
-                onClick={() => navigate('/chat')}
-              >
-                <MessageSquare className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  3
-                </span>
-              </Button>
-            </motion.div>
-          </div>
+          {/* Notification Bell */}
+          <NotificationBell />
 
-          {/* Notifications */}
-          <NotificationCenter />
+          {/* Messages */}
+          <Button variant="ghost" size="icon">
+            <MessageSquare className="h-5 w-5" />
+          </Button>
 
-          {/* Profile */}
-          <motion.button
-            onClick={() => navigate('/profile')}
-            className="flex items-center space-x-2 hover:bg-accent rounded-lg p-2 transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
-            <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-              <AvatarImage src={profile?.avatar_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                {profile?.display_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <span className="hidden sm:block text-sm font-medium text-foreground">
-              {profile?.display_name?.split(' ')[0] || 'User'}
-            </span>
-          </motion.button>
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </Button>
+
+          {/* User Menu */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={user.user_metadata?.avatar_url} />
+                    <AvatarFallback>
+                      {user.email?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button variant="outline" size="sm">
+              Sign In
+            </Button>
+          )}
         </div>
       </div>
-    </motion.header>
+    </header>
   );
 };

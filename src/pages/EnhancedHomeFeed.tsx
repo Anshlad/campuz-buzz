@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProfileSidebar } from '@/components/feed/ProfileSidebar';
 import { TrendingSidebar } from '@/components/feed/TrendingSidebar';
@@ -15,6 +15,25 @@ const EnhancedHomeFeed = () => {
   const { toast } = useToast();
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const requestPermission = async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          toast({
+            title: "Notifications enabled",
+            description: "You'll receive real-time notifications for interactions."
+          });
+        }
+      };
+      
+      // Delay the request slightly to not overwhelm the user
+      const timer = setTimeout(requestPermission, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleCreatePost = async (postData: any) => {
     try {

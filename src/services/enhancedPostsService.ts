@@ -1,478 +1,365 @@
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  EnhancedPostData, 
-  PostFilter, 
-  PostCreationData, 
-  Post, 
-  Profile, 
-  PostReactions, 
-  UserPostInteractions,
-  Hashtag,
-  DatabasePost
-} from '@/types/posts';
+import { PostFilter, Post, DatabasePost, Profile, PostReactions } from '@/types/posts';
+import { NotificationService } from '@/services/notificationService';
 
-class EnhancedPostsService {
-  private static instance: EnhancedPostsService;
-  
-  static getInstance(): EnhancedPostsService {
-    if (!EnhancedPostsService.instance) {
-      EnhancedPostsService.instance = new EnhancedPostsService();
-    }
-    return EnhancedPostsService.instance;
-  }
+export interface EnhancedPostData extends Post {
+  author: Profile;
+  is_liked: boolean;
+  is_saved: boolean;
+  user_reaction?: string;
+}
 
-  private transformDatabasePostToPost(dbPost: DatabasePost): Post {
-    return {
-      id: dbPost.id,
-      user_id: dbPost.user_id,
-      title: dbPost.title,
-      content: dbPost.content,
-      image_url: dbPost.image_url,
-      post_type: dbPost.post_type as 'text' | 'image' | 'video' | 'poll',
-      tags: dbPost.tags || [],
-      likes_count: dbPost.likes_count,
-      comments_count: dbPost.comments_count,
-      shares_count: dbPost.shares_count,
-      saves_count: dbPost.saves_count,
-      created_at: dbPost.created_at,
-      updated_at: dbPost.updated_at,
-      visibility: dbPost.visibility as 'public' | 'friends' | 'private',
-      hashtags: dbPost.hashtags || [],
-      location: dbPost.location,
-      mentions: dbPost.mentions || [],
-      reactions: {},
-      profiles: dbPost.profiles,
-      community_id: dbPost.community_id,
-      file_name: dbPost.file_name,
-      file_url: dbPost.file_url,
-      is_pinned: dbPost.is_pinned
-    };
-  }
+const PAGE_SIZE = 20;
 
-  async getPosts(filter: PostFilter = {}, page = 1, limit = 20): Promise<EnhancedPostData[]> {
+// Utility function to transform database post to client post
+const transformPost = (post: DatabasePost, profile: Profile | undefined): EnhancedPostData => ({
+  ...post,
+  author: {
+    id: post.user_id,
+    display_name: profile?.display_name || 'Anonymous',
+    avatar_url: profile?.avatar_url,
+    major: profile?.major,
+    year: profile?.year,
+  },
+  is_liked: false,
+  is_saved: false,
+  user_reaction: undefined,
+  likes_count: post.likes_count || 0,
+  comments_count: post.comments_count || 0,
+  shares_count: post.shares_count || 0,
+  saves_count: post.saves_count || 0,
+  reactions: {} as PostReactions,
+});
+
+export class EnhancedPostsService {
+  static async getPosts(filter: PostFilter = {}, page: number = 0): Promise<EnhancedPostData[]> {
     let query = supabase
       .from('posts')
-      .select(`
-        *,
+      .select(
+        `
+        id,
+        user_id,
+        title,
+        content,
+        image_url,
+        post_type,
+        tags,
+        likes_count,
+        comments_count,
+        shares_count,
+        saves_count,
+        created_at,
+        updated_at,
+        visibility,
+        location,
+        mentions,
+        community_id,
+        file_name,
+        file_url,
+        is_pinned,
         profiles:user_id (
+          id,
           display_name,
           avatar_url,
           major,
           year
         )
-      `);
+      `
+      )
+      .order('created_at', { ascending: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-    // Apply filters
     if (filter.type) {
       query = query.eq('post_type', filter.type);
     }
 
-    if (filter.tags && filter.tags.length > 0) {
-      query = query.overlaps('tags', filter.tags);
-    }
-
-    if (filter.author) {
-      query = query.eq('user_id', filter.author);
-    }
-
-    if (filter.visibility && filter.visibility !== 'all') {
+    if (filter.visibility) {
       query = query.eq('visibility', filter.visibility);
     }
 
-    if (filter.dateRange) {
-      query = query
-        .gte('created_at', filter.dateRange.start.toISOString())
-        .lte('created_at', filter.dateRange.end.toISOString());
-    }
-
-    // Apply sorting
-    switch (filter.sortBy) {
-      case 'popular':
-        query = query.order('likes_count', { ascending: false });
-        break;
-      case 'trending':
-        // Custom trending algorithm based on engagement rate
-        query = query.order('likes_count', { ascending: false });
-        break;
-      case 'recent':
-      default:
-        query = query.order('created_at', { ascending: false });
-        break;
-    }
-
-    query = query.range((page - 1) * limit, page * limit - 1);
-
     const { data, error } = await query;
-    if (error) throw error;
 
-    const dbPosts = data as DatabasePost[] || [];
-    const posts = dbPosts.map(dbPost => this.transformDatabasePostToPost(dbPost));
-    
-    return this.transformPosts(posts);
+    if (error) {
+      console.error('Error fetching posts:', error);
+      throw error;
+    }
+
+    return (data || []).map((post) => {
+      const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+      return transformPost(post, profile);
+    });
   }
 
-  async createPost(postData: PostCreationData): Promise<EnhancedPostData> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) throw new Error('Not authenticated');
+  static async createPost(post: Omit<Post, 'id' | 'created_at' | 'updated_at'>): Promise<Post> {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .insert([post])
+        .select('*')
+        .single();
 
-    let imageUrls: string[] = [];
-    
-    // Handle image uploads
-    if (postData.images && postData.images.length > 0) {
-      imageUrls = await this.uploadImages(postData.images);
+      if (error) {
+        console.error('Error creating post:', error);
+        throw error;
+      }
+
+      return data as Post;
+    } catch (error) {
+      console.error('Error creating post:', error);
+      throw error;
     }
-
-    // Extract hashtags from content
-    const hashtags = this.extractHashtags(postData.content);
-    
-    // Create post
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({
-        user_id: user.data.user.id,
-        title: postData.title,
-        content: postData.content,
-        image_url: imageUrls[0] || null,
-        post_type: postData.post_type,
-        tags: postData.tags || [],
-        visibility: postData.visibility,
-        hashtags: hashtags,
-        location: postData.location,
-        mentions: postData.mentions || []
-      })
-      .select(`
-        *,
-        profiles:user_id (
-          display_name,
-          avatar_url,
-          major,
-          year
-        )
-      `)
-      .single();
-
-    if (error) throw error;
-
-    const dbPost = data as DatabasePost;
-    const post = this.transformDatabasePostToPost(dbPost);
-
-    // Create hashtag entries
-    if (hashtags.length > 0) {
-      await this.createHashtagEntries(post.id, hashtags);
-    }
-
-    // Create mention notifications
-    if (postData.mentions && postData.mentions.length > 0) {
-      await this.createMentionNotifications(post.id, postData.mentions);
-    }
-
-    return this.transformPost(post);
   }
 
-  async reactToPost(postId: string, reactionType: string): Promise<void> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) throw new Error('Not authenticated');
+  // Enhanced reaction method with notifications
+  static async reactToPost(postId: string, reactionType: string): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-    // Check if user already reacted
-    const { data: existingReaction } = await supabase
-      .from('post_reactions')
-      .select('id, reaction_type')
-      .eq('post_id', postId)
-      .eq('user_id', user.data.user.id)
-      .maybeSingle();
+      // Get post details for notification
+      const { data: postData } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles:user_id (display_name, avatar_url)
+        `)
+        .eq('id', postId)
+        .single();
 
-    if (existingReaction) {
-      if (existingReaction.reaction_type === reactionType) {
-        // Remove reaction
+      if (!postData) throw new Error('Post not found');
+
+      // Check if user already reacted with this type
+      const { data: existingReaction } = await supabase
+        .from('post_reactions')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .eq('reaction_type', reactionType)
+        .maybeSingle();
+
+      if (existingReaction) {
+        // Remove existing reaction
         await supabase
           .from('post_reactions')
           .delete()
           .eq('id', existingReaction.id);
       } else {
-        // Update reaction
+        // Remove any other reactions from this user first
         await supabase
           .from('post_reactions')
-          .update({ reaction_type: reactionType })
-          .eq('id', existingReaction.id);
-      }
-    } else {
-      // Add new reaction
-      await supabase
-        .from('post_reactions')
-        .insert({
-          post_id: postId,
-          user_id: user.data.user.id,
-          reaction_type: reactionType
-        });
-    }
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
 
-    // Update post reaction counts
-    await this.updatePostReactionCounts(postId);
-  }
-
-  async sharePost(postId: string): Promise<void> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) throw new Error('Not authenticated');
-
-    // Get current shares count and increment it
-    const { data: currentPost } = await supabase
-      .from('posts')
-      .select('shares_count')
-      .eq('id', postId)
-      .single();
-
-    if (currentPost) {
-      const newSharesCount = (currentPost.shares_count || 0) + 1;
-      
-      const { error } = await supabase
-        .from('posts')
-        .update({ shares_count: newSharesCount })
-        .eq('id', postId);
-
-      if (error) throw error;
-    }
-  }
-
-  async savePost(postId: string): Promise<void> {
-    const user = await supabase.auth.getUser();
-    if (!user.data.user) throw new Error('Not authenticated');
-
-    const { data: existingSave } = await supabase
-      .from('post_saves')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', user.data.user.id)
-      .maybeSingle();
-
-    if (existingSave) {
-      // Unsave
-      await supabase
-        .from('post_saves')
-        .delete()
-        .eq('id', existingSave.id);
-    } else {
-      // Save
-      await supabase
-        .from('post_saves')
-        .insert({
-          post_id: postId,
-          user_id: user.data.user.id
-        });
-    }
-  }
-
-  // Real-time subscription methods
-  subscribeToPostUpdates(callback: (post: EnhancedPostData) => void) {
-    const channel = supabase
-      .channel('posts-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'posts'
-        },
-        async (payload) => {
-          if (payload.new && 'id' in payload.new) {
-            const transformedPost = await this.getPostById(payload.new.id as string);
-            if (transformedPost) {
-              callback(transformedPost);
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }
-
-  subscribeToReactionUpdates(postId: string, callback: (reactions: PostReactions) => void) {
-    const channel = supabase
-      .channel(`post-reactions-${postId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'post_reactions',
-          filter: `post_id=eq.${postId}`
-        },
-        async () => {
-          const reactions = await this.getPostReactions(postId);
-          callback(reactions);
-        }
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }
-
-  // Helper methods
-  private async transformPosts(posts: Post[]): Promise<EnhancedPostData[]> {
-    const currentUser = await supabase.auth.getUser();
-    const userId = currentUser.data.user?.id;
-
-    return Promise.all(posts.map(async (post) => {
-      const [reactions, userInteractions] = await Promise.all([
-        this.getPostReactions(post.id),
-        userId ? this.getUserPostInteractions(post.id, userId) : null
-      ]);
-
-      return this.transformPost(post, reactions, userInteractions);
-    }));
-  }
-
-  private transformPost(post: Post, reactions?: PostReactions, userInteractions?: UserPostInteractions | null): EnhancedPostData {
-    const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-    
-    return {
-      ...post,
-      reactions: reactions || {},
-      author: {
-        id: post.user_id,
-        display_name: profile?.display_name || 'Anonymous User',
-        avatar_url: profile?.avatar_url,
-        major: profile?.major,
-        year: profile?.year
-      },
-      is_liked: userInteractions?.is_liked || false,
-      is_saved: userInteractions?.is_saved || false,
-      user_reaction: userInteractions?.reaction_type
-    };
-  }
-
-  private async getPostById(postId: string): Promise<EnhancedPostData | null> {
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`
-        *,
-        profiles:user_id (
-          display_name,
-          avatar_url,
-          major,
-          year
-        )
-      `)
-      .eq('id', postId)
-      .single();
-
-    if (error || !data) return null;
-    
-    const dbPost = data as DatabasePost;
-    const post = this.transformDatabasePostToPost(dbPost);
-    return this.transformPost(post);
-  }
-
-  private async getPostReactions(postId: string): Promise<PostReactions> {
-    const { data } = await supabase
-      .from('post_reactions')
-      .select('reaction_type, user_id')
-      .eq('post_id', postId);
-
-    const reactions: PostReactions = {};
-    
-    data?.forEach(reaction => {
-      if (!reactions[reaction.reaction_type]) {
-        reactions[reaction.reaction_type] = { count: 0, users: [] };
-      }
-      reactions[reaction.reaction_type].count++;
-      reactions[reaction.reaction_type].users.push(reaction.user_id);
-    });
-
-    return reactions;
-  }
-
-  private async getUserPostInteractions(postId: string, userId: string): Promise<UserPostInteractions> {
-    const [likeData, saveData, reactionData] = await Promise.all([
-      supabase.from('likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle(),
-      supabase.from('post_saves').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle(),
-      supabase.from('post_reactions').select('reaction_type').eq('post_id', postId).eq('user_id', userId).maybeSingle()
-    ]);
-
-    return {
-      is_liked: !!likeData.data,
-      is_saved: !!saveData.data,
-      reaction_type: reactionData.data?.reaction_type
-    };
-  }
-
-  private extractHashtags(content: string): string[] {
-    const hashtagRegex = /#[a-zA-Z0-9_]+/g;
-    const matches = content.match(hashtagRegex);
-    return matches ? matches.map(tag => tag.slice(1).toLowerCase()) : [];
-  }
-
-  private async uploadImages(images: File[]): Promise<string[]> {
-    const uploadPromises = images.map(async (image) => {
-      const fileExt = image.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('posts')
-        .upload(fileName, image);
-
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from('posts')
-        .getPublicUrl(data.path);
-
-      return urlData.publicUrl;
-    });
-
-    return Promise.all(uploadPromises);
-  }
-
-  private async createHashtagEntries(postId: string, hashtags: string[]): Promise<void> {
-    for (const hashtag of hashtags) {
-      // Insert or update hashtag
-      await supabase
-        .from('hashtags')
-        .upsert({ name: hashtag })
-        .select()
-        .single();
-
-      // Link hashtag to post
-      const { data: hashtagData, error } = await supabase
-        .from('hashtags')
-        .select('id')
-        .eq('name', hashtag)
-        .maybeSingle();
-
-      if (!error && hashtagData && typeof hashtagData === 'object' && 'id' in hashtagData) {
+        // Add new reaction
         await supabase
-          .from('post_hashtags')
+          .from('post_reactions')
           .insert({
             post_id: postId,
-            hashtag_id: hashtagData.id as string
+            user_id: user.id,
+            reaction_type: reactionType
           });
+
+        // Send notification to post author (if not reacting to own post)
+        if (postData.user_id !== user.id) {
+          const profile = Array.isArray(postData.profiles) ? postData.profiles[0] : postData.profiles;
+          const userName = profile?.display_name || 'Someone';
+          
+          const reactionEmoji = this.getReactionEmoji(reactionType);
+          await NotificationService.createNotification(
+            postData.user_id,
+            'like',
+            'New Reaction',
+            `${userName} reacted ${reactionEmoji} to your post`,
+            { 
+              type: 'reaction',
+              postId: postId,
+              reactionType: reactionType,
+              reactorId: user.id
+            }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error reacting to post:', error);
+      throw error;
+    }
+  }
+
+  // Enhanced comment method with notifications
+  static async addComment(postId: string, content: string, parentId?: string): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get post details for notification
+      const { data: postData } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles:user_id (display_name, avatar_url)
+        `)
+        .eq('id', postId)
+        .single();
+
+      if (!postData) throw new Error('Post not found');
+
+      // Add comment
+      const { data: comment } = await supabase
+        .from('comments')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: content,
+          parent_id: parentId
+        })
+        .select(`
+          *,
+          profiles:user_id (display_name, avatar_url)
+        `)
+        .single();
+
+      if (!comment) throw new Error('Failed to create comment');
+
+      // Send notification to post author (if not commenting on own post)
+      if (postData.user_id !== user.id) {
+        const { data: commenterProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', user.id)
+          .single();
+
+        const commenterName = commenterProfile?.display_name || 'Someone';
+        
+        await NotificationService.createNotification(
+          postData.user_id,
+          'comment',
+          'New Comment',
+          `${commenterName} commented on your post`,
+          { 
+            type: 'comment',
+            postId: postId,
+            commentId: comment.id,
+            commenterId: user.id
+          }
+        );
+      }
+
+      // Check for mentions in comment content and send notifications
+      await this.processMentions(content, user.id, 'comment', { postId, commentId: comment.id });
+
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      throw error;
+    }
+  }
+
+  // Process mentions in content and send notifications
+  private static async processMentions(
+    content: string, 
+    authorId: string, 
+    type: 'post' | 'comment', 
+    metadata: any
+  ): Promise<void> {
+    const mentionRegex = /@(\w+)/g;
+    const mentions = [];
+    let match;
+
+    while ((match = mentionRegex.exec(content)) !== null) {
+      mentions.push(match[1]);
+    }
+
+    if (mentions.length === 0) return;
+
+    // Get mentioned users
+    const { data: mentionedUsers } = await supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .in('display_name', mentions);
+
+    if (!mentionedUsers || mentionedUsers.length === 0) return;
+
+    // Get author info
+    const { data: authorProfile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', authorId)
+      .single();
+
+    const authorName = authorProfile?.display_name || 'Someone';
+
+    // Send notification to each mentioned user
+    for (const mentionedUser of mentionedUsers) {
+      if (mentionedUser.user_id !== authorId) { // Don't notify self
+        await NotificationService.createNotification(
+          mentionedUser.user_id,
+          'mention',
+          'You were mentioned',
+          `${authorName} mentioned you in a ${type}`,
+          { 
+            type: 'mention',
+            mentionType: type,
+            authorId: authorId,
+            ...metadata
+          }
+        );
       }
     }
   }
 
-  private async createMentionNotifications(postId: string, mentions: string[]): Promise<void> {
-    // For now, skip notifications as we don't have the notifications table
-    // This would normally create notification entries
-    console.log('Mentions created for post:', postId, mentions);
+  private static getReactionEmoji(reactionType: string): string {
+    const emojiMap: Record<string, string> = {
+      like: '👍',
+      love: '❤️',
+      laugh: '😂',
+      wow: '😮',
+      sad: '😢',
+      angry: '😠'
+    };
+    return emojiMap[reactionType] || '👍';
   }
 
-  private async updatePostReactionCounts(postId: string): Promise<void> {
-    const { data: reactions } = await supabase
-      .from('post_reactions')
-      .select('reaction_type')
-      .eq('post_id', postId);
+  static async savePost(postId: string): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-    const reactionCounts = reactions?.reduce((acc, reaction) => {
-      acc[reaction.reaction_type] = (acc[reaction.reaction_type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>) || {};
+      // Check if the post is already saved
+      const { data: existingSave } = await supabase
+        .from('post_saves')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-    // For now, just update a simple reactions JSON field if it exists
-    // This would need to be adapted based on the actual posts table structure
+      if (existingSave) {
+        // If it's saved, remove the save
+        await supabase
+          .from('post_saves')
+          .delete()
+          .eq('id', existingSave.id);
+      } else {
+        // If it's not saved, add a save
+        await supabase
+          .from('post_saves')
+          .insert({
+            post_id: postId,
+            user_id: user.id
+          });
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+      throw error;
+    }
+  }
+
+  static async sharePost(postId: string): Promise<void> {
+    try {
+      // Sharing logic (can be implemented later)
+      console.log(`Post ${postId} shared`);
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      throw error;
+    }
   }
 }
-
-export const enhancedPostsService = EnhancedPostsService.getInstance();
-
-// Fixed export types for isolatedModules
-export type { EnhancedPostData, PostFilter, PostCreationData } from '@/types/posts';
