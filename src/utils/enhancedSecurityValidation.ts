@@ -203,6 +203,9 @@ export const AuditLogSchema = z.object({
   timestamp: z.date().default(() => new Date())
 });
 
+// User role validation
+export const UserRoleSchema = z.enum(['student', 'faculty', 'admin', 'moderator']);
+
 // Export validation functions
 export const validateEnhancedPassword = (password: string) => {
   return EnhancedPasswordSchema.safeParse(password);
@@ -226,4 +229,116 @@ export const validateRateLimit = (data: any) => {
 
 export const validateAuditLog = (data: any) => {
   return AuditLogSchema.safeParse(data);
+};
+
+export const validateUserRole = (role: string) => {
+  const result = UserRoleSchema.safeParse(role);
+  return {
+    success: result.success,
+    role: result.success ? result.data : null,
+    error: result.success ? null : result.error.issues[0]?.message
+  };
+};
+
+// UUID validation
+export const isValidUUID = (uuid: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
+};
+
+// Rate limiter implementation
+interface RateLimiterState {
+  attempts: Map<string, { count: number; firstAttempt: number; lastAttempt: number }>;
+}
+
+export const createRateLimiter = (maxAttempts: number, windowMs: number) => {
+  const state: RateLimiterState = { attempts: new Map() };
+  
+  return {
+    checkLimit: (identifier: string): boolean => {
+      const now = Date.now();
+      const userAttempts = state.attempts.get(identifier);
+      
+      if (!userAttempts) {
+        state.attempts.set(identifier, { count: 1, firstAttempt: now, lastAttempt: now });
+        return true;
+      }
+      
+      // Clean up old attempts outside the window
+      if (now - userAttempts.firstAttempt > windowMs) {
+        state.attempts.set(identifier, { count: 1, firstAttempt: now, lastAttempt: now });
+        return true;
+      }
+      
+      if (userAttempts.count >= maxAttempts) {
+        return false;
+      }
+      
+      userAttempts.count++;
+      userAttempts.lastAttempt = now;
+      return true;
+    },
+    
+    getRemainingAttempts: (identifier: string): number => {
+      const userAttempts = state.attempts.get(identifier);
+      if (!userAttempts) return maxAttempts;
+      
+      const now = Date.now();
+      if (now - userAttempts.firstAttempt > windowMs) {
+        return maxAttempts;
+      }
+      
+      return Math.max(0, maxAttempts - userAttempts.count);
+    }
+  };
+};
+
+// Security headers checker
+export const checkSecurityHeaders = (): { secure: boolean; warnings: string[] } => {
+  const warnings: string[] = [];
+  
+  // Check if we're in a secure context
+  if (typeof window !== 'undefined') {
+    if (!window.isSecureContext) {
+      warnings.push('Application is not running in a secure context (HTTPS required)');
+    }
+    
+    // Check for basic security headers (this is limited in browser context)
+    if (!document.querySelector('meta[http-equiv="Content-Security-Policy"]')) {
+      warnings.push('Content Security Policy header not detected');
+    }
+  }
+  
+  return {
+    secure: warnings.length === 0,
+    warnings
+  };
+};
+
+// Input validation and sanitization helper
+export const validateAndSanitizeInput = (input: string, type: 'content' | 'url' | 'filename' = 'content') => {
+  let sanitized = sanitizeInput(input);
+  
+  switch (type) {
+    case 'content':
+      const contentResult = validateSecureContent(sanitized);
+      return {
+        success: contentResult.success,
+        data: sanitized,
+        error: contentResult.success ? null : contentResult.error?.issues[0]?.message
+      };
+    case 'url':
+      const urlResult = validateSecureURL(sanitized);
+      return {
+        success: urlResult.success,
+        data: sanitized,
+        error: urlResult.success ? null : urlResult.error?.issues[0]?.message
+      };
+    default:
+      return {
+        success: true,
+        data: sanitized,
+        error: null
+      };
+  }
 };

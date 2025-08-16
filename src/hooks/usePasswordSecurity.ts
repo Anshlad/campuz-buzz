@@ -1,49 +1,130 @@
 
 import { useState, useEffect } from 'react';
-import { validatePassword } from '@/utils/securityValidation';
+import { validateEnhancedPassword } from '@/utils/enhancedSecurityValidation';
 import { useToast } from '@/hooks/use-toast';
 
 interface PasswordSecurityOptions {
-  checkBreaches?: boolean;
+  checkLeaks?: boolean;
   minStrength?: number;
+}
+
+interface PasswordStrengthResult {
+  score: number;
+  isSecure: boolean;
+  feedback: string[];
+  hasLeaks?: boolean;
 }
 
 export const usePasswordSecurity = (options: PasswordSecurityOptions = {}) => {
   const { toast } = useToast();
   const [isChecking, setIsChecking] = useState(false);
   
-  const { checkBreaches = true, minStrength = 80 } = options;
+  const { checkLeaks = true, minStrength = 80 } = options;
+
+  const checkPasswordStrength = async (password: string): Promise<PasswordStrengthResult> => {
+    setIsChecking(true);
+    
+    try {
+      // Validate password strength
+      const strengthResult = validateEnhancedPassword(password);
+      
+      const feedback: string[] = [];
+      let score = 0;
+      
+      // Calculate score based on criteria
+      if (password.length >= 12) score += 25;
+      else feedback.push('Use at least 12 characters');
+      
+      if (/[a-z]/.test(password)) score += 15;
+      else feedback.push('Include lowercase letters');
+      
+      if (/[A-Z]/.test(password)) score += 15;
+      else feedback.push('Include uppercase letters');
+      
+      if (/[0-9]/.test(password)) score += 15;
+      else feedback.push('Include numbers');
+      
+      if (/[^A-Za-z0-9]/.test(password)) score += 15;
+      else feedback.push('Include special characters');
+      
+      if (!/(.)\1{2,}/g.test(password)) score += 10;
+      else feedback.push('Avoid repeated characters');
+      
+      if (password.length >= 16) score += 5;
+      
+      // Check for common patterns
+      const commonPasswords = [
+        'password123', '123456789', 'qwerty123', 'password1',
+        'letmein123', 'welcome123', 'admin123', 'user123'
+      ];
+      
+      const hasCommonPattern = commonPasswords.some(common => 
+        password.toLowerCase().includes(common.toLowerCase())
+      );
+      
+      if (hasCommonPattern) {
+        score = Math.max(0, score - 30);
+        feedback.push('Avoid common password patterns');
+      }
+
+      // Check against breached passwords if enabled
+      let hasLeaks = false;
+      if (checkLeaks) {
+        hasLeaks = await checkPasswordBreach(password);
+        if (hasLeaks) {
+          score = Math.max(0, score - 40);
+          feedback.push('This password has been found in data breaches');
+        }
+      }
+
+      const result = {
+        score: Math.min(100, score),
+        isSecure: score >= minStrength && strengthResult.success,
+        feedback,
+        hasLeaks
+      };
+
+      return result;
+      
+    } catch (error) {
+      console.error('Password security check failed:', error);
+      return {
+        score: 0,
+        isSecure: false,
+        feedback: ['Password security check failed'],
+        hasLeaks: false
+      };
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   const validatePasswordSecurity = async (password: string) => {
     setIsChecking(true);
     
     try {
-      // Validate password strength
-      const strengthResult = validatePassword(password);
+      const strengthResult = await checkPasswordStrength(password);
       
-      if (!strengthResult.success) {
+      if (!strengthResult.isSecure) {
         toast({
           title: "Weak Password",
-          description: strengthResult.error?.issues?.[0]?.message || "Password doesn't meet security requirements",
+          description: strengthResult.feedback[0] || "Password doesn't meet security requirements",
           variant: "destructive"
         });
-        return { isValid: false, issues: strengthResult.error?.issues };
+        return { isValid: false, issues: strengthResult.feedback.map(f => ({ message: f })) };
       }
 
-      // Check against common breached passwords (mock implementation)
-      if (checkBreaches) {
-        const isBreached = await checkPasswordBreach(password);
-        if (isBreached) {
-          toast({
-            title: "Compromised Password",
-            description: "This password has been found in data breaches. Please choose a different password.",
-            variant: "destructive"
-          });
-          return { isValid: false, issues: [{ message: "Password found in breach database" }] };
-        }
+      if (strengthResult.hasLeaks) {
+        toast({
+          title: "Compromised Password",
+          description: "This password has been found in data breaches. Please choose a different password.",
+          variant: "destructive"
+        });
+        return { isValid: false, issues: [{ message: "Password found in breach database" }] };
       }
 
       return { isValid: true, issues: [] };
+      
     } catch (error) {
       console.error('Password security check failed:', error);
       return { isValid: false, issues: [{ message: "Security check failed" }] };
@@ -90,6 +171,7 @@ export const usePasswordSecurity = (options: PasswordSecurityOptions = {}) => {
   };
 
   return {
+    checkPasswordStrength,
     validatePasswordSecurity,
     generateSecurePassword,
     isChecking
