@@ -1,64 +1,15 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-
-export interface EnhancedPostData {
-  id: string;
-  user_id: string;
-  title?: string;
-  content: string;
-  image_url?: string;
-  post_type: 'text' | 'image' | 'video' | 'poll';
-  tags?: string[];
-  likes_count: number;
-  comments_count: number;
-  shares_count: number;
-  saves_count: number;
-  created_at: string;
-  updated_at: string;
-  visibility: 'public' | 'friends' | 'private';
-  hashtags: string[];
-  location?: string;
-  mentions: string[];
-  reactions: Record<string, {
-    count: number;
-    users: string[];
-  }>;
-  author: {
-    id: string;
-    display_name: string;
-    avatar_url?: string;
-    major?: string;
-    year?: string;
-  };
-  is_liked: boolean;
-  is_saved: boolean;
-  user_reaction?: string;
-}
-
-export interface PostFilter {
-  type?: 'text' | 'image' | 'video' | 'poll';
-  tags?: string[];
-  hashtags?: string[];
-  author?: string;
-  dateRange?: {
-    start: Date;
-    end: Date;
-  };
-  sortBy?: 'recent' | 'popular' | 'trending';
-  visibility?: 'public' | 'friends' | 'all';
-}
-
-export interface PostCreationData {
-  content: string;
-  title?: string;
-  post_type: 'text' | 'image' | 'video' | 'poll';
-  images?: File[];
-  tags?: string[];
-  mentions?: string[];
-  location?: string;
-  visibility: 'public' | 'friends' | 'private';
-  poll_options?: string[];
-}
+import { 
+  EnhancedPostData, 
+  PostFilter, 
+  PostCreationData, 
+  Post, 
+  Profile, 
+  PostReactions, 
+  UserPostInteractions,
+  Hashtag 
+} from '@/types/posts';
 
 class EnhancedPostsService {
   private static instance: EnhancedPostsService;
@@ -126,7 +77,7 @@ class EnhancedPostsService {
     const { data, error } = await query;
     if (error) throw error;
 
-    return this.transformPosts(data || []);
+    return this.transformPosts(data as Post[] || []);
   }
 
   async createPost(postData: PostCreationData): Promise<EnhancedPostData> {
@@ -181,7 +132,7 @@ class EnhancedPostsService {
       await this.createMentionNotifications(data.id, postData.mentions);
     }
 
-    return this.transformPost(data);
+    return this.transformPost(data as Post);
   }
 
   async reactToPost(postId: string, reactionType: string): Promise<void> {
@@ -288,7 +239,7 @@ class EnhancedPostsService {
           table: 'posts'
         },
         async (payload) => {
-          if (payload.new) {
+          if (payload.new && 'id' in payload.new) {
             const transformedPost = await this.getPostById(payload.new.id as string);
             if (transformedPost) {
               callback(transformedPost);
@@ -301,7 +252,7 @@ class EnhancedPostsService {
     return () => supabase.removeChannel(channel);
   }
 
-  subscribeToReactionUpdates(postId: string, callback: (reactions: any) => void) {
+  subscribeToReactionUpdates(postId: string, callback: (reactions: PostReactions) => void) {
     const channel = supabase
       .channel(`post-reactions-${postId}`)
       .on(
@@ -323,7 +274,7 @@ class EnhancedPostsService {
   }
 
   // Helper methods
-  private async transformPosts(posts: any[]): Promise<EnhancedPostData[]> {
+  private async transformPosts(posts: Post[]): Promise<EnhancedPostData[]> {
     const currentUser = await supabase.auth.getUser();
     const userId = currentUser.data.user?.id;
 
@@ -337,27 +288,11 @@ class EnhancedPostsService {
     }));
   }
 
-  private transformPost(post: any, reactions?: any, userInteractions?: any): EnhancedPostData {
+  private transformPost(post: Post, reactions?: PostReactions, userInteractions?: UserPostInteractions | null): EnhancedPostData {
     const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
     
     return {
-      id: post.id,
-      user_id: post.user_id,
-      title: post.title,
-      content: post.content,
-      image_url: post.image_url,
-      post_type: post.post_type,
-      tags: post.tags || [],
-      likes_count: post.likes_count || 0,
-      comments_count: post.comments_count || 0,
-      shares_count: post.shares_count || 0,
-      saves_count: post.saves_count || 0,
-      created_at: post.created_at,
-      updated_at: post.updated_at || post.created_at,
-      visibility: post.visibility || 'public',
-      hashtags: post.hashtags || [],
-      location: post.location,
-      mentions: post.mentions || [],
+      ...post,
       reactions: reactions || {},
       author: {
         id: post.user_id,
@@ -388,16 +323,16 @@ class EnhancedPostsService {
       .single();
 
     if (error || !data) return null;
-    return this.transformPost(data);
+    return this.transformPost(data as Post);
   }
 
-  private async getPostReactions(postId: string) {
+  private async getPostReactions(postId: string): Promise<PostReactions> {
     const { data } = await supabase
       .from('post_reactions')
       .select('reaction_type, user_id')
       .eq('post_id', postId);
 
-    const reactions: Record<string, { count: number; users: string[] }> = {};
+    const reactions: PostReactions = {};
     
     data?.forEach(reaction => {
       if (!reactions[reaction.reaction_type]) {
@@ -410,7 +345,7 @@ class EnhancedPostsService {
     return reactions;
   }
 
-  private async getUserPostInteractions(postId: string, userId: string) {
+  private async getUserPostInteractions(postId: string, userId: string): Promise<UserPostInteractions> {
     const [likeData, saveData, reactionData] = await Promise.all([
       supabase.from('likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle(),
       supabase.from('post_saves').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle(),
@@ -451,7 +386,7 @@ class EnhancedPostsService {
     return Promise.all(uploadPromises);
   }
 
-  private async createHashtagEntries(postId: string, hashtags: string[]) {
+  private async createHashtagEntries(postId: string, hashtags: string[]): Promise<void> {
     for (const hashtag of hashtags) {
       // Insert or update hashtag
       await supabase
@@ -467,24 +402,28 @@ class EnhancedPostsService {
         .eq('name', hashtag)
         .maybeSingle();
 
-      if (!error && hashtagData && (hashtagData as any).id) {
+      if (!error && hashtagData && this.isHashtagWithId(hashtagData)) {
         await supabase
           .from('post_hashtags')
           .insert({
             post_id: postId,
-            hashtag_id: (hashtagData as any).id
+            hashtag_id: hashtagData.id
           });
       }
     }
   }
 
-  private async createMentionNotifications(postId: string, mentions: string[]) {
+  private isHashtagWithId(data: any): data is Hashtag {
+    return data && typeof data === 'object' && 'id' in data && typeof data.id === 'string';
+  }
+
+  private async createMentionNotifications(postId: string, mentions: string[]): Promise<void> {
     // For now, skip notifications as we don't have the notifications table
     // This would normally create notification entries
     console.log('Mentions created for post:', postId, mentions);
   }
 
-  private async updatePostReactionCounts(postId: string) {
+  private async updatePostReactionCounts(postId: string): Promise<void> {
     const { data: reactions } = await supabase
       .from('post_reactions')
       .select('reaction_type')
@@ -501,3 +440,4 @@ class EnhancedPostsService {
 }
 
 export const enhancedPostsService = EnhancedPostsService.getInstance();
+export { EnhancedPostData, PostFilter, PostCreationData } from '@/types/posts';

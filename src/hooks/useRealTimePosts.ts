@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { enhancedPostsService, EnhancedPostData, PostFilter } from '@/services/enhancedPostsService';
+import { enhancedPostsService } from '@/services/enhancedPostsService';
+import { EnhancedPostData, PostFilter } from '@/types/posts';
 import { useToast } from '@/hooks/use-toast';
 
 export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
