@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { PostFilter, Post, DatabasePost, Profile, PostReactions, EnhancedPostData } from '@/types/posts';
 import { NotificationService } from '@/services/notificationService';
@@ -108,23 +107,26 @@ export class EnhancedPostsService {
       throw error;
     }
 
-    return (data || []).map((post) => {
-      // Handle potential query errors and null posts
-      if (!post || typeof post !== 'object' || !('id' in post)) {
-        console.warn('Invalid post data received:', post);
-        return null;
-      }
-
-      // TypeScript assertion after null check
-      const validPost = post as DatabasePost;
-      
-      // Safely access profiles with null check
-      const profile = validPost.profiles && Array.isArray(validPost.profiles) 
-        ? validPost.profiles[0] 
-        : validPost.profiles;
-      
-      return transformDatabasePostToPost(validPost, profile);
-    }).filter((post): post is EnhancedPostData => post !== null);
+    return (data || [])
+      .filter((post): post is NonNullable<typeof post> => {
+        // Handle potential query errors and null posts
+        if (!post || typeof post !== 'object' || !('id' in post)) {
+          console.warn('Invalid post data received:', post);
+          return false;
+        }
+        return true;
+      })
+      .map((post) => {
+        // TypeScript assertion after null check and filtering
+        const validPost = post as DatabasePost;
+        
+        // Safely access profiles with null check
+        const profile = validPost.profiles && Array.isArray(validPost.profiles) 
+          ? validPost.profiles[0] 
+          : validPost.profiles;
+        
+        return transformDatabasePostToPost(validPost, profile);
+      });
   }
 
   static async createPost(postData: {
