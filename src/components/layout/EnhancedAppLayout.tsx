@@ -1,55 +1,53 @@
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from './AppSidebar';
+import { Outlet } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
 import { EnhancedTopBar } from './EnhancedTopBar';
-import { MobileBottomNav } from './MobileBottomNav';
-import { AuthGuard } from '@/components/auth/AuthGuard';
-
-// Import pages
-import HomeFeed from '@/pages/HomeFeed';
-import { Chat } from '@/pages/Chat';
-import Communities from '@/pages/Communities';
-import StudyGroups from '@/pages/StudyGroups';
-import { EventCalendar } from '@/pages/EventCalendar';
-import { Announcements } from '@/pages/Announcements';
-import Profile from '@/pages/Profile';
-import Explore from '@/pages/Explore';
-import Settings from '@/pages/Settings';
-import NotFound from '@/pages/NotFound';
+import { AppSidebar } from './AppSidebar';
+import { EnhancedMobileBottomNav } from './EnhancedMobileBottomNav';
+import { PerformanceMonitor } from '@/components/common/PerformanceMonitor';
+import { PWAInstallBanner } from '@/components/common/PWAInstallBanner';
+import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const EnhancedAppLayout: React.FC = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Outlet />;
+  }
+
   return (
-    <AuthGuard>
-      <SidebarProvider>
-        <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex w-full">
-          <AppSidebar />
+    <SidebarProvider>
+      <div className="min-h-screen bg-background flex w-full">
+        <AppSidebar />
+        <SidebarInset className="flex flex-col flex-1">
+          <EnhancedTopBar />
           
-          <div className="flex-1 flex flex-col min-w-0">
-            <EnhancedTopBar />
-            
-            <main className="flex-1 overflow-auto pb-16 md:pb-0 bg-gradient-to-b from-transparent to-muted/10">
-              <div className="container mx-auto px-4 py-6">
-                <Routes>
-                  <Route path="/" element={<HomeFeed />} />
-                  <Route path="/chat" element={<Chat />} />
-                  <Route path="/communities" element={<Communities />} />
-                  <Route path="/study-groups" element={<StudyGroups />} />
-                  <Route path="/events" element={<EventCalendar />} />
-                  <Route path="/announcements" element={<Announcements />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </main>
-            
-            <MobileBottomNav />
+          {/* Offline/Sync Status */}
+          <OfflineBanner />
+          
+          <main className="flex-1 p-4 pb-20 md:pb-4">
+            <div className="max-w-7xl mx-auto">
+              <Outlet />
+            </div>
+          </main>
+          
+          {/* Mobile Navigation */}
+          <div className="md:hidden">
+            <EnhancedMobileBottomNav />
           </div>
-        </div>
-      </SidebarProvider>
-    </AuthGuard>
+        </SidebarInset>
+      </div>
+      
+      {/* PWA Install Prompt */}
+      <PWAInstallBanner />
+      
+      {/* Performance Monitor (dev/performance issues only) */}
+      <PerformanceMonitor />
+      
+      <Toaster />
+    </SidebarProvider>
   );
 };
