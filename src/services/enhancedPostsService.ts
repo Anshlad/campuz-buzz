@@ -230,16 +230,23 @@ class EnhancedPostsService {
     const user = await supabase.auth.getUser();
     if (!user.data.user) throw new Error('Not authenticated');
 
-    // For now, just update the shares count manually
-    const { error } = await supabase
+    // Get current shares count and increment it
+    const { data: currentPost } = await supabase
       .from('posts')
-      .update({ shares_count: supabase.sql`shares_count + 1` })
-      .eq('id', postId);
+      .select('shares_count')
+      .eq('id', postId)
+      .single();
 
-    if (error) throw error;
+    if (currentPost) {
+      const newSharesCount = (currentPost.shares_count || 0) + 1;
+      
+      const { error } = await supabase
+        .from('posts')
+        .update({ shares_count: newSharesCount })
+        .eq('id', postId);
 
-    // We can't create post_shares entries since the table doesn't exist
-    // Just update the count for now
+      if (error) throw error;
+    }
   }
 
   async savePost(postId: string): Promise<void> {
@@ -461,7 +468,7 @@ class EnhancedPostsService {
         .eq('name', hashtag)
         .single();
 
-      if (hashtagData?.id) {
+      if (hashtagData && 'id' in hashtagData) {
         await supabase
           .from('post_hashtags')
           .insert({
