@@ -1,82 +1,52 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { realtimeNotificationsService } from './realtimeNotificationsService';
 
 export interface EnhancedEvent {
   id: string;
   title: string;
   description?: string;
   start_time: string;
-  end_time: string;
+  end_time?: string;
   location?: string;
   is_virtual: boolean;
   meeting_link?: string;
   max_attendees?: number;
   attendee_count: number;
-  is_public: boolean;
-  event_type: string;
-  tags?: string[];
   created_by: string;
-  community_id?: string;
   created_at: string;
   updated_at: string;
-  user_rsvp?: EventRSVP;
-}
-
-export interface EventRSVP {
-  id: string;
-  event_id: string;
-  user_id: string;
-  status: 'going' | 'maybe' | 'not_going';
-  created_at: string;
+  tags?: string[];
+  image_url?: string;
+  is_attending: boolean;
 }
 
 export interface EventCreateData {
   title: string;
   description?: string;
   start_time: string;
-  end_time: string;
+  end_time?: string;
   location?: string;
   is_virtual?: boolean;
   meeting_link?: string;
   max_attendees?: number;
-  is_public?: boolean;
-  event_type: string;
   tags?: string[];
-  community_id?: string;
+  image_url?: string;
 }
 
 class EnhancedEventService {
   // Get events with RSVP status
-  async getEvents(
-    page = 0,
-    limit = 10,
-    filters?: {
-      community_id?: string;
-      event_type?: string;
-      upcoming_only?: boolean;
-    }
-  ): Promise<{ events: EnhancedEvent[]; total: number }> {
+  async getEvents(filters?: { upcoming?: boolean; attending?: boolean }): Promise<EnhancedEvent[]> {
     try {
       let query = supabase
         .from('events')
-        .select('*', { count: 'exact' })
+        .select('*')
         .order('start_time', { ascending: true });
 
-      if (filters?.community_id) {
-        query = query.eq('community_id', filters.community_id);
-      }
-
-      if (filters?.event_type) {
-        query = query.eq('event_type', filters.event_type);
-      }
-
-      if (filters?.upcoming_only) {
+      if (filters?.upcoming) {
         query = query.gte('start_time', new Date().toISOString());
       }
 
-      const { data: eventsData, error, count } = await query
-        .range(page * limit, (page + 1) * limit - 1);
+      const { data: eventsData, error } = await query;
 
       if (error) throw error;
 
@@ -87,33 +57,32 @@ class EnhancedEventService {
       // Get RSVP status for each event
       const eventsWithRSVP = await Promise.all(
         (eventsData || []).map(async (event) => {
-          let userRsvp = null;
+          let is_attending = false;
           
-          if (userId) {
+          if (userId && filters?.attending) {
+            // Check RSVP status using event_attendees table
             const { data: rsvp } = await supabase
-              .from('event_rsvps')
-              .select('*')
+              .from('event_attendees')
+              .select('id')
               .eq('event_id', event.id)
               .eq('user_id', userId)
+              .eq('status', 'attending')
               .single();
             
-            userRsvp = rsvp;
+            is_attending = !!rsvp;
           }
 
           return {
             ...event,
-            user_rsvp: userRsvp
+            is_attending
           } as EnhancedEvent;
         })
       );
 
-      return {
-        events: eventsWithRSVP,
-        total: count || 0
-      };
+      return eventsWithRSVP;
     } catch (error) {
-      console.error('Error fetching events:', error);
-      return { events: [], total: 0 };
+      console.error('Error in getEvents:', error);
+      throw error;
     }
   }
 
@@ -135,143 +104,120 @@ class EnhancedEventService {
 
       if (error) throw error;
 
-      // Notify community members if it's a community event
-      if (eventData.community_id) {
-        const { data: members } = await supabase
-          .from('community_members')
-          .select('user_id')
-          .eq('community_id', eventData.community_id)
-          .neq('user_id', user.id);
-
-        for (const member of members || []) {
-          await realtimeNotificationsService.createNotification(
-            member.user_id,
-            'event',
-            'New Event Created',
-            `A new event "${data.title}" has been created in your community`,
-            { event_id: data.id }
-          );
-        }
-      }
-
-      return data as EnhancedEvent;
+      return {
+        ...data,
+        is_attending: false
+      } as EnhancedEvent;
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('Error in createEvent:', error);
       throw error;
     }
   }
 
   // RSVP to event
-  async rsvpToEvent(eventId: string, status: 'going' | 'maybe' | 'not_going'): Promise<EventRSVP> {
+  async rsvpToEvent(eventId: string, status: 'attending' | 'not_attending' | 'maybe'): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
-        .from('event_rsvps')
-        .upsert({
-          event_id: eventId,
-          user_id: user.id,
-          status
-        })
-        .select()
+      // Check if RSVP already exists
+      const { data: existingRSVP } = await supabase
+        .from('event_attendees')
+        .select('id, status')
+        .eq('event_id', eventId)
+        .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (existingRSVP) {
+        // Update existing RSVP
+        const { error } = await supabase
+          .from('event_attendees')
+          .update({ status })
+          .eq('id', existingRSVP.id);
 
-      // Update attendee count manually for 'going' status
-      if (status === 'going') {
-        const { data: goingCount, error: countError } = await supabase
-          .from('event_rsvps')
-          .select('id', { count: 'exact' })
-          .eq('event_id', eventId)
-          .eq('status', 'going');
-          
-        if (!countError) {
-          await supabase
-            .from('events')
-            .update({ attendee_count: goingCount?.length || 0 })
-            .eq('id', eventId);
-        }
+        if (error) throw error;
+      } else {
+        // Create new RSVP
+        const { error } = await supabase
+          .from('event_attendees')
+          .insert({
+            event_id: eventId,
+            user_id: user.id,
+            status
+          });
+
+        if (error) throw error;
       }
 
-      // Notify event creator
-      const { data: event } = await supabase
-        .from('events')
-        .select('title, created_by')
-        .eq('id', eventId)
-        .single();
-
-      if (event && event.created_by !== user.id) {
-        const statusText = status === 'going' ? 'will attend' : 
-                          status === 'maybe' ? 'might attend' : 'cannot attend';
-        
-        await realtimeNotificationsService.createNotification(
-          event.created_by,
-          'event',
-          'Event RSVP Update',
-          `Someone ${statusText} your event "${event.title}"`,
-          { event_id: eventId, status }
-        );
-      }
-
-      return data as EventRSVP;
+      // Update attendee count
+      await this.updateAttendeeCount(eventId);
     } catch (error) {
-      console.error('Error RSVPing to event:', error);
+      console.error('Error in rsvpToEvent:', error);
       throw error;
     }
   }
 
-  // Generate calendar file (ICS format)
-  generateICSFile(event: EnhancedEvent): string {
-    const formatDate = (dateString: string) => {
-      return new Date(dateString).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  // Update attendee count
+  private async updateAttendeeCount(eventId: string): Promise<void> {
+    try {
+      // Count attending users
+      const { count } = await supabase
+        .from('event_attendees')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+        .eq('status', 'attending');
+
+      // Update event with new count
+      const { error } = await supabase
+        .from('events')
+        .update({ attendee_count: count || 0 })
+        .eq('id', eventId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating attendee count:', error);
+    }
+  }
+
+  // Generate calendar export
+  generateICSExport(event: EnhancedEvent): string {
+    const formatDate = (date: string) => {
+      return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
 
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//CampuzBuzz//Event Calendar//EN',
+      'PRODID:-//Your App//Event//EN',
       'BEGIN:VEVENT',
-      `UID:${event.id}@campuzbuzz.com`,
+      `UID:${event.id}@yourapp.com`,
       `DTSTART:${formatDate(event.start_time)}`,
-      `DTEND:${formatDate(event.end_time)}`,
+      event.end_time ? `DTEND:${formatDate(event.end_time)}` : '',
       `SUMMARY:${event.title}`,
-      `DESCRIPTION:${event.description || ''}`,
-      `LOCATION:${event.location || ''}`,
-      `CREATED:${formatDate(event.created_at)}`,
-      `LAST-MODIFIED:${formatDate(event.updated_at)}`,
-      'STATUS:CONFIRMED',
+      event.description ? `DESCRIPTION:${event.description.replace(/\n/g, '\\n')}` : '',
+      event.location ? `LOCATION:${event.location}` : '',
       'END:VEVENT',
       'END:VCALENDAR'
-    ].join('\r\n');
+    ].filter(Boolean).join('\r\n');
 
     return icsContent;
   }
 
-  // Download ICS file
-  downloadICSFile(event: EnhancedEvent) {
-    const icsContent = this.generateICSFile(event);
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${event.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
   // Generate Google Calendar link
   generateGoogleCalendarLink(event: EnhancedEvent): string {
-    const startDate = new Date(event.start_time).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const endDate = new Date(event.end_time).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    
+    const formatGoogleDate = (date: string) => {
+      return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const startDate = formatGoogleDate(event.start_time);
+    const endDate = event.end_time ? formatGoogleDate(event.end_time) : startDate;
+
     const params = new URLSearchParams({
       action: 'TEMPLATE',
       text: event.title,
       dates: `${startDate}/${endDate}`,
       details: event.description || '',
-      location: event.location || ''
+      location: event.location || '',
     });
 
     return `https://calendar.google.com/calendar/render?${params.toString()}`;

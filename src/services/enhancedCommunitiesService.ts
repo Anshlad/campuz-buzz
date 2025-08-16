@@ -40,7 +40,8 @@ class EnhancedCommunitiesService {
         .select('*');
 
       if (category) {
-        query = query.eq('category', category);
+        // Since category doesn't exist in the table, we'll skip this filter
+        console.warn('Category filter not available in communities_enhanced table');
       }
 
       const { data: communitiesData, error } = await query
@@ -71,7 +72,7 @@ class EnhancedCommunitiesService {
 
           return {
             ...community,
-            category: community.category || undefined,
+            category: undefined, // Not available in current schema
             isJoined
           } as EnhancedCommunity;
         })
@@ -93,7 +94,13 @@ class EnhancedCommunitiesService {
       const { data, error } = await supabase
         .from('communities_enhanced')
         .insert({
-          ...communityData,
+          name: communityData.name,
+          description: communityData.description,
+          is_private: communityData.is_private || false,
+          welcome_message: communityData.welcome_message,
+          rules: communityData.rules,
+          avatar_url: communityData.avatar_url,
+          banner_url: communityData.banner_url,
           created_by: user.id,
           member_count: 1
         })
@@ -116,7 +123,7 @@ class EnhancedCommunitiesService {
 
       return {
         ...data,
-        category: data.category || undefined,
+        category: undefined, // Not available in current schema
         isJoined: true
       } as EnhancedCommunity;
     } catch (error) {
@@ -150,11 +157,11 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      // Update member count manually
+      // Update member count manually using a direct SQL update
       const { error: updateError } = await supabase
         .from('communities_enhanced')
         .update({ 
-          member_count: supabase.raw('member_count + 1')
+          member_count: supabase.sql`member_count + 1`
         })
         .eq('id', communityId);
 
@@ -195,11 +202,11 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      // Update member count manually
+      // Update member count manually using a direct SQL update
       const { error: updateError } = await supabase
         .from('communities_enhanced')
         .update({ 
-          member_count: supabase.raw('GREATEST(member_count - 1, 0)')
+          member_count: supabase.sql`GREATEST(member_count - 1, 0)`
         })
         .eq('id', communityId);
 
@@ -225,7 +232,7 @@ class EnhancedCommunitiesService {
 
       return {
         ...data,
-        category: data.category || undefined,
+        category: undefined, // Not available in current schema
         isJoined: false
       } as EnhancedCommunity;
     } catch (error) {

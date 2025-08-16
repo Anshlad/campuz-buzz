@@ -52,10 +52,9 @@ class EnhancedSearchService {
             id,
             title,
             content,
-            media_urls,
+            image_url,
             created_at,
-            user_id,
-            profiles!inner(display_name, avatar_url)
+            user_id
           `, { count: 'exact' })
           .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
           .range(offset, offset + limit - 1);
@@ -66,10 +65,8 @@ class EnhancedSearchService {
             type: 'post' as const,
             title: post.title || 'Untitled Post',
             description: post.content?.substring(0, 200),
-            image: post.media_urls?.[0],
+            image: post.image_url,
             metadata: {
-              author: Array.isArray(post.profiles) ? post.profiles[0]?.display_name : post.profiles?.display_name,
-              author_avatar: Array.isArray(post.profiles) ? post.profiles[0]?.avatar_url : post.profiles?.avatar_url,
               created_at: post.created_at
             }
           }));
@@ -125,32 +122,6 @@ class EnhancedSearchService {
             }
           }));
           results.push(...communityResults);
-          total += count || 0;
-        }
-      }
-
-      // Search events
-      if (!filters.type || filters.type === 'events') {
-        const { data: events, count } = await supabase
-          .from('events')
-          .select('*', { count: 'exact' })
-          .or(`title.ilike.%${query}%,description.ilike.%${query}%,location.ilike.%${query}%`)
-          .range(offset, offset + limit - 1);
-
-        if (events) {
-          const eventResults = events.map(event => ({
-            id: event.id,
-            type: 'event' as const,
-            title: event.title,
-            description: event.description,
-            metadata: {
-              start_time: event.start_time,
-              location: event.location,
-              is_virtual: event.is_virtual,
-              attendee_count: event.attendee_count
-            }
-          }));
-          results.push(...eventResults);
           total += count || 0;
         }
       }

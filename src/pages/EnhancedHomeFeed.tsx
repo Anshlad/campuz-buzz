@@ -109,7 +109,6 @@ const EnhancedHomeFeed = () => {
 
               {/* Enhanced Posts List */}
               <EnhancedPostsList
-                showFilter={true}
                 initialFilter={{
                   sortBy: 'recent',
                   visibility: 'public'

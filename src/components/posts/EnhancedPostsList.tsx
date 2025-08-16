@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
@@ -13,34 +14,42 @@ interface EnhancedPostsListProps {
   communityId?: string;
   userId?: string;
   initialPosts?: any[];
+  showFilter?: boolean;
+  initialFilter?: {
+    sortBy?: string;
+    visibility?: string;
+  };
 }
 
-export const EnhancedPostsList: React.FC<EnhancedPostsListProps> = ({ communityId, userId, initialPosts }) => {
+export const EnhancedPostsList: React.FC<EnhancedPostsListProps> = ({ 
+  communityId, 
+  userId, 
+  initialPosts,
+  showFilter,
+  initialFilter 
+}) => {
   const [posts, setPosts] = useState(initialPosts || []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { subscribeToPosts } = useRealtimePosts(communityId);
+  const { subscribeToPostUpdates } = useRealtimePosts();
 
   const {
     data: fetchedPosts,
     isLoading,
     error: queryError,
     refetch
-  } = useQuery(
-    ['posts', communityId, userId],
-    () => enhancedPostsService.getPosts({ communityId, userId }),
-    {
-      initialData: initialPosts,
-      enabled: !initialPosts,
-      staleTime: 60 * 1000, // 1 minute
-      onError: (err: any) => {
-        console.error("Error fetching posts:", err);
-        setError(err.message || "Failed to load posts.");
-      }
-    }
-  );
+  } = useQuery({
+    queryKey: ['posts', communityId, userId],
+    queryFn: () => enhancedPostsService.getPosts({ 
+      type: initialFilter?.visibility as any,
+      visibility: initialFilter?.visibility as any
+    }),
+    initialData: initialPosts,
+    enabled: !initialPosts,
+    staleTime: 60 * 1000, // 1 minute
+  });
 
   useEffect(() => {
     if (fetchedPosts) {
@@ -59,14 +68,12 @@ export const EnhancedPostsList: React.FC<EnhancedPostsListProps> = ({ communityI
   }, [queryError]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToPosts((newPost) => {
-      setPosts((prevPosts) => [newPost, ...prevPosts]);
-    });
-
+    const subscriptions = posts.map((post: any) => subscribeToPostUpdates(post.id));
+    
     return () => {
-      unsubscribe();
+      subscriptions.forEach(unsub => unsub?.());
     };
-  }, [subscribeToPosts]);
+  }, [posts, subscribeToPostUpdates]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -114,7 +121,7 @@ export const EnhancedPostsList: React.FC<EnhancedPostsListProps> = ({ communityI
 
   return (
     <AnimatePresence>
-      {posts.map((post) => (
+      {posts.map((post: any) => (
         <EnhancedPostCard key={post.id} post={post} />
       ))}
     </AnimatePresence>
