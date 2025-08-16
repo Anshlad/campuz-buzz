@@ -228,7 +228,7 @@ const PostCard = ({ post }: { post: Post }) => {
       if (liked) {
         // Unlike
         await supabase
-          .from('post_likes')
+          .from('likes')
           .delete()
           .eq('post_id', post.id)
           .eq('user_id', user.id);
@@ -238,7 +238,7 @@ const PostCard = ({ post }: { post: Post }) => {
       } else {
         // Like
         await supabase
-          .from('post_likes')
+          .from('likes')
           .insert({
             post_id: post.id,
             user_id: user.id
@@ -318,7 +318,7 @@ const FeedContent = () => {
     try {
       setLoading(true);
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('posts')
         .select(`
           *,
@@ -330,10 +330,23 @@ const FeedContent = () => {
         .order('created_at', { ascending: false })
         .limit(20);
 
-      const { data, error } = await query;
-
       if (error) throw error;
-      setPosts(data || []);
+      
+      // Transform data to match Post interface
+      const transformedPosts = (data || []).map(item => ({
+        id: item.id,
+        content: item.content,
+        created_at: item.created_at,
+        user_id: item.user_id,
+        likes_count: item.likes_count || 0,
+        comments_count: item.comments_count || 0,
+        profiles: {
+          display_name: item.profiles?.display_name || 'Anonymous',
+          avatar_url: item.profiles?.avatar_url
+        }
+      }));
+      
+      setPosts(transformedPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
     } finally {
