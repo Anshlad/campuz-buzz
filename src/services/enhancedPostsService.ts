@@ -468,7 +468,7 @@ class EnhancedPostsService {
         .eq('name', hashtag)
         .single();
 
-      if (hashtagData && 'id' in hashtagData) {
+      if (hashtagData && typeof hashtagData === 'object' && 'id' in hashtagData && hashtagData.id) {
         await supabase
           .from('post_hashtags')
           .insert({
