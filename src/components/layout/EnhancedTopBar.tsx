@@ -1,63 +1,42 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Bell, Plus, Settings, User, Moon, Sun } from 'lucide-react';
+import { Bell, Search, Plus, Menu, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { CreatePostModal } from '@/components/posts/CreatePostModal';
+import { EnhancedCreatePostModal } from '@/components/posts/EnhancedCreatePostModal';
+import { useOptimizedPosts } from '@/hooks/useOptimizedPosts';
 import { useToast } from '@/hooks/use-toast';
 
-export const EnhancedTopBar = () => {
-  const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
-  const [showCreatePost, setShowCreatePost] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+interface EnhancedTopBarProps {
+  onMobileMenuToggle?: () => void;
+  showMobileMenu?: boolean;
+}
+
+export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
+  onMobileMenuToggle,
+  showMobileMenu = false
+}) => {
+  const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { createPost, isCreating } = useOptimizedPosts();
   const { toast } = useToast();
-
-  const handleLogoClick = () => {
-    window.location.reload();
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/explore?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   const handleCreatePost = async (postData: any) => {
     try {
-      // TODO: Implement actual post creation logic here
-      console.log('Creating post:', postData);
-      
+      await createPost(postData);
+      setShowCreatePost(false);
       toast({
         title: "Post created!",
-        description: "Your post has been shared with the community."
+        description: "Your post has been shared successfully."
       });
-      
-      // Close modal after successful creation
-      setShowCreatePost(false);
     } catch (error) {
       console.error('Error creating post:', error);
       toast({
         title: "Error creating post",
-        description: "Please try again.",
+        description: "Please try again later.",
         variant: "destructive"
       });
     }
@@ -67,100 +46,89 @@ export const EnhancedTopBar = () => {
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between px-4">
-          {/* Logo */}
-          <button 
-            onClick={handleLogoClick}
-            className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-          >
-            <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              CampuzBuzz
-            </span>
-          </button>
-
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-4">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search posts, people, communities..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-muted/50"
-              />
-            </div>
-          </form>
-
-          {/* Actions */}
-          <div className="flex items-center space-x-2">
-            {/* Create Post Button */}
+          {/* Left Section */}
+          <div className="flex items-center space-x-4">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowCreatePost(true)}
-              className="hover:bg-accent"
+              className="md:hidden"
+              onClick={onMobileMenuToggle}
             >
-              <Plus className="h-5 w-5" />
-              <span className="hidden sm:inline ml-2">Create</span>
+              <Menu className="h-5 w-5" />
             </Button>
+            
+            <div className="flex items-center space-x-2">
+              <div className="font-bold text-xl text-primary">CampuzBuzz</div>
+            </div>
+          </div>
 
+          {/* Center Section - Search (hidden on mobile) */}
+          <div className="hidden md:flex flex-1 max-w-md mx-8">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search posts, users, communities..."
+                className="w-full pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+
+          {/* Right Section */}
+          <div className="flex items-center space-x-2">
             {/* Theme Toggle */}
             <Button
               variant="ghost"
               size="sm"
               onClick={toggleTheme}
-              className="hover:bg-accent"
+              className="hidden sm:flex"
             >
               {theme === 'dark' ? (
-                <Sun className="h-5 w-5" />
+                <Sun className="h-4 w-4" />
               ) : (
-                <Moon className="h-5 w-5" />
+                <Moon className="h-4 w-4" />
               )}
             </Button>
 
-            {/* Notifications */}
-            <Button variant="ghost" size="sm" className="relative hover:bg-accent">
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-xs bg-red-500">
-                3
-              </Badge>
+            {/* Create Post Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCreatePost(true)}
+              className="text-primary hover:text-primary/80"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="hidden sm:ml-2 sm:inline">Create</span>
             </Button>
 
-            {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="hover:bg-accent">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.user_metadata?.avatar_url} />
-                    <AvatarFallback>
-                      {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut} className="text-red-600">
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Notifications */}
+            <Button variant="ghost" size="sm" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs"></span>
+            </Button>
+
+            {/* Search Button (mobile only) */}
+            <Button variant="ghost" size="sm" className="md:hidden">
+              <Search className="h-5 w-5" />
+            </Button>
+
+            {/* User Avatar */}
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user?.user_metadata?.avatar_url} />
+              <AvatarFallback>
+                {user?.user_metadata?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </div>
       </header>
 
       {/* Create Post Modal */}
-      <CreatePostModal
+      <EnhancedCreatePostModal
         open={showCreatePost}
-        onClose={() => setShowCreatePost(false)}
+        onOpenChange={setShowCreatePost}
         onSubmit={handleCreatePost}
+        isLoading={isCreating}
       />
     </>
   );

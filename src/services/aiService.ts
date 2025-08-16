@@ -1,151 +1,201 @@
-import { supabase } from "@/integrations/supabase/client";
+
+import { supabase } from '@/integrations/supabase/client';
 
 export interface StudySuggestion {
-  suggestion_type: string;
+  id: string;
+  type: 'topic' | 'group' | 'resource' | 'event';
   title: string;
   description: string;
   relevance_score: number;
+  metadata?: Record<string, any>;
 }
 
-export interface AutoTagResult {
-  suggestedTags: string[];
-  suggestedCommunities: string[];
+export interface TagSuggestion {
+  tag: string;
   confidence: number;
+  category: 'academic' | 'social' | 'professional' | 'interest';
 }
 
-export class AIService {
-  // Get AI-powered study suggestions
-  static async getStudySuggestions(userId: string): Promise<StudySuggestion[]> {
+class AIService {
+  async getStudySuggestions(userId: string): Promise<StudySuggestion[]> {
     try {
-      // In a real app, this would call an AI service
-      // For now, we'll use the database function
-      const { data, error } = await supabase.rpc('get_study_suggestions', {
-        user_uuid: userId
-      });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error getting study suggestions:', error);
-      return [];
-    }
-  }
-
-  // Smart auto-tagging for posts
-  static async autoTagPost(content: string, title?: string): Promise<AutoTagResult> {
-    try {
-      // Mock AI auto-tagging logic
-      const text = `${title || ''} ${content}`.toLowerCase();
-      const suggestedTags: string[] = [];
-      const suggestedCommunities: string[] = [];
-
-      // Simple keyword matching (in real app, this would use NLP)
-      const tagKeywords = {
-        'study': ['study', 'exam', 'test', 'midterm', 'final', 'review'],
-        'programming': ['code', 'coding', 'javascript', 'python', 'react', 'programming'],
-        'math': ['math', 'calculus', 'algebra', 'geometry', 'statistics'],
-        'science': ['biology', 'chemistry', 'physics', 'lab', 'experiment'],
-        'career': ['internship', 'job', 'career', 'interview', 'resume'],
-        'social': ['party', 'event', 'meetup', 'hangout', 'social'],
-        'help': ['help', 'need', 'stuck', 'confused', 'question']
-      };
-
-      const communityKeywords = {
-        'Computer Science': ['programming', 'coding', 'software', 'cs', 'computer'],
-        'Mathematics': ['math', 'calculus', 'algebra', 'statistics'],
-        'Biology': ['biology', 'bio', 'life science', 'anatomy'],
-        'Study Groups': ['study', 'group study', 'review session'],
-        'Career Center': ['career', 'internship', 'job', 'professional']
-      };
-
-      // Check for tag matches
-      Object.entries(tagKeywords).forEach(([tag, keywords]) => {
-        if (keywords.some(keyword => text.includes(keyword))) {
-          suggestedTags.push(tag);
-        }
-      });
-
-      // Check for community matches
-      Object.entries(communityKeywords).forEach(([community, keywords]) => {
-        if (keywords.some(keyword => text.includes(keyword))) {
-          suggestedCommunities.push(community);
-        }
-      });
-
-      return {
-        suggestedTags: suggestedTags.slice(0, 5), // Limit to 5 suggestions
-        suggestedCommunities: suggestedCommunities.slice(0, 3),
-        confidence: Math.min(0.9, (suggestedTags.length + suggestedCommunities.length) * 0.2)
-      };
-    } catch (error) {
-      console.error('Error in auto-tagging:', error);
-      return { suggestedTags: [], suggestedCommunities: [], confidence: 0 };
-    }
-  }
-
-  // Get trending topics (mock implementation)
-  static async getTrendingTopics(): Promise<Array<{ topic: string; count: number }>> {
-    return [
-      { topic: 'Final Exams', count: 45 },
-      { topic: 'Spring Break', count: 32 },
-      { topic: 'React Tutorial', count: 28 },
-      { topic: 'Study Group', count: 25 },
-      { topic: 'Career Fair', count: 22 }
-    ];
-  }
-
-  // Get personalized feed recommendations
-  static async getPersonalizedRecommendations(userId: string): Promise<any[]> {
-    try {
-      // This would normally use AI to personalize content
-      // For now, we'll return posts based on user's communities and interests
-      const { data: posts, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          profiles!posts_user_id_fkey(display_name, avatar_url, major, year),
-          communities(name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      return posts || [];
-    } catch (error) {
-      console.error('Error getting personalized recommendations:', error);
-      return [];
-    }
-  }
-
-  // Generate mentorship matches
-  static async generateMentorshipMatches(userId: string): Promise<any[]> {
-    try {
+      // Get user profile for context
       const { data: profile } = await supabase
         .from('profiles')
-        .select('major, year, engagement_score')
+        .select('major, interests, skills, year')
         .eq('user_id', userId)
         .single();
 
-      if (!profile) return [];
-
-      // Find potential mentors (seniors in same major with high engagement)
-      const { data: mentors, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('major', profile.major)
-        .gt('engagement_score', 50)
-        .neq('user_id', userId)
-        .limit(5);
+      // Call the database function for study suggestions
+      const { data, error } = await supabase
+        .rpc('get_study_suggestions', { user_uuid: userId });
 
       if (error) throw error;
 
-      return mentors?.map(mentor => ({
-        ...mentor,
-        match_score: Math.floor(Math.random() * 40) + 60 // Mock matching score
+      return data?.map((suggestion: any) => ({
+        id: `suggestion_${Date.now()}_${Math.random()}`,
+        type: suggestion.suggestion_type as 'topic' | 'group' | 'resource' | 'event',
+        title: suggestion.title,
+        description: suggestion.description,
+        relevance_score: suggestion.relevance_score,
+        metadata: {
+          user_major: profile?.major,
+          user_interests: profile?.interests || [],
+          user_skills: profile?.skills || []
+        }
       })) || [];
     } catch (error) {
-      console.error('Error generating mentorship matches:', error);
+      console.error('Error getting study suggestions:', error);
+      
+      // Fallback suggestions based on user profile
+      return this.getFallbackSuggestions(userId);
+    }
+  }
+
+  async generateTagSuggestions(content: string): Promise<TagSuggestion[]> {
+    try {
+      // Extract keywords and phrases from content
+      const words = content.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+      const suggestions: TagSuggestion[] = [];
+
+      // Academic keywords mapping
+      const academicKeywords = {
+        'computer': { tag: 'Computer Science', confidence: 0.8, category: 'academic' as const },
+        'science': { tag: 'Science', confidence: 0.7, category: 'academic' as const },
+        'math': { tag: 'Mathematics', confidence: 0.8, category: 'academic' as const },
+        'programming': { tag: 'Programming', confidence: 0.9, category: 'academic' as const },
+        'study': { tag: 'Study Group', confidence: 0.6, category: 'academic' as const },
+        'homework': { tag: 'Homework Help', confidence: 0.7, category: 'academic' as const },
+        'project': { tag: 'Project', confidence: 0.6, category: 'academic' as const },
+        'exam': { tag: 'Exam Prep', confidence: 0.8, category: 'academic' as const },
+        'research': { tag: 'Research', confidence: 0.7, category: 'academic' as const }
+      };
+
+      // Social keywords mapping
+      const socialKeywords = {
+        'event': { tag: 'Event', confidence: 0.7, category: 'social' as const },
+        'party': { tag: 'Social', confidence: 0.6, category: 'social' as const },
+        'meetup': { tag: 'Meetup', confidence: 0.8, category: 'social' as const },
+        'friend': { tag: 'Friends', confidence: 0.5, category: 'social' as const },
+        'club': { tag: 'Club', confidence: 0.7, category: 'social' as const }
+      };
+
+      // Check for academic keywords
+      words.forEach(word => {
+        if (academicKeywords[word]) {
+          suggestions.push(academicKeywords[word]);
+        }
+        if (socialKeywords[word]) {
+          suggestions.push(socialKeywords[word]);
+        }
+      });
+
+      // Remove duplicates and sort by confidence
+      const uniqueSuggestions = suggestions
+        .filter((suggestion, index, self) => 
+          index === self.findIndex(s => s.tag === suggestion.tag)
+        )
+        .sort((a, b) => b.confidence - a.confidence)
+        .slice(0, 5); // Limit to top 5 suggestions
+
+      return uniqueSuggestions;
+    } catch (error) {
+      console.error('Error generating tag suggestions:', error);
+      return [];
+    }
+  }
+
+  async moderateContent(content: string): Promise<{
+    isAppropriate: boolean;
+    confidence: number;
+    flaggedReasons: string[];
+  }> {
+    try {
+      // Basic content moderation using keyword filtering
+      const inappropriateKeywords = [
+        'spam', 'scam', 'inappropriate', 'offensive', 'hate', 'harassment'
+      ];
+
+      const lowerContent = content.toLowerCase();
+      const flaggedReasons: string[] = [];
+      
+      inappropriateKeywords.forEach(keyword => {
+        if (lowerContent.includes(keyword)) {
+          flaggedReasons.push(`Contains potentially inappropriate content: ${keyword}`);
+        }
+      });
+
+      const isAppropriate = flaggedReasons.length === 0;
+      const confidence = isAppropriate ? 0.95 : 0.8;
+
+      return {
+        isAppropriate,
+        confidence,
+        flaggedReasons
+      };
+    } catch (error) {
+      console.error('Error moderating content:', error);
+      // Default to allowing content if moderation fails
+      return {
+        isAppropriate: true,
+        confidence: 0.5,
+        flaggedReasons: []
+      };
+    }
+  }
+
+  private async getFallbackSuggestions(userId: string): Promise<StudySuggestion[]> {
+    try {
+      // Get user's recent activity to generate relevant suggestions
+      const { data: recentPosts } = await supabase
+        .from('posts')
+        .select('tags, content')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const suggestions: StudySuggestion[] = [
+        {
+          id: 'fallback_1',
+          type: 'topic',
+          title: 'Study Tips & Techniques',
+          description: 'Discover effective study methods and productivity tips',
+          relevance_score: 75,
+          metadata: { source: 'fallback' }
+        },
+        {
+          id: 'fallback_2',
+          type: 'group',
+          title: 'Join Study Groups',
+          description: 'Connect with peers in your field of study',
+          relevance_score: 80,
+          metadata: { source: 'fallback' }
+        }
+      ];
+
+      // Add topic-specific suggestions based on recent posts
+      if (recentPosts && recentPosts.length > 0) {
+        const tags = recentPosts.flatMap(post => post.tags || []);
+        const uniqueTags = [...new Set(tags)].slice(0, 3);
+
+        uniqueTags.forEach((tag, index) => {
+          suggestions.push({
+            id: `topic_${index}`,
+            type: 'topic',
+            title: `Advanced ${tag}`,
+            description: `Dive deeper into ${tag} concepts and applications`,
+            relevance_score: 70 - (index * 5),
+            metadata: { source: 'user_activity', tag }
+          });
+        });
+      }
+
+      return suggestions;
+    } catch (error) {
+      console.error('Error generating fallback suggestions:', error);
       return [];
     }
   }
 }
+
+export const aiService = new AIService();

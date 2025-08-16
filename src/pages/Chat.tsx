@@ -22,6 +22,7 @@ export const Chat = () => {
 
   const handleRoomCreated = () => {
     setRefreshKey(prev => prev + 1);
+    setShowCreateModal(false);
   };
 
   return (
@@ -55,3 +56,5 @@ export const Chat = () => {
     </div>
   );
 };
+
+export default Chat;
