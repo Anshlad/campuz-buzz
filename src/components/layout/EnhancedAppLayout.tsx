@@ -11,8 +11,8 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Import page components
-import OptimizedHomeFeed from '@/pages/OptimizedHomeFeed';
+// Import page components - optimized loading
+import FastHomeFeed from '@/pages/FastHomeFeed';
 import { Chat } from '@/pages/Chat';
 import Communities from '@/pages/Communities';
 import StudyGroups from '@/pages/StudyGroups';
@@ -42,7 +42,7 @@ export const EnhancedAppLayout: React.FC = () => {
           <main className="flex-1 p-4 pb-20 md:pb-4">
             <div className="max-w-7xl mx-auto">
               <Routes>
-                <Route path="/" element={<OptimizedHomeFeed />} />
+                <Route path="/" element={<FastHomeFeed />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/communities" element={<Communities />} />
                 <Route path="/study-groups" element={<StudyGroups />} />

@@ -15,10 +15,11 @@ import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
-      retry: 3,
+      staleTime: 2 * 60 * 1000, // 2 minutes - faster refresh
+      gcTime: 5 * 60 * 1000, // 5 minutes - faster cleanup
+      retry: 1, // Reduce retries for faster failure
       refetchOnWindowFocus: false,
+      networkMode: 'offlineFirst', // Better offline support
     },
   },
 });
@@ -26,84 +27,50 @@ const queryClient = new QueryClient({
 // Lazy load main components for better performance
 const EnhancedAppLayout = lazy(() => import('@/components/layout/EnhancedAppLayout').then(module => ({ default: module.EnhancedAppLayout })));
 
-// Create a loading fallback component
+// Faster loading fallback
 const AppLoadingFallback = () => (
-  <div className="min-h-screen bg-background">
-    <div className="max-w-7xl mx-auto p-6">
-      <SmartSkeletonLoader type="feed" />
-    </div>
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
   </div>
 );
 
 function App() {
   useEffect(() => {
-    // Prevent flash of unstyled content during theme initialization
-    document.documentElement.classList.add('loading');
+    // Minimal initialization for faster startup
+    document.documentElement.classList.remove('loading');
     
-    // Remove loading class after theme is applied
-    const timer = setTimeout(() => {
-      document.documentElement.classList.remove('loading');
-    }, 100);
-
-    // Add PWA manifest to head
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = '/manifest.json';
-    document.head.appendChild(link);
-
-    // Add PWA theme color (will be updated by ThemeProvider)
-    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (!themeColorMeta) {
-      themeColorMeta = document.createElement('meta');
-      themeColorMeta.setAttribute('name', 'theme-color');
-      document.head.appendChild(themeColorMeta);
+    // Add essential meta tags only
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) {
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1';
+      document.head.appendChild(meta);
     }
-
-    // Add apple-mobile-web-app-capable for iOS
-    const appleMeta = document.createElement('meta');
-    appleMeta.name = 'apple-mobile-web-app-capable';
-    appleMeta.content = 'yes';
-    document.head.appendChild(appleMeta);
-
-    // Add apple-mobile-web-app-status-bar-style
-    const appleStatusMeta = document.createElement('meta');
-    appleStatusMeta.name = 'apple-mobile-web-app-status-bar-style';
-    appleStatusMeta.content = 'black-translucent';
-    document.head.appendChild(appleStatusMeta);
-
-    return () => {
-      clearTimeout(timer);
-      document.head.removeChild(link);
-      document.head.removeChild(appleMeta);
-      document.head.removeChild(appleStatusMeta);
-    };
   }, []);
 
   return (
-    <ErrorBoundaryWithRetry>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider defaultTheme="dark" storageKey="campuzbuzz_theme">
-            <BrowserRouter>
-              <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-                <Routes>
-                  <Route path="/auth" element={<AuthPages />} />
-                  <Route path="/*" element={
-                    <AuthGuard>
-                      <Suspense fallback={<AppLoadingFallback />}>
-                        <EnhancedAppLayout />
-                      </Suspense>
-                    </AuthGuard>
-                  } />
-                </Routes>
-              </div>
-              <Toaster />
-              <PWAInstallPrompt />
-            </BrowserRouter>
-          </ThemeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </ErrorBoundaryWithRetry>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="dark" storageKey="campuzbuzz_theme">
+          <BrowserRouter>
+            <div className="min-h-screen bg-background text-foreground">
+              <Routes>
+                <Route path="/auth" element={<AuthPages />} />
+                <Route path="/*" element={
+                  <AuthGuard>
+                    <Suspense fallback={<AppLoadingFallback />}>
+                      <EnhancedAppLayout />
+                    </Suspense>
+                  </AuthGuard>
+                } />
+              </Routes>
+            </div>
+            <Toaster />
+          </BrowserRouter>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
