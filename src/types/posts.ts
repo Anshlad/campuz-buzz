@@ -16,6 +16,7 @@ export interface PostReactions {
   [reactionType: string]: PostReaction;
 }
 
+// Updated Post interface to match actual database schema
 export interface Post {
   id: string;
   user_id: string;
@@ -23,7 +24,7 @@ export interface Post {
   content: string;
   image_url?: string;
   post_type: 'text' | 'image' | 'video' | 'poll';
-  tags: string[];
+  tags?: string[];
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -31,11 +32,16 @@ export interface Post {
   created_at: string;
   updated_at: string;
   visibility: 'public' | 'friends' | 'private';
-  hashtags: string[];
+  hashtags?: string[];
   location?: string;
-  mentions: string[];
+  mentions?: string[];
   reactions: PostReactions;
   profiles?: Profile | Profile[];
+  // Additional fields that may come from database
+  community_id?: string;
+  file_name?: string;
+  file_url?: string;
+  is_pinned?: boolean;
 }
 
 export interface EnhancedPostData extends Post {
@@ -81,4 +87,30 @@ export interface Hashtag {
   name: string;
   usage_count: number;
   created_at: string;
+}
+
+// Raw database post type for transformations
+export interface DatabasePost {
+  id: string;
+  user_id: string;
+  title?: string;
+  content: string;
+  image_url?: string;
+  post_type: string;
+  tags?: string[];
+  likes_count: number;
+  comments_count: number;
+  shares_count: number;
+  saves_count: number;
+  created_at: string;
+  updated_at: string;
+  visibility: string;
+  hashtags?: string[];
+  location?: string;
+  mentions?: string[];
+  community_id?: string;
+  file_name?: string;
+  file_url?: string;
+  is_pinned?: boolean;
+  profiles?: any;
 }

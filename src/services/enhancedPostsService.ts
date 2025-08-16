@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { 
   EnhancedPostData, 
@@ -8,7 +7,8 @@ import {
   Profile, 
   PostReactions, 
   UserPostInteractions,
-  Hashtag 
+  Hashtag,
+  DatabasePost
 } from '@/types/posts';
 
 class EnhancedPostsService {
@@ -19,6 +19,34 @@ class EnhancedPostsService {
       EnhancedPostsService.instance = new EnhancedPostsService();
     }
     return EnhancedPostsService.instance;
+  }
+
+  private transformDatabasePostToPost(dbPost: DatabasePost): Post {
+    return {
+      id: dbPost.id,
+      user_id: dbPost.user_id,
+      title: dbPost.title,
+      content: dbPost.content,
+      image_url: dbPost.image_url,
+      post_type: dbPost.post_type as 'text' | 'image' | 'video' | 'poll',
+      tags: dbPost.tags || [],
+      likes_count: dbPost.likes_count,
+      comments_count: dbPost.comments_count,
+      shares_count: dbPost.shares_count,
+      saves_count: dbPost.saves_count,
+      created_at: dbPost.created_at,
+      updated_at: dbPost.updated_at,
+      visibility: dbPost.visibility as 'public' | 'friends' | 'private',
+      hashtags: dbPost.hashtags || [],
+      location: dbPost.location,
+      mentions: dbPost.mentions || [],
+      reactions: {},
+      profiles: dbPost.profiles,
+      community_id: dbPost.community_id,
+      file_name: dbPost.file_name,
+      file_url: dbPost.file_url,
+      is_pinned: dbPost.is_pinned
+    };
   }
 
   async getPosts(filter: PostFilter = {}, page = 1, limit = 20): Promise<EnhancedPostData[]> {
@@ -77,7 +105,10 @@ class EnhancedPostsService {
     const { data, error } = await query;
     if (error) throw error;
 
-    return this.transformPosts(data as Post[] || []);
+    const dbPosts = data as DatabasePost[] || [];
+    const posts = dbPosts.map(dbPost => this.transformDatabasePostToPost(dbPost));
+    
+    return this.transformPosts(posts);
   }
 
   async createPost(postData: PostCreationData): Promise<EnhancedPostData> {
@@ -122,17 +153,20 @@ class EnhancedPostsService {
 
     if (error) throw error;
 
+    const dbPost = data as DatabasePost;
+    const post = this.transformDatabasePostToPost(dbPost);
+
     // Create hashtag entries
     if (hashtags.length > 0) {
-      await this.createHashtagEntries(data.id, hashtags);
+      await this.createHashtagEntries(post.id, hashtags);
     }
 
     // Create mention notifications
     if (postData.mentions && postData.mentions.length > 0) {
-      await this.createMentionNotifications(data.id, postData.mentions);
+      await this.createMentionNotifications(post.id, postData.mentions);
     }
 
-    return this.transformPost(data as Post);
+    return this.transformPost(post);
   }
 
   async reactToPost(postId: string, reactionType: string): Promise<void> {
@@ -323,7 +357,10 @@ class EnhancedPostsService {
       .single();
 
     if (error || !data) return null;
-    return this.transformPost(data as Post);
+    
+    const dbPost = data as DatabasePost;
+    const post = this.transformDatabasePostToPost(dbPost);
+    return this.transformPost(post);
   }
 
   private async getPostReactions(postId: string): Promise<PostReactions> {
@@ -402,19 +439,15 @@ class EnhancedPostsService {
         .eq('name', hashtag)
         .maybeSingle();
 
-      if (!error && hashtagData && this.isHashtagWithId(hashtagData)) {
+      if (!error && hashtagData && typeof hashtagData === 'object' && 'id' in hashtagData) {
         await supabase
           .from('post_hashtags')
           .insert({
             post_id: postId,
-            hashtag_id: hashtagData.id
+            hashtag_id: hashtagData.id as string
           });
       }
     }
-  }
-
-  private isHashtagWithId(data: any): data is Hashtag {
-    return data && typeof data === 'object' && 'id' in data && typeof data.id === 'string';
   }
 
   private async createMentionNotifications(postId: string, mentions: string[]): Promise<void> {
@@ -440,4 +473,6 @@ class EnhancedPostsService {
 }
 
 export const enhancedPostsService = EnhancedPostsService.getInstance();
-export { EnhancedPostData, PostFilter, PostCreationData } from '@/types/posts';
+
+// Fixed export types for isolatedModules
+export type { EnhancedPostData, PostFilter, PostCreationData } from '@/types/posts';
