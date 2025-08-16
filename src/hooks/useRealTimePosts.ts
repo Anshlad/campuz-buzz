@@ -165,7 +165,9 @@ export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
   // Set up real-time subscriptions
   useEffect(() => {
     const unsubscribe = enhancedPostsService.subscribeToPostUpdates(handlePostUpdate);
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+    };
   }, [handlePostUpdate]);
 
   // Load initial posts

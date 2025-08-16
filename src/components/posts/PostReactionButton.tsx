@@ -2,21 +2,21 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Heart, Smile, ThumbsUp, Angry, Sad, Surprise } from 'lucide-react';
+import { Heart, Smile, ThumbsUp, Angry, Frown, AlertCircle } from 'lucide-react';
 
 interface PostReactionButtonProps {
   reactions: Record<string, { count: number; users: string[] }>;
   userReaction?: string;
   onReact: (reactionType: string) => void;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
 }
 
 const reactionIcons = {
   like: { icon: ThumbsUp, color: 'text-blue-500', label: 'Like' },
   love: { icon: Heart, color: 'text-red-500', label: 'Love' },
   laugh: { icon: Smile, color: 'text-yellow-500', label: 'Laugh' },
-  wow: { icon: Surprise, color: 'text-purple-500', label: 'Wow' },
-  sad: { icon: Sad, color: 'text-gray-500', label: 'Sad' },
+  wow: { icon: AlertCircle, color: 'text-purple-500', label: 'Wow' },
+  sad: { icon: Frown, color: 'text-gray-500', label: 'Sad' },
   angry: { icon: Angry, color: 'text-orange-500', label: 'Angry' }
 };
 
@@ -24,7 +24,7 @@ export const PostReactionButton: React.FC<PostReactionButtonProps> = ({
   reactions,
   userReaction,
   onReact,
-  size = 'md'
+  size = 'default'
 }) => {
   const [showPicker, setShowPicker] = useState(false);
 
