@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,9 @@ import { EventAttendeesList } from '@/components/events/EventAttendeesList';
 import { useEvents, useEventRealtime } from '@/hooks/useEvents';
 import { Event } from '@/services/eventService';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from 'date-fns';
+import { EventRSVPButton } from '@/components/events/EventRSVPButton';
+import { CreateEventModal } from '@/components/events/CreateEventModal';
+import { CalendarIntegration } from '@/components/events/CalendarIntegration';
 
 export const EventCalendar = () => {
   const [view, setView] = useState<'month' | 'week' | 'list'>('month');
@@ -19,6 +21,7 @@ export const EventCalendar = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   const [showUpcomingOnly, setShowUpcomingOnly] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const filters = {
     event_type: eventTypeFilter !== 'all' ? eventTypeFilter : undefined,
@@ -181,7 +184,10 @@ export const EventCalendar = () => {
             </Button>
           </div>
 
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
+          <Button 
+            className="bg-gradient-to-r from-blue-600 to-indigo-600"
+            onClick={() => setShowCreateModal(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Event
           </Button>
@@ -284,7 +290,46 @@ export const EventCalendar = () => {
         {/* Sidebar */}
         <div className="space-y-4">
           {selectedEvent && (
-            <EventAttendeesList eventId={selectedEvent.id} />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Event Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">{selectedEvent.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {selectedEvent.description}
+                  </p>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>{format(new Date(selectedEvent.start_time), 'PPP')}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4" />
+                      <span>
+                        {format(new Date(selectedEvent.start_time), 'p')} - 
+                        {format(new Date(selectedEvent.end_time), 'p')}
+                      </span>
+                    </div>
+                    {selectedEvent.location && (
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>{selectedEvent.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <CalendarIntegration event={selectedEvent} />
+                
+                <EventRSVPButton
+                  eventId={selectedEvent.id}
+                  attendeeCount={selectedEvent.attendee_count}
+                />
+              </CardContent>
+            </Card>
           )}
 
           {/* Quick Actions */}
@@ -342,6 +387,16 @@ export const EventCalendar = () => {
           </Card>
         </div>
       </div>
+
+      {/* Create Event Modal */}
+      <CreateEventModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onEventCreated={() => {
+          setShowCreateModal(false);
+          // Refresh events would be handled by React Query
+        }}
+      />
     </div>
   );
 };
