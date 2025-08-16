@@ -1,14 +1,15 @@
-
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Wifi, WifiOff, Bell } from 'lucide-react';
 import { SmartSkeletonLoader } from '@/components/common/SmartSkeletonLoader';
 import { ErrorBoundaryWithRetry } from '@/components/common/ErrorBoundaryWithRetry';
 import { EnhancedButton } from '@/components/ui/enhanced-button';
-import { useOptimizedPosts } from '@/hooks/useOptimizedPosts';
+import { useRealtimePosts } from '@/hooks/useRealtimePosts';
+import { realtimeNotificationsService } from '@/services/realtimeNotificationsService';
 import { EnhancedPostCreator } from '@/components/posts/EnhancedPostCreator';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { usePWA } from '@/hooks/usePWA';
+import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Lazy load components for better performance
@@ -17,10 +18,12 @@ const ProfileSidebar = lazy(() => import('@/components/feed/ProfileSidebar'));
 const TrendingSidebar = lazy(() => import('@/components/feed/TrendingSidebar'));
 
 export default function OptimizedHomeFeed() {
+  const { user } = useAuth();
   const [showPostCreator, setShowPostCreator] = useState(false);
-  const { posts, loading, error, retry, createPost, isCreating } = useOptimizedPosts();
+  const { posts, loading, error, createPost, isCreating, retry, subscribeToPostUpdates } = useRealtimePosts();
   const { isOnline } = usePWA();
   const [showOfflineAlert, setShowOfflineAlert] = useState(false);
+  const [newPostsAvailable, setNewPostsAvailable] = useState(0);
 
   useEffect(() => {
     if (!isOnline) {
@@ -29,6 +32,43 @@ export default function OptimizedHomeFeed() {
       return () => clearTimeout(timer);
     }
   }, [isOnline]);
+
+  // Request notification permission and set up real-time notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const requestNotificationPermission = async () => {
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission();
+      }
+    };
+
+    requestNotificationPermission();
+
+    // Subscribe to user notifications
+    const unsubscribe = realtimeNotificationsService.subscribeToUserNotifications(
+      user.id,
+      (notification) => {
+        // Handle different types of notifications
+        if (notification.type === 'like' || notification.type === 'comment') {
+          setNewPostsAvailable(prev => prev + 1);
+        }
+      }
+    );
+
+    return () => {
+      realtimeNotificationsService.unsubscribe(`user-notifications-${user.id}`);
+    };
+  }, [user]);
+
+  // Subscribe to individual post updates for real-time reactions/comments
+  useEffect(() => {
+    const subscriptions = posts.map(post => subscribeToPostUpdates(post.id));
+    
+    return () => {
+      subscriptions.forEach(unsub => unsub?.());
+    };
+  }, [posts, subscribeToPostUpdates]);
 
   if (error && !posts.length) {
     return (
@@ -68,6 +108,25 @@ export default function OptimizedHomeFeed() {
                 <WifiOff className="h-4 w-4 text-orange-500" />
                 <AlertDescription className="text-orange-600 dark:text-orange-400">
                   You're offline. Some features may be limited.
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* New Posts Alert */}
+        <AnimatePresence>
+          {newPostsAvailable > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40"
+            >
+              <Alert className="bg-primary/10 border-primary/20 cursor-pointer" onClick={() => setNewPostsAvailable(0)}>
+                <Bell className="h-4 w-4 text-primary" />
+                <AlertDescription className="text-primary">
+                  {newPostsAvailable} new notification{newPostsAvailable > 1 ? 's' : ''}
                 </AlertDescription>
               </Alert>
             </motion.div>
