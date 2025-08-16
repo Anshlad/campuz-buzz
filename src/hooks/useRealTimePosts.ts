@@ -2,11 +2,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { EnhancedPostsService, PostFilter } from '@/services/enhancedPostsService';
-import { Post } from '@/types/posts';
+import { EnhancedPostsService, type PostFilter } from '@/services/enhancedPostsService';
+import { type Post, type EnhancedPostData } from '@/types/posts';
 
 export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<EnhancedPostData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -73,7 +73,7 @@ export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
           // Update specific post in the list
           setPosts(prev => prev.map(post => 
             post.id === payload.new.id 
-              ? { ...post, ...payload.new } as Post
+              ? { ...post, ...payload.new } as EnhancedPostData
               : post
           ));
         }
@@ -131,6 +131,12 @@ export const useRealTimePosts = (initialFilter: PostFilter = {}) => {
             if (reaction) {
               reaction.count += 1;
               reaction.hasReacted = true;
+            } else {
+              reactions[reactionType] = {
+                count: 1,
+                users: [],
+                hasReacted: true
+              };
             }
           }
           

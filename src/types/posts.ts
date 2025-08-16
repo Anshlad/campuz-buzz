@@ -10,6 +10,7 @@ export interface Profile {
 export interface PostReaction {
   count: number;
   users: string[];
+  hasReacted?: boolean;
 }
 
 export interface PostReactions {
@@ -42,6 +43,11 @@ export interface Post {
   file_name?: string;
   file_url?: string;
   is_pinned?: boolean;
+  // User interaction fields
+  is_liked?: boolean;
+  is_saved?: boolean;
+  user_reaction?: string;
+  author?: Profile;
 }
 
 export interface EnhancedPostData extends Post {
@@ -106,7 +112,6 @@ export interface DatabasePost {
   updated_at: string;
   visibility: string;
   hashtags?: string[];
-  location?: string;
   mentions?: string[];
   community_id?: string;
   file_name?: string;

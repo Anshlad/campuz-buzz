@@ -1,19 +1,20 @@
-import { supabase } from '@/integrations/supabase/client';
-import { PostFilter, Post, DatabasePost, Profile, PostReactions } from '@/types/posts';
-import { NotificationService } from '@/services/notificationService';
 
-export interface EnhancedPostData extends Post {
-  author: Profile;
-  is_liked: boolean;
-  is_saved: boolean;
-  user_reaction?: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { PostFilter, Post, DatabasePost, Profile, PostReactions, EnhancedPostData } from '@/types/posts';
+import { NotificationService } from '@/services/notificationService';
 
 const PAGE_SIZE = 20;
 
 // Utility function to transform database post to client post
-const transformPost = (post: DatabasePost, profile: Profile | undefined): EnhancedPostData => ({
+const transformDatabasePostToPost = (post: DatabasePost, profile: Profile | undefined): EnhancedPostData => ({
   ...post,
+  post_type: (post.post_type as 'text' | 'image' | 'video' | 'poll') || 'text',
+  visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
+  hashtags: post.hashtags || [],
+  mentions: post.mentions || [],
+  reactions: (typeof post.reactions === 'object' && post.reactions !== null) 
+    ? post.reactions as PostReactions 
+    : {} as PostReactions,
   author: {
     id: post.user_id,
     display_name: profile?.display_name || 'Anonymous',
@@ -28,7 +29,6 @@ const transformPost = (post: DatabasePost, profile: Profile | undefined): Enhanc
   comments_count: post.comments_count || 0,
   shares_count: post.shares_count || 0,
   saves_count: post.saves_count || 0,
-  reactions: {} as PostReactions,
 });
 
 export class EnhancedPostsService {
@@ -51,12 +51,13 @@ export class EnhancedPostsService {
         created_at,
         updated_at,
         visibility,
-        location,
+        hashtags,
         mentions,
         community_id,
         file_name,
         file_url,
         is_pinned,
+        reactions,
         profiles:user_id (
           id,
           display_name,
@@ -85,16 +86,48 @@ export class EnhancedPostsService {
     }
 
     return (data || []).map((post) => {
+      // Handle potential query errors
+      if (!post || typeof post !== 'object' || !('id' in post)) {
+        console.warn('Invalid post data received:', post);
+        return null;
+      }
+
       const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-      return transformPost(post, profile);
-    });
+      return transformDatabasePostToPost(post as DatabasePost, profile);
+    }).filter((post): post is EnhancedPostData => post !== null);
   }
 
-  static async createPost(post: Omit<Post, 'id' | 'created_at' | 'updated_at'>): Promise<Post> {
+  static async createPost(postData: {
+    content: string;
+    title?: string;
+    post_type: 'text' | 'image' | 'video' | 'poll';
+    user_id: string;
+    visibility: 'public' | 'friends' | 'private';
+    tags?: string[];
+    mentions?: string[];
+    image_url?: string;
+  }): Promise<Post> {
     try {
+      const insertData = {
+        content: postData.content,
+        title: postData.title,
+        post_type: postData.post_type,
+        user_id: postData.user_id,
+        visibility: postData.visibility,
+        tags: postData.tags || [],
+        mentions: postData.mentions || [],
+        image_url: postData.image_url,
+        hashtags: [],
+        reactions: {},
+        likes_count: 0,
+        comments_count: 0,
+        shares_count: 0,
+        saves_count: 0,
+      };
+
       const { data, error } = await supabase
         .from('posts')
-        .insert([post])
+        .insert([insertData])
         .select('*')
         .single();
 
@@ -103,7 +136,16 @@ export class EnhancedPostsService {
         throw error;
       }
 
-      return data as Post;
+      return {
+        ...data,
+        post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
+        visibility: data.visibility as 'public' | 'friends' | 'private',
+        hashtags: data.hashtags || [],
+        mentions: data.mentions || [],
+        reactions: (typeof data.reactions === 'object' && data.reactions !== null) 
+          ? data.reactions as PostReactions 
+          : {} as PostReactions,
+      } as Post;
     } catch (error) {
       console.error('Error creating post:', error);
       throw error;
@@ -363,3 +405,7 @@ export class EnhancedPostsService {
     }
   }
 }
+
+// Export types and service
+export type { PostFilter, EnhancedPostData };
+export { EnhancedPostsService as enhancedPostsService };

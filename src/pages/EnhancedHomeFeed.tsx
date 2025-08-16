@@ -7,7 +7,7 @@ import { EnhancedPostsList } from '@/components/posts/EnhancedPostsList';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2 } from 'lucide-react';
-import { enhancedPostsService } from '@/services/enhancedPostsService';
+import { EnhancedPostsService } from '@/services/enhancedPostsService';
 import { useToast } from '@/hooks/use-toast';
 
 const EnhancedHomeFeed = () => {
@@ -18,9 +18,9 @@ const EnhancedHomeFeed = () => {
 
   // Request notification permission on mount
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
+    if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
       const requestPermission = async () => {
-        const permission = await Notification.requestPermission();
+        const permission = await window.Notification.requestPermission();
         if (permission === 'granted') {
           toast({
             title: "Notifications enabled",
@@ -38,15 +38,17 @@ const EnhancedHomeFeed = () => {
   const handleCreatePost = async (postData: any) => {
     try {
       setIsCreating(true);
-      await enhancedPostsService.createPost({
+      if (!user?.id) throw new Error('User not authenticated');
+
+      await EnhancedPostsService.createPost({
         content: postData.content,
         title: postData.title,
         post_type: postData.type || 'text',
-        images: postData.images,
+        user_id: user.id,
+        visibility: postData.visibility || 'public',
         tags: postData.tags,
         mentions: postData.mentions,
-        location: postData.location,
-        visibility: postData.visibility || 'public'
+        image_url: postData.images?.[0]?.url
       });
       setShowCreatePost(false);
       toast({

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { NotificationService, Notification } from '@/services/notificationService';
+import { NotificationService, type Notification } from '@/services/notificationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,8 +31,8 @@ export const NotificationBell: React.FC = () => {
         setUnreadCount(prev => prev + 1);
         
         // Show browser notification if permission granted
-        if (Notification.permission === 'granted') {
-          new Notification(newNotification.title, {
+        if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+          new window.Notification(newNotification.title, {
             body: newNotification.message,
             icon: '/favicon.ico'
           });
