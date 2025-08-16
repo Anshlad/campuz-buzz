@@ -52,8 +52,14 @@ export const useFastPosts = () => {
 
       if (error) throw error;
 
+      // Handle empty posts case
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        return;
+      }
+
       // Get profiles separately for better performance
-      const userIds = [...new Set((postsData || []).map(p => p.user_id))];
+      const userIds = [...new Set(postsData.map(p => p.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
@@ -63,7 +69,7 @@ export const useFastPosts = () => {
         (profiles || []).map(p => [p.user_id, p])
       );
 
-      const fastPosts: FastPost[] = (postsData || []).map(post => {
+      const fastPosts: FastPost[] = postsData.map(post => {
         const profile = profileMap.get(post.user_id);
         return {
           id: post.id,
