@@ -73,7 +73,6 @@ export class EnhancedPostsService {
         created_at,
         updated_at,
         visibility,
-        hashtags,
         mentions,
         community_id,
         file_name,
@@ -107,25 +106,51 @@ export class EnhancedPostsService {
       throw error;
     }
 
-    return (data || [])
-      .filter((post): post is NonNullable<typeof post> => {
-        // Handle potential query errors and null posts
-        if (!post || typeof post !== 'object' || !('id' in post)) {
-          console.warn('Invalid post data received:', post);
+    if (!data) {
+      return [];
+    }
+
+    return data
+      .filter((item): item is NonNullable<typeof item> => {
+        if (!item || typeof item !== 'object' || !('id' in item)) {
+          console.warn('Invalid post data received:', item);
           return false;
         }
         return true;
       })
-      .map((post) => {
-        // TypeScript assertion after null check and filtering
-        const validPost = post as DatabasePost;
+      .map((validItem) => {
+        // Create a proper DatabasePost object
+        const post: DatabasePost = {
+          id: validItem.id,
+          user_id: validItem.user_id,
+          title: validItem.title || undefined,
+          content: validItem.content,
+          image_url: validItem.image_url || undefined,
+          post_type: validItem.post_type,
+          tags: validItem.tags || [],
+          likes_count: validItem.likes_count || 0,
+          comments_count: validItem.comments_count || 0,
+          shares_count: validItem.shares_count || 0,
+          saves_count: validItem.saves_count || 0,
+          created_at: validItem.created_at,
+          updated_at: validItem.updated_at,
+          visibility: validItem.visibility,
+          hashtags: [], // Default empty array since column doesn't exist
+          mentions: validItem.mentions || [],
+          community_id: validItem.community_id || undefined,
+          file_name: validItem.file_name || undefined,
+          file_url: validItem.file_url || undefined,
+          is_pinned: validItem.is_pinned || false,
+          reactions: validItem.reactions,
+          profiles: validItem.profiles,
+        };
         
         // Safely access profiles with null check
-        const profile = validPost.profiles && Array.isArray(validPost.profiles) 
-          ? validPost.profiles[0] 
-          : validPost.profiles;
+        const profile = post.profiles && Array.isArray(post.profiles) 
+          ? post.profiles[0] 
+          : post.profiles;
         
-        return transformDatabasePostToPost(validPost, profile);
+        return transformDatabasePostToPost(post, profile);
       });
   }
 
