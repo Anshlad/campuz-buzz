@@ -201,46 +201,71 @@ export const useFastPosts = () => {
       const post = posts.find(p => p.id === postId);
       if (!post) return;
 
+      const wasLiked = post.is_liked;
+
       // Optimistic update
       setPosts(prev => prev.map(p => {
         if (p.id === postId) {
           return {
             ...p,
-            is_liked: !p.is_liked,
-            likes_count: p.is_liked ? p.likes_count - 1 : p.likes_count + 1
+            is_liked: !wasLiked,
+            likes_count: wasLiked ? p.likes_count - 1 : p.likes_count + 1
           };
         }
         return p;
       }));
 
-      if (post.is_liked) {
+      if (wasLiked) {
         // Unlike
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', user.id);
+        
+        if (error) throw error;
+
+        // Update likes count in posts table
+        await supabase
+          .from('posts')
+          .update({ likes_count: post.likes_count - 1 })
+          .eq('id', postId);
       } else {
         // Like
-        await supabase
+        const { error } = await supabase
           .from('likes')
           .insert({
             post_id: postId,
             user_id: user.id
           });
+        
+        if (error) throw error;
+
+        // Update likes count in posts table
+        await supabase
+          .from('posts')
+          .update({ likes_count: post.likes_count + 1 })
+          .eq('id', postId);
       }
 
     } catch (error) {
       console.error('Error toggling like:', error);
       // Revert optimistic update on error
-      fetchPosts();
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          const post = posts.find(p => p.id === postId);
+          return post ? { ...post } : p;
+        }
+        return p;
+      }));
+      
       toast({
         title: "Error",
         description: "Failed to update like. Please try again.",
         variant: "destructive"
       });
     }
-  }, [posts, fetchPosts, toast]);
+  }, [posts, toast]);
 
   // Load posts on mount
   useEffect(() => {
