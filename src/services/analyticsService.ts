@@ -134,7 +134,7 @@ class AnalyticsService {
       const timeCondition = this.getTimeCondition(timeRange);
 
       // Get metrics
-      const [postsResult, commentsResult, likesResult, usersResult] = await Promise.all([
+      const [postsResult, commentsResult, likesResult, analyticsResult] = await Promise.all([
         supabase.from('posts').select('id', { count: 'exact' }).gte('created_at', timeCondition),
         supabase.from('comments').select('id', { count: 'exact' }).gte('created_at', timeCondition),
         supabase.from('likes').select('id', { count: 'exact' }).gte('created_at', timeCondition),
@@ -144,7 +144,7 @@ class AnalyticsService {
           .gte('timestamp', timeCondition)
       ]);
 
-      const activeUsers = new Set(usersResult.data?.map(event => event.user_id)).size;
+      const activeUsers = new Set(analyticsResult.data?.map(event => event.user_id)).size;
 
       return {
         total_posts: postsResult.count || 0,

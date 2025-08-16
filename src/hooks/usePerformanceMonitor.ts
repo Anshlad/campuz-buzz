@@ -25,7 +25,7 @@ export const usePerformanceMonitor = (componentName: string) => {
     const networkLatency = navigation ? navigation.responseEnd - navigation.requestStart : undefined;
 
     const performanceMetrics: PerformanceMetrics = {
-      loadTime: navigation ? navigation.loadEventEnd - navigation.navigationStart : renderTime,
+      loadTime: navigation ? navigation.loadEventEnd - navigation.fetchStart : renderTime,
       renderTime,
       memoryUsage,
       networkLatency
