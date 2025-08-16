@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -322,7 +323,7 @@ const FeedContent = () => {
         .from('posts')
         .select(`
           *,
-          profiles:user_id (
+          profiles!posts_user_id_fkey (
             display_name,
             avatar_url
           )
@@ -332,21 +333,23 @@ const FeedContent = () => {
 
       if (error) throw error;
       
-      // Transform data to match Post interface
-      const transformedPosts = (data || []).map(item => ({
-        id: item.id,
-        content: item.content,
-        created_at: item.created_at,
-        user_id: item.user_id,
-        likes_count: item.likes_count || 0,
-        comments_count: item.comments_count || 0,
-        profiles: {
-          display_name: item.profiles?.display_name || 'Anonymous',
-          avatar_url: item.profiles?.avatar_url
-        }
-      }));
+      // Transform and filter valid posts
+      const validPosts = (data || [])
+        .filter(item => item && item.profiles)
+        .map(item => ({
+          id: item.id,
+          content: item.content,
+          created_at: item.created_at,
+          user_id: item.user_id,
+          likes_count: item.likes_count || 0,
+          comments_count: item.comments_count || 0,
+          profiles: {
+            display_name: item.profiles?.display_name || 'Anonymous',
+            avatar_url: item.profiles?.avatar_url
+          }
+        }));
       
-      setPosts(transformedPosts);
+      setPosts(validPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
     } finally {
