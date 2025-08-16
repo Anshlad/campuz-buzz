@@ -1,6 +1,6 @@
 
 import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface OptimizedQueryOptions<TData, TError = Error> extends Omit<UseQueryOptions<TData, TError>, 'queryKey' | 'queryFn'> {
   queryKey: any[];
@@ -11,9 +11,17 @@ interface OptimizedQueryOptions<TData, TError = Error> extends Omit<UseQueryOpti
   background?: boolean;
 }
 
-interface OptimizedQueryResult<TData, TError = Error> extends UseQueryResult<TData, TError> {
+interface OptimizedQueryResult<TData, TError = Error> {
+  data: TData | undefined;
+  error: TError | null;
+  isError: boolean;
+  isPending: boolean;
+  isLoading: boolean;
+  isSuccess: boolean;
+  isStale: boolean;
   refresh: () => void;
-  prefetch: () => void;
+  prefetch: () => Promise<void>;
+  refetch: () => void;
 }
 
 // In-memory cache for deduplication
@@ -73,7 +81,7 @@ export const useOptimizedQuery = <TData, TError = Error>(
     queryKey,
     queryFn: optimizedQueryFn,
     staleTime,
-    gcTime: cacheTime, // Updated from cacheTime to gcTime
+    gcTime: cacheTime,
     refetchOnWindowFocus: false,
     refetchOnMount: !prefetchRef.current,
     retry: (failureCount, error) => {
@@ -91,7 +99,7 @@ export const useOptimizedQuery = <TData, TError = Error>(
   });
 
   // Prefetch function
-  const prefetch = useCallback(async () => {
+  const prefetch = useCallback(async (): Promise<void> => {
     if (!prefetchRef.current && !result.data) {
       try {
         const data = await optimizedQueryFn();
@@ -121,7 +129,7 @@ export const useOptimizedQuery = <TData, TError = Error>(
   }, [background, result.data, result.isStale, optimizedQueryFn]);
 
   // Trigger background refresh when data becomes stale
-  React.useEffect(() => {
+  useEffect(() => {
     if (background && result.isStale) {
       const timer = setTimeout(backgroundRefresh, 100);
       return () => clearTimeout(timer);
@@ -129,10 +137,16 @@ export const useOptimizedQuery = <TData, TError = Error>(
   }, [background, result.isStale, backgroundRefresh]);
 
   return {
-    ...result,
-    data: result.data || prefetchData,
+    data: result.data || prefetchData || undefined,
+    error: result.error,
+    isError: result.isError,
+    isPending: result.isPending,
+    isLoading: result.isLoading,
+    isSuccess: result.isSuccess,
+    isStale: result.isStale,
     refresh,
-    prefetch
+    prefetch,
+    refetch: result.refetch
   };
 };
 
