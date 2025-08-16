@@ -318,37 +318,61 @@ const FeedContent = () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // First get the posts
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select(`
-          *,
-          profiles:user_id (
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
+      if (postsError) throw postsError;
+
+      if (!postsData || postsData.length === 0) {
+        setPosts([]);
+        return;
+      }
+
+      // Get unique user IDs from posts
+      const userIds = [...new Set(postsData.map(post => post.user_id))];
+
+      // Get profiles for those users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to profile
+      const profilesMap = new Map();
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profilesMap.set(profile.user_id, profile);
+        });
+      }
+
+      // Combine posts with profiles
+      const postsWithProfiles = postsData
+        .map(post => {
+          const profile = profilesMap.get(post.user_id);
+          if (!profile) return null;
+
+          return {
+            id: post.id,
+            content: post.content,
+            created_at: post.created_at,
+            user_id: post.user_id,
+            likes_count: post.likes_count || 0,
+            comments_count: post.comments_count || 0,
+            profiles: {
+              display_name: profile.display_name || 'Anonymous',
+              avatar_url: profile.avatar_url
+            }
+          };
+        })
+        .filter(post => post !== null) as Post[];
       
-      // Transform and filter valid posts
-      const validPosts = (data || [])
-        .filter(item => item && item.profiles)
-        .map(item => ({
-          id: item.id,
-          content: item.content,
-          created_at: item.created_at,
-          user_id: item.user_id,
-          likes_count: item.likes_count || 0,
-          comments_count: item.comments_count || 0,
-          profiles: {
-            display_name: item.profiles?.display_name || 'Anonymous',
-            avatar_url: item.profiles?.avatar_url
-          }
-        }));
-      
-      setPosts(validPosts);
+      setPosts(postsWithProfiles);
     } catch (error) {
       console.error('Error loading posts:', error);
     } finally {
