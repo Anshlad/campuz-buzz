@@ -462,13 +462,13 @@ class EnhancedPostsService {
         .single();
 
       // Link hashtag to post
-      const { data: hashtagData } = await supabase
+      const { data: hashtagData, error } = await supabase
         .from('hashtags')
         .select('id')
         .eq('name', hashtag)
-        .single();
+        .maybeSingle();
 
-      if (hashtagData && hashtagData.id) {
+      if (!error && hashtagData && typeof hashtagData === 'object' && 'id' in hashtagData) {
         await supabase
           .from('post_hashtags')
           .insert({
