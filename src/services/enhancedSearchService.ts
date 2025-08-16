@@ -1,22 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-export interface SearchFilters {
-  type?: 'posts' | 'users' | 'communities' | 'events';
-  dateRange?: { start: Date; end: Date };
-  tags?: string[];
-  category?: string;
-  location?: string;
-}
-
 export interface SearchResult {
   id: string;
-  type: 'post' | 'user' | 'community' | 'event';
+  type: 'user' | 'post' | 'community' | 'event';
   title: string;
   description?: string;
-  image?: string;
-  metadata?: Record<string, any>;
-  relevance?: number;
+  imageUrl?: string;
+  metadata?: any;
 }
 
 export interface TrendingTopic {
@@ -24,128 +15,118 @@ export interface TrendingTopic {
   topic: string;
   mention_count: number;
   trend_score: number;
-  last_mentioned: string;
 }
 
 class EnhancedSearchService {
   // Universal search across all content types
-  async search(
-    query: string,
-    filters: SearchFilters = {},
-    page = 1,
-    limit = 20
-  ): Promise<{
-    results: SearchResult[];
-    total: number;
-    suggestions: string[];
-  }> {
+  async search(query: string, filters?: {
+    type?: 'user' | 'post' | 'community' | 'event';
+    limit?: number;
+  }): Promise<SearchResult[]> {
+    const results: SearchResult[] = [];
+    const limit = filters?.limit || 10;
+
     try {
-      const offset = (page - 1) * limit;
-      const results: SearchResult[] = [];
-      let total = 0;
+      // Search users (profiles)
+      if (!filters?.type || filters.type === 'user') {
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, bio, avatar_url')
+          .or(`display_name.ilike.%${query}%,bio.ilike.%${query}%`)
+          .limit(limit);
+
+        if (users) {
+          results.push(...users.map(user => ({
+            id: user.user_id,
+            type: 'user' as const,
+            title: user.display_name || 'Anonymous User',
+            description: user.bio,
+            imageUrl: user.avatar_url,
+            metadata: user
+          })));
+        }
+      }
 
       // Search posts
-      if (!filters.type || filters.type === 'posts') {
-        const { data: posts, count } = await supabase
+      if (!filters?.type || filters.type === 'post') {
+        const { data: posts } = await supabase
           .from('posts')
           .select(`
             id,
             title,
             content,
-            image_url,
+            user_id,
             created_at,
-            user_id
-          `, { count: 'exact' })
+            profiles!inner(display_name, avatar_url)
+          `)
           .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
-          .range(offset, offset + limit - 1);
+          .limit(limit);
 
         if (posts) {
-          const postResults = posts.map(post => ({
+          results.push(...posts.map(post => ({
             id: post.id,
             type: 'post' as const,
             title: post.title || 'Untitled Post',
-            description: post.content?.substring(0, 200),
-            image: post.image_url,
+            description: post.content?.substring(0, 200) + '...',
+            imageUrl: undefined,
             metadata: {
-              created_at: post.created_at
+              ...post,
+              author: post.profiles?.display_name || 'Anonymous',
+              authorAvatar: post.profiles?.avatar_url
             }
-          }));
-          results.push(...postResults);
-          total += count || 0;
-        }
-      }
-
-      // Search users (profiles)
-      if (!filters.type || filters.type === 'users') {
-        const { data: users, count } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, bio, avatar_url, major, school', { count: 'exact' })
-          .or(`display_name.ilike.%${query}%,bio.ilike.%${query}%,major.ilike.%${query}%`)
-          .range(offset, offset + limit - 1);
-
-        if (users) {
-          const userResults = users.map(user => ({
-            id: user.user_id,
-            type: 'user' as const,
-            title: user.display_name || 'Anonymous User',
-            description: user.bio || `${user.major} at ${user.school}`,
-            image: user.avatar_url,
-            metadata: {
-              major: user.major,
-              school: user.school
-            }
-          }));
-          results.push(...userResults);
-          total += count || 0;
+          })));
         }
       }
 
       // Search communities
-      if (!filters.type || filters.type === 'communities') {
-        const { data: communities, count } = await supabase
+      if (!filters?.type || filters.type === 'community') {
+        const { data: communities } = await supabase
           .from('communities_enhanced')
-          .select('*', { count: 'exact' })
+          .select('*')
           .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
-          .range(offset, offset + limit - 1);
+          .limit(limit);
 
         if (communities) {
-          const communityResults = communities.map(community => ({
+          results.push(...communities.map(community => ({
             id: community.id,
             type: 'community' as const,
             title: community.name,
             description: community.description,
-            image: community.avatar_url,
-            metadata: {
-              member_count: community.member_count,
-              is_private: community.is_private,
-              created_by: community.created_by
-            }
-          }));
-          results.push(...communityResults);
-          total += count || 0;
+            imageUrl: community.avatar_url,
+            metadata: community
+          })));
         }
       }
 
-      // Generate search suggestions (simple implementation)
-      const suggestions = await this.generateSearchSuggestions(query);
+      // Search events
+      if (!filters?.type || filters.type === 'event') {
+        const { data: events } = await supabase
+          .from('events')
+          .select('*')
+          .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
+          .limit(limit);
 
-      return {
-        results: results.slice(0, limit),
-        total,
-        suggestions
-      };
+        if (events) {
+          results.push(...events.map(event => ({
+            id: event.id,
+            type: 'event' as const,
+            title: event.title,
+            description: event.description,
+            imageUrl: event.image_url,
+            metadata: event
+          })));
+        }
+      }
+
+      return results.slice(0, limit);
     } catch (error) {
-      console.error('Search error:', error);
-      return {
-        results: [],
-        total: 0,
-        suggestions: []
-      };
+      console.error('Error in search:', error);
+      return [];
     }
   }
 
   // Get trending topics
-  async getTrendingTopics(limit = 10): Promise<TrendingTopic[]> {
+  async getTrendingTopics(limit: number = 10): Promise<TrendingTopic[]> {
     try {
       const { data, error } = await supabase
         .from('trending_topics')
@@ -157,114 +138,122 @@ class EnhancedSearchService {
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching trending topics:', error);
+      console.error('Error getting trending topics:', error);
       return [];
     }
   }
 
-  // Get recommended communities based on user interests
-  async getRecommendedCommunities(limit = 5): Promise<SearchResult[]> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+  // Get search suggestions based on user input
+  async getSearchSuggestions(query: string, limit: number = 5): Promise<string[]> {
+    if (!query || query.length < 2) return [];
 
-      // Get user's interests from profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('interests, major')
-        .eq('user_id', user.id)
-        .single();
-
-      let query = supabase
-        .from('communities_enhanced')
-        .select('*')
-        .eq('is_private', false)
-        .limit(limit);
-
-      // Filter by user's major or interests if available
-      if (profile?.major) {
-        query = query.or(`description.ilike.%${profile.major}%,name.ilike.%${profile.major}%`);
-      }
-
-      const { data: communities, error } = await query;
-
-      if (error) throw error;
-
-      return (communities || []).map(community => ({
-        id: community.id,
-        type: 'community' as const,
-        title: community.name,
-        description: community.description,
-        image: community.avatar_url,
-        metadata: {
-          member_count: community.member_count,
-          is_private: community.is_private
-        }
-      }));
-    } catch (error) {
-      console.error('Error fetching recommended communities:', error);
-      return [];
-    }
-  }
-
-  // Generate search suggestions
-  private async generateSearchSuggestions(query: string): Promise<string[]> {
     try {
       const suggestions: string[] = [];
 
-      // Get popular hashtags that match the query
-      const { data: hashtags } = await supabase
-        .from('hashtags')
-        .select('name')
-        .ilike('name', `%${query}%`)
-        .order('usage_count', { ascending: false })
-        .limit(5);
+      // Get user name suggestions
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .ilike('display_name', `${query}%`)
+        .limit(limit);
 
-      if (hashtags) {
-        suggestions.push(...hashtags.map(h => h.name));
+      if (users) {
+        suggestions.push(...users.map(u => u.display_name).filter(Boolean));
       }
 
-      // Get community names that match
+      // Get community name suggestions
       const { data: communities } = await supabase
         .from('communities_enhanced')
         .select('name')
-        .ilike('name', `%${query}%`)
-        .limit(3);
+        .ilike('name', `${query}%`)
+        .limit(limit);
 
       if (communities) {
         suggestions.push(...communities.map(c => c.name));
       }
 
-      return [...new Set(suggestions)].slice(0, 8);
+      // Get trending topic suggestions
+      const { data: topics } = await supabase
+        .from('trending_topics')
+        .select('topic')
+        .ilike('topic', `${query}%`)
+        .limit(limit);
+
+      if (topics) {
+        suggestions.push(...topics.map(t => t.topic));
+      }
+
+      return [...new Set(suggestions)].slice(0, limit);
     } catch (error) {
-      console.error('Error generating suggestions:', error);
+      console.error('Error getting search suggestions:', error);
       return [];
     }
   }
 
-  // Search users by skills or interests
-  async searchUsersBySkills(skills: string[]): Promise<SearchResult[]> {
+  // Advanced search with multiple filters
+  async advancedSearch(params: {
+    query: string;
+    type?: 'user' | 'post' | 'community' | 'event';
+    dateRange?: { start: string; end: string };
+    tags?: string[];
+    author?: string;
+    community?: string;
+    limit?: number;
+  }): Promise<SearchResult[]> {
+    const { query, type, dateRange, tags, author, community, limit = 20 } = params;
+    
     try {
-      const { data: users, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, bio, avatar_url, skills, interests')
-        .overlaps('skills', skills);
+      let results: SearchResult[] = [];
 
-      if (error) throw error;
+      if (type === 'post' || !type) {
+        let postQuery = supabase
+          .from('posts')
+          .select(`
+            id,
+            title,
+            content,
+            created_at,
+            tags,
+            user_id,
+            profiles!inner(display_name, avatar_url)
+          `)
+          .or(`title.ilike.%${query}%,content.ilike.%${query}%`);
 
-      return (users || []).map(user => ({
-        id: user.user_id,
-        type: 'user' as const,
-        title: user.display_name || 'Anonymous User',
-        description: user.bio,
-        image: user.avatar_url,
-        metadata: {
-          skills: user.skills,
-          interests: user.interests
+        if (dateRange) {
+          postQuery = postQuery
+            .gte('created_at', dateRange.start)
+            .lte('created_at', dateRange.end);
         }
-      }));
+
+        if (tags && tags.length > 0) {
+          postQuery = postQuery.overlaps('tags', tags);
+        }
+
+        if (author) {
+          postQuery = postQuery.eq('profiles.display_name', author);
+        }
+
+        const { data: posts } = await postQuery.limit(limit);
+
+        if (posts) {
+          results.push(...posts.map(post => ({
+            id: post.id,
+            type: 'post' as const,
+            title: post.title || 'Untitled Post',
+            description: post.content?.substring(0, 200) + '...',
+            imageUrl: undefined,
+            metadata: {
+              ...post,
+              author: post.profiles?.display_name || 'Anonymous',
+              authorAvatar: post.profiles?.avatar_url
+            }
+          })));
+        }
+      }
+
+      return results;
     } catch (error) {
-      console.error('Error searching users by skills:', error);
+      console.error('Error in advanced search:', error);
       return [];
     }
   }

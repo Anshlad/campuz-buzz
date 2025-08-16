@@ -157,31 +157,37 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      // Update member count manually using a direct SQL update
-      const { error: updateError } = await supabase
+      // Get current member count and increment it
+      const { data: community } = await supabase
         .from('communities_enhanced')
-        .update({ 
-          member_count: supabase.sql`member_count + 1`
-        })
-        .eq('id', communityId);
+        .select('member_count')
+        .eq('id', communityId)
+        .single();
 
-      if (updateError) {
-        console.warn('Error updating member count:', updateError);
+      if (community) {
+        const { error: updateError } = await supabase
+          .from('communities_enhanced')
+          .update({ member_count: community.member_count + 1 })
+          .eq('id', communityId);
+
+        if (updateError) {
+          console.warn('Error updating member count:', updateError);
+        }
       }
 
       // Notify community owner
-      const { data: community } = await supabase
+      const { data: communityDetails } = await supabase
         .from('communities_enhanced')
         .select('name, created_by')
         .eq('id', communityId)
         .single();
 
-      if (community && community.created_by !== userId) {
+      if (communityDetails && communityDetails.created_by !== userId) {
         await realtimeNotificationsService.createNotification(
-          community.created_by,
+          communityDetails.created_by,
           'community',
           'New Member',
-          `Someone joined your community "${community.name}"`,
+          `Someone joined your community "${communityDetails.name}"`,
           { community_id: communityId }
         );
       }
@@ -202,16 +208,22 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      // Update member count manually using a direct SQL update
-      const { error: updateError } = await supabase
+      // Get current member count and decrement it
+      const { data: community } = await supabase
         .from('communities_enhanced')
-        .update({ 
-          member_count: supabase.sql`GREATEST(member_count - 1, 0)`
-        })
-        .eq('id', communityId);
+        .select('member_count')
+        .eq('id', communityId)
+        .single();
 
-      if (updateError) {
-        console.warn('Error updating member count:', updateError);
+      if (community) {
+        const { error: updateError } = await supabase
+          .from('communities_enhanced')
+          .update({ member_count: Math.max(community.member_count - 1, 0) })
+          .eq('id', communityId);
+
+        if (updateError) {
+          console.warn('Error updating member count:', updateError);
+        }
       }
     } catch (error) {
       console.error('Error in leaveCommunity:', error);

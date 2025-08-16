@@ -6,7 +6,7 @@ export interface EnhancedEvent {
   title: string;
   description?: string;
   start_time: string;
-  end_time?: string;
+  end_time: string;
   location?: string;
   is_virtual: boolean;
   meeting_link?: string;
@@ -18,19 +18,21 @@ export interface EnhancedEvent {
   tags?: string[];
   image_url?: string;
   is_attending: boolean;
+  event_type: string;
 }
 
 export interface EventCreateData {
   title: string;
   description?: string;
   start_time: string;
-  end_time?: string;
+  end_time: string;
   location?: string;
   is_virtual?: boolean;
   meeting_link?: string;
   max_attendees?: number;
   tags?: string[];
   image_url?: string;
+  event_type?: string;
 }
 
 class EnhancedEventService {
@@ -60,13 +62,13 @@ class EnhancedEventService {
           let is_attending = false;
           
           if (userId && filters?.attending) {
-            // Check RSVP status using event_attendees table
+            // Check RSVP status using event_rsvps table
             const { data: rsvp } = await supabase
-              .from('event_attendees')
+              .from('event_rsvps')
               .select('id')
               .eq('event_id', event.id)
               .eq('user_id', userId)
-              .eq('status', 'attending')
+              .eq('status', 'going')
               .single();
             
             is_attending = !!rsvp;
@@ -95,7 +97,17 @@ class EnhancedEventService {
       const { data, error } = await supabase
         .from('events')
         .insert({
-          ...eventData,
+          title: eventData.title,
+          description: eventData.description,
+          start_time: eventData.start_time,
+          end_time: eventData.end_time,
+          location: eventData.location,
+          is_virtual: eventData.is_virtual || false,
+          meeting_link: eventData.meeting_link,
+          max_attendees: eventData.max_attendees,
+          tags: eventData.tags,
+          image_url: eventData.image_url,
+          event_type: eventData.event_type || 'other',
           created_by: user.id,
           attendee_count: 0
         })
@@ -115,14 +127,14 @@ class EnhancedEventService {
   }
 
   // RSVP to event
-  async rsvpToEvent(eventId: string, status: 'attending' | 'not_attending' | 'maybe'): Promise<void> {
+  async rsvpToEvent(eventId: string, status: 'going' | 'maybe' | 'not_going'): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
       // Check if RSVP already exists
       const { data: existingRSVP } = await supabase
-        .from('event_attendees')
+        .from('event_rsvps')
         .select('id, status')
         .eq('event_id', eventId)
         .eq('user_id', user.id)
@@ -131,7 +143,7 @@ class EnhancedEventService {
       if (existingRSVP) {
         // Update existing RSVP
         const { error } = await supabase
-          .from('event_attendees')
+          .from('event_rsvps')
           .update({ status })
           .eq('id', existingRSVP.id);
 
@@ -139,7 +151,7 @@ class EnhancedEventService {
       } else {
         // Create new RSVP
         const { error } = await supabase
-          .from('event_attendees')
+          .from('event_rsvps')
           .insert({
             event_id: eventId,
             user_id: user.id,
@@ -162,10 +174,10 @@ class EnhancedEventService {
     try {
       // Count attending users
       const { count } = await supabase
-        .from('event_attendees')
+        .from('event_rsvps')
         .select('*', { count: 'exact', head: true })
         .eq('event_id', eventId)
-        .eq('status', 'attending');
+        .eq('status', 'going');
 
       // Update event with new count
       const { error } = await supabase
