@@ -1,3 +1,4 @@
+
 import React, { memo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
@@ -11,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Heart, MessageCircle, Share2 } from 'lucide-react';
 
 // Fast Post Card Component
-const FastPostCard = memo(({ post }: { post: any }) => (
+const FastPostCard = memo(({ post, onLike }: { post: any; onLike: (postId: string) => void }) => (
   <Card className="p-4 space-y-3">
     <div className="flex items-center space-x-3">
       <Avatar className="h-10 w-10">
@@ -40,8 +41,13 @@ const FastPostCard = memo(({ post }: { post: any }) => (
       
       <div className="flex items-center justify-between pt-2 border-t">
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" className="h-8 px-2">
-            <Heart className="h-4 w-4 mr-1" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={`h-8 px-2 ${post.is_liked ? 'text-red-500' : ''}`}
+            onClick={() => onLike(post.id)}
+          >
+            <Heart className={`h-4 w-4 mr-1 ${post.is_liked ? 'fill-current' : ''}`} />
             <span className="text-xs">{post.likes_count || 0}</span>
           </Button>
           <Button variant="ghost" size="sm" className="h-8 px-2">
@@ -110,7 +116,7 @@ const FastPostCreator = memo(({ onSubmit, isLoading }: { onSubmit: any; isLoadin
 });
 
 export default function FastHomeFeed() {
-  const { posts, loading, error, createPost, isCreating, retry } = useFastPosts();
+  const { posts, loading, error, createPost, isCreating, toggleLike, retry } = useFastPosts();
 
   if (error && !posts.length) {
     return (
@@ -153,7 +159,7 @@ export default function FastHomeFeed() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <FastPostCard post={post} />
+              <FastPostCard post={post} onLike={toggleLike} />
             </motion.div>
           ))
         )}

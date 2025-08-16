@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +11,7 @@ export interface FastPost {
   likes_count: number;
   comments_count: number;
   created_at: string;
+  is_liked?: boolean;
   author: {
     id: string;
     display_name: string;
@@ -69,6 +71,20 @@ export const useFastPosts = () => {
         (profiles || []).map(p => [p.user_id, p])
       );
 
+      // Get current user's likes
+      const { data: { user } } = await supabase.auth.getUser();
+      let userLikes: Set<string> = new Set();
+      
+      if (user) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', user.id)
+          .in('post_id', postsData.map(p => p.id));
+        
+        userLikes = new Set((likesData || []).map(like => like.post_id));
+      }
+
       const fastPosts: FastPost[] = postsData.map(post => {
         const profile = profileMap.get(post.user_id);
         return {
@@ -79,6 +95,7 @@ export const useFastPosts = () => {
           likes_count: post.likes_count || 0,
           comments_count: post.comments_count || 0,
           created_at: post.created_at,
+          is_liked: userLikes.has(post.id),
           author: {
             id: post.user_id,
             display_name: profile?.display_name || 'Anonymous',
@@ -139,6 +156,7 @@ export const useFastPosts = () => {
 
       const newPost: FastPost = {
         ...data,
+        is_liked: false,
         author: {
           id: user.id,
           display_name: profile?.display_name || 'You',
@@ -167,6 +185,63 @@ export const useFastPosts = () => {
     }
   }, [toast]);
 
+  // Handle like toggle
+  const toggleLike = useCallback(async (postId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to like posts.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      // Optimistic update
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            is_liked: !p.is_liked,
+            likes_count: p.is_liked ? p.likes_count - 1 : p.likes_count + 1
+          };
+        }
+        return p;
+      }));
+
+      if (post.is_liked) {
+        // Unlike
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
+      } else {
+        // Like
+        await supabase
+          .from('likes')
+          .insert({
+            post_id: postId,
+            user_id: user.id
+          });
+      }
+
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // Revert optimistic update on error
+      fetchPosts();
+      toast({
+        title: "Error",
+        description: "Failed to update like. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [posts, fetchPosts, toast]);
+
   // Load posts on mount
   useEffect(() => {
     fetchPosts();
@@ -179,8 +254,9 @@ export const useFastPosts = () => {
     error,
     createPost,
     isCreating,
+    toggleLike,
     retry: fetchPosts
-  }), [posts, loading, error, createPost, isCreating, fetchPosts]);
+  }), [posts, loading, error, createPost, isCreating, toggleLike, fetchPosts]);
 
   return value;
 };
