@@ -92,13 +92,14 @@ export class EnhancedPostsService {
     }
 
     return (data || []).map((post) => {
-      // Handle potential query errors
+      // Handle potential query errors and null posts
       if (!post || typeof post !== 'object' || !('id' in post)) {
         console.warn('Invalid post data received:', post);
         return null;
       }
 
-      const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+      // Safely access profiles with null check
+      const profile = post.profiles && Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
       return transformDatabasePostToPost(post as DatabasePost, profile);
     }).filter((post): post is EnhancedPostData => post !== null);
   }
@@ -123,8 +124,8 @@ export class EnhancedPostsService {
         tags: postData.tags || [],
         mentions: postData.mentions || [],
         image_url: postData.image_url,
-        hashtags: [],
-        reactions: {},
+        hashtags: [] as string[],
+        reactions: {} as Record<string, any>,
         likes_count: 0,
         comments_count: 0,
         shares_count: 0,
@@ -146,9 +147,9 @@ export class EnhancedPostsService {
         throw new Error('No data returned from post creation');
       }
 
-      // Safely parse reactions
+      // Safely parse reactions with proper type checking
       let reactions: PostReactions = {};
-      if (data.reactions && typeof data.reactions === 'object' && data.reactions !== null) {
+      if (data.reactions && typeof data.reactions === 'object' && data.reactions !== null && !Array.isArray(data.reactions)) {
         reactions = data.reactions as PostReactions;
       }
 
@@ -156,8 +157,8 @@ export class EnhancedPostsService {
         ...data,
         post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
         visibility: data.visibility as 'public' | 'friends' | 'private',
-        hashtags: data.hashtags || [],
-        mentions: data.mentions || [],
+        hashtags: (data as any).hashtags || [],
+        mentions: (data as any).mentions || [],
         reactions,
       } as Post;
     } catch (error) {
