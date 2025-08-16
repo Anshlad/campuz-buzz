@@ -58,6 +58,7 @@ class EnhancedCommunitiesService {
           let isJoined = false;
           
           if (userId) {
+            // Check membership using community_members table
             const { data: membership } = await supabase
               .from('community_members')
               .select('id')
@@ -70,6 +71,7 @@ class EnhancedCommunitiesService {
 
           return {
             ...community,
+            category: community.category || undefined,
             isJoined
           } as EnhancedCommunity;
         })
@@ -114,6 +116,7 @@ class EnhancedCommunitiesService {
 
       return {
         ...data,
+        category: data.category || undefined,
         isJoined: true
       } as EnhancedCommunity;
     } catch (error) {
@@ -147,13 +150,13 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      // Update member count
+      // Update member count manually
       const { error: updateError } = await supabase
-        .rpc('increment', {
-          table_name: 'communities_enhanced',
-          column_name: 'member_count',
-          id: communityId
-        });
+        .from('communities_enhanced')
+        .update({ 
+          member_count: supabase.raw('member_count + 1')
+        })
+        .eq('id', communityId);
 
       if (updateError) {
         console.warn('Error updating member count:', updateError);
@@ -192,13 +195,13 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      // Update member count
+      // Update member count manually
       const { error: updateError } = await supabase
-        .rpc('decrement', {
-          table_name: 'communities_enhanced',
-          column_name: 'member_count',
-          id: communityId
-        });
+        .from('communities_enhanced')
+        .update({ 
+          member_count: supabase.raw('GREATEST(member_count - 1, 0)')
+        })
+        .eq('id', communityId);
 
       if (updateError) {
         console.warn('Error updating member count:', updateError);
@@ -220,7 +223,11 @@ class EnhancedCommunitiesService {
 
       if (error) throw error;
 
-      return data as EnhancedCommunity;
+      return {
+        ...data,
+        category: data.category || undefined,
+        isJoined: false
+      } as EnhancedCommunity;
     } catch (error) {
       console.error('Error getting community by invite code:', error);
       return null;

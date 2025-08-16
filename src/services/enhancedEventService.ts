@@ -179,13 +179,19 @@ class EnhancedEventService {
 
       if (error) throw error;
 
-      // Update attendee count for 'going' status
+      // Update attendee count manually for 'going' status
       if (status === 'going') {
-        const { error: countError } = await supabase
-          .rpc('update_event_attendee_count', { event_id: eventId });
+        const { data: goingCount, error: countError } = await supabase
+          .from('event_rsvps')
+          .select('id', { count: 'exact' })
+          .eq('event_id', eventId)
+          .eq('status', 'going');
           
-        if (countError) {
-          console.warn('Error updating attendee count:', countError);
+        if (!countError) {
+          await supabase
+            .from('events')
+            .update({ attendee_count: goingCount?.length || 0 })
+            .eq('id', eventId);
         }
       }
 

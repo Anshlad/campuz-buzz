@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { enhancedCommunitiesService, type EnhancedCommunity, type CommunityCreateData } from '@/services/enhancedCommunitiesService';
 import { Search, Plus, Users, Lock, Globe, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
