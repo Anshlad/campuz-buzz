@@ -73,7 +73,6 @@ export class EnhancedPostsService {
         created_at,
         updated_at,
         visibility,
-        mentions,
         community_id,
         file_name,
         file_url,
@@ -119,30 +118,33 @@ export class EnhancedPostsService {
         return true;
       })
       .map((validItem) => {
+        // Use type assertion to tell TypeScript this is the expected structure
+        const rawPost = validItem as any;
+        
         // Create a proper DatabasePost object
         const post: DatabasePost = {
-          id: validItem.id,
-          user_id: validItem.user_id,
-          title: validItem.title || undefined,
-          content: validItem.content,
-          image_url: validItem.image_url || undefined,
-          post_type: validItem.post_type,
-          tags: validItem.tags || [],
-          likes_count: validItem.likes_count || 0,
-          comments_count: validItem.comments_count || 0,
-          shares_count: validItem.shares_count || 0,
-          saves_count: validItem.saves_count || 0,
-          created_at: validItem.created_at,
-          updated_at: validItem.updated_at,
-          visibility: validItem.visibility,
+          id: rawPost.id,
+          user_id: rawPost.user_id,
+          title: rawPost.title || undefined,
+          content: rawPost.content,
+          image_url: rawPost.image_url || undefined,
+          post_type: rawPost.post_type,
+          tags: rawPost.tags || [],
+          likes_count: rawPost.likes_count || 0,
+          comments_count: rawPost.comments_count || 0,
+          shares_count: rawPost.shares_count || 0,
+          saves_count: rawPost.saves_count || 0,
+          created_at: rawPost.created_at,
+          updated_at: rawPost.updated_at,
+          visibility: rawPost.visibility,
           hashtags: [], // Default empty array since column doesn't exist
-          mentions: validItem.mentions || [],
-          community_id: validItem.community_id || undefined,
-          file_name: validItem.file_name || undefined,
-          file_url: validItem.file_url || undefined,
-          is_pinned: validItem.is_pinned || false,
-          reactions: validItem.reactions,
-          profiles: validItem.profiles,
+          mentions: [], // Default empty array since column doesn't exist
+          community_id: rawPost.community_id || undefined,
+          file_name: rawPost.file_name || undefined,
+          file_url: rawPost.file_url || undefined,
+          is_pinned: rawPost.is_pinned || false,
+          reactions: rawPost.reactions,
+          profiles: rawPost.profiles,
         };
         
         // Safely access profiles with null check
