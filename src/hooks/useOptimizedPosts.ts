@@ -147,8 +147,9 @@ export const useOptimizedPosts = () => {
     try {
       setIsCreating(true);
       
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) throw new Error('Not authenticated');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('You must be logged in to create a post');
 
       let imageUrl = null;
       let postType: 'text' | 'image' | 'video' | 'poll' = postData.post_type || 'text';
@@ -161,7 +162,7 @@ export const useOptimizedPosts = () => {
       const { data, error } = await supabase
         .from('posts')
         .insert({
-          user_id: user.data.user.id,
+          user_id: user.id,
           title: postData.title,
           content: postData.content,
           image_url: imageUrl,
@@ -199,7 +200,7 @@ export const useOptimizedPosts = () => {
         saves_count: 0,
         reactions: convertReactions(null),
         author: {
-          id: data.user_id,
+          id: user.id,
           display_name: profile?.display_name || 'Anonymous User',
           avatar_url: profile?.avatar_url,
           major: profile?.major,

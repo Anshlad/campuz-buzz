@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { EnhancedTopBar } from './EnhancedTopBar';
 import { AppSidebar } from './AppSidebar';
@@ -11,11 +11,22 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Import page components
+import OptimizedHomeFeed from '@/pages/OptimizedHomeFeed';
+import { Chat } from '@/pages/Chat';
+import Communities from '@/pages/Communities';
+import StudyGroups from '@/pages/StudyGroups';
+import { EventCalendar } from '@/pages/EventCalendar';
+import Profile from '@/pages/Profile';
+import Settings from '@/pages/Settings';
+import Explore from '@/pages/Explore';
+import { Announcements } from '@/pages/Announcements';
+
 export const EnhancedAppLayout: React.FC = () => {
   const { user } = useAuth();
 
   if (!user) {
-    return <Outlet />;
+    return null;
   }
 
   return (
@@ -30,7 +41,17 @@ export const EnhancedAppLayout: React.FC = () => {
           
           <main className="flex-1 p-4 pb-20 md:pb-4">
             <div className="max-w-7xl mx-auto">
-              <Outlet />
+              <Routes>
+                <Route path="/" element={<OptimizedHomeFeed />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/communities" element={<Communities />} />
+                <Route path="/study-groups" element={<StudyGroups />} />
+                <Route path="/events" element={<EventCalendar />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/announcements" element={<Announcements />} />
+              </Routes>
             </div>
           </main>
           
