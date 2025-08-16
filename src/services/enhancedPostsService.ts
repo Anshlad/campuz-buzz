@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -468,12 +467,12 @@ class EnhancedPostsService {
         .eq('name', hashtag)
         .maybeSingle();
 
-      if (!error && hashtagData && typeof hashtagData === 'object' && 'id' in hashtagData) {
+      if (!error && hashtagData && (hashtagData as any).id) {
         await supabase
           .from('post_hashtags')
           .insert({
             post_id: postId,
-            hashtag_id: hashtagData.id
+            hashtag_id: (hashtagData as any).id
           });
       }
     }
