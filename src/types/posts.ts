@@ -95,7 +95,7 @@ export interface Hashtag {
   created_at: string;
 }
 
-// Raw database post type for transformations
+// Raw database post type for transformations - matches Supabase response
 export interface DatabasePost {
   id: string;
   user_id: string;
@@ -117,5 +117,6 @@ export interface DatabasePost {
   file_name?: string;
   file_url?: string;
   is_pinned?: boolean;
+  reactions?: any; // JSON from database
   profiles?: any;
 }

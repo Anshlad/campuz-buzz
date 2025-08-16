@@ -6,30 +6,36 @@ import { NotificationService } from '@/services/notificationService';
 const PAGE_SIZE = 20;
 
 // Utility function to transform database post to client post
-const transformDatabasePostToPost = (post: DatabasePost, profile: Profile | undefined): EnhancedPostData => ({
-  ...post,
-  post_type: (post.post_type as 'text' | 'image' | 'video' | 'poll') || 'text',
-  visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
-  hashtags: post.hashtags || [],
-  mentions: post.mentions || [],
-  reactions: (typeof post.reactions === 'object' && post.reactions !== null) 
-    ? post.reactions as PostReactions 
-    : {} as PostReactions,
-  author: {
-    id: post.user_id,
-    display_name: profile?.display_name || 'Anonymous',
-    avatar_url: profile?.avatar_url,
-    major: profile?.major,
-    year: profile?.year,
-  },
-  is_liked: false,
-  is_saved: false,
-  user_reaction: undefined,
-  likes_count: post.likes_count || 0,
-  comments_count: post.comments_count || 0,
-  shares_count: post.shares_count || 0,
-  saves_count: post.saves_count || 0,
-});
+const transformDatabasePostToPost = (post: DatabasePost, profile: Profile | undefined): EnhancedPostData => {
+  // Safely parse reactions from database JSON
+  let reactions: PostReactions = {};
+  if (post.reactions && typeof post.reactions === 'object' && post.reactions !== null) {
+    reactions = post.reactions as PostReactions;
+  }
+
+  return {
+    ...post,
+    post_type: (post.post_type as 'text' | 'image' | 'video' | 'poll') || 'text',
+    visibility: (post.visibility as 'public' | 'friends' | 'private') || 'public',
+    hashtags: post.hashtags || [],
+    mentions: post.mentions || [],
+    reactions,
+    author: {
+      id: post.user_id,
+      display_name: profile?.display_name || 'Anonymous',
+      avatar_url: profile?.avatar_url,
+      major: profile?.major,
+      year: profile?.year,
+    },
+    is_liked: false,
+    is_saved: false,
+    user_reaction: undefined,
+    likes_count: post.likes_count || 0,
+    comments_count: post.comments_count || 0,
+    shares_count: post.shares_count || 0,
+    saves_count: post.saves_count || 0,
+  };
+};
 
 export class EnhancedPostsService {
   static async getPosts(filter: PostFilter = {}, page: number = 0): Promise<EnhancedPostData[]> {
@@ -136,15 +142,23 @@ export class EnhancedPostsService {
         throw error;
       }
 
+      if (!data) {
+        throw new Error('No data returned from post creation');
+      }
+
+      // Safely parse reactions
+      let reactions: PostReactions = {};
+      if (data.reactions && typeof data.reactions === 'object' && data.reactions !== null) {
+        reactions = data.reactions as PostReactions;
+      }
+
       return {
         ...data,
         post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
         visibility: data.visibility as 'public' | 'friends' | 'private',
         hashtags: data.hashtags || [],
         mentions: data.mentions || [],
-        reactions: (typeof data.reactions === 'object' && data.reactions !== null) 
-          ? data.reactions as PostReactions 
-          : {} as PostReactions,
+        reactions,
       } as Post;
     } catch (error) {
       console.error('Error creating post:', error);
