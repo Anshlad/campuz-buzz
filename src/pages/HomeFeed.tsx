@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -323,7 +322,7 @@ const FeedContent = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (
+          profiles:user_id (
             display_name,
             avatar_url
           )
