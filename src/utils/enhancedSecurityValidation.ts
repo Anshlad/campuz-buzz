@@ -100,7 +100,7 @@ export const SecureFileUploadSchema = z.object({
         'application/x-msdos-program'
       ];
       return !suspiciousMimeTypes.includes(type);
-    }, "File type flagged as potentially dangerous");
+    }, "File type flagged as potentially dangerous")
 });
 
 // Enhanced URL validation with domain whitelist support
