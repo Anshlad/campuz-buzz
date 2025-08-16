@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tag, Users, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

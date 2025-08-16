@@ -3,11 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface StudySuggestion {
   id: string;
-  type: 'topic' | 'group' | 'resource' | 'event';
+  suggestion_type: 'topic' | 'group' | 'resource' | 'event';
   title: string;
   description: string;
   relevance_score: number;
   metadata?: Record<string, any>;
+}
+
+export interface AutoTagResult {
+  suggestedTags: string[];
+  suggestedCommunities: string[];
+  confidence: number;
 }
 
 export interface TagSuggestion {
@@ -16,7 +22,7 @@ export interface TagSuggestion {
   category: 'academic' | 'social' | 'professional' | 'interest';
 }
 
-class AIService {
+class AIServiceClass {
   async getStudySuggestions(userId: string): Promise<StudySuggestion[]> {
     try {
       // Get user profile for context
@@ -34,7 +40,7 @@ class AIService {
 
       return data?.map((suggestion: any) => ({
         id: `suggestion_${Date.now()}_${Math.random()}`,
-        type: suggestion.suggestion_type as 'topic' | 'group' | 'resource' | 'event',
+        suggestion_type: suggestion.suggestion_type as 'topic' | 'group' | 'resource' | 'event',
         title: suggestion.title,
         description: suggestion.description,
         relevance_score: suggestion.relevance_score,
@@ -49,6 +55,25 @@ class AIService {
       
       // Fallback suggestions based on user profile
       return this.getFallbackSuggestions(userId);
+    }
+  }
+
+  async autoTagPost(content: string, title?: string): Promise<AutoTagResult> {
+    try {
+      const tagSuggestions = await this.generateTagSuggestions(content);
+      
+      return {
+        suggestedTags: tagSuggestions.map(s => s.tag),
+        suggestedCommunities: this.extractCommunities(content),
+        confidence: tagSuggestions.length > 0 ? Math.max(...tagSuggestions.map(s => s.confidence)) : 0.5
+      };
+    } catch (error) {
+      console.error('Error auto-tagging post:', error);
+      return {
+        suggestedTags: [],
+        suggestedCommunities: [],
+        confidence: 0
+      };
     }
   }
 
@@ -105,6 +130,24 @@ class AIService {
     }
   }
 
+  private extractCommunities(content: string): string[] {
+    // Basic community extraction based on content analysis
+    const communities: string[] = [];
+    const lowerContent = content.toLowerCase();
+    
+    if (lowerContent.includes('study') || lowerContent.includes('homework')) {
+      communities.push('Study Groups');
+    }
+    if (lowerContent.includes('event') || lowerContent.includes('party')) {
+      communities.push('Events');
+    }
+    if (lowerContent.includes('tech') || lowerContent.includes('programming')) {
+      communities.push('Tech');
+    }
+    
+    return communities;
+  }
+
   async moderateContent(content: string): Promise<{
     isAppropriate: boolean;
     confidence: number;
@@ -157,7 +200,7 @@ class AIService {
       const suggestions: StudySuggestion[] = [
         {
           id: 'fallback_1',
-          type: 'topic',
+          suggestion_type: 'topic',
           title: 'Study Tips & Techniques',
           description: 'Discover effective study methods and productivity tips',
           relevance_score: 75,
@@ -165,7 +208,7 @@ class AIService {
         },
         {
           id: 'fallback_2',
-          type: 'group',
+          suggestion_type: 'group',
           title: 'Join Study Groups',
           description: 'Connect with peers in your field of study',
           relevance_score: 80,
@@ -181,7 +224,7 @@ class AIService {
         uniqueTags.forEach((tag, index) => {
           suggestions.push({
             id: `topic_${index}`,
-            type: 'topic',
+            suggestion_type: 'topic',
             title: `Advanced ${tag}`,
             description: `Dive deeper into ${tag} concepts and applications`,
             relevance_score: 70 - (index * 5),
@@ -198,4 +241,5 @@ class AIService {
   }
 }
 
-export const aiService = new AIService();
+export const AIService = new AIServiceClass();
+export const aiService = AIService; // Export both for compatibility

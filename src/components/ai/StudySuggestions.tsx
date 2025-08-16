@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Brain, BookOpen, Users, TrendingUp, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +34,7 @@ export const StudySuggestions: React.FC = () => {
         return BookOpen;
       case 'group':
         return Users;
-      case 'post':
+      case 'resource':
         return TrendingUp;
       default:
         return Sparkles;
@@ -133,9 +134,9 @@ export const StudySuggestions: React.FC = () => {
                           Join Group
                         </Button>
                       )}
-                      {suggestion.suggestion_type === 'post' && (
+                      {suggestion.suggestion_type === 'resource' && (
                         <Button size="sm" variant="outline" className="h-6 text-xs">
-                          View Post
+                          View Resource
                         </Button>
                       )}
                     </div>

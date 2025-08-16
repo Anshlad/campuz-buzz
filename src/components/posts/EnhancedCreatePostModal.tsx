@@ -23,14 +23,16 @@ import { AutoTagSuggestions } from '@/components/ai/AutoTagSuggestions';
 
 interface EnhancedCreatePostModalProps {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   onSubmit: (post: any) => void;
+  isLoading?: boolean;
 }
 
 export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = ({ 
   open, 
-  onClose, 
-  onSubmit 
+  onOpenChange, 
+  onSubmit,
+  isLoading = false
 }) => {
   const [activeTab, setActiveTab] = useState('text');
   const [title, setTitle] = useState('');
@@ -38,7 +40,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
   const [image, setImage] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [mentions, setMentions] = useState<string[]>([]);
   const [hashtags, setHashtags] = useState<string[]>([]);
   const { toast } = useToast();
@@ -53,8 +54,6 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
       });
       return;
     }
-
-    setLoading(true);
 
     await onSubmit({
       title: title.trim() || undefined,
@@ -73,9 +72,8 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
     setTagInput('');
     setMentions([]);
     setHashtags([]);
-    setLoading(false);
     setActiveTab('text');
-    onClose();
+    onOpenChange(false);
   };
 
   const addTag = () => {
@@ -125,7 +123,7 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create a New Post</DialogTitle>
@@ -322,15 +320,15 @@ export const EnhancedCreatePostModal: React.FC<EnhancedCreatePostModalProps> = (
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button 
               type="submit" 
-              disabled={!content.trim() || loading}
+              disabled={!content.trim() || isLoading}
               className="bg-gradient-to-r from-blue-600 to-indigo-600"
             >
-              {loading ? 'Posting...' : 'Post'}
+              {isLoading ? 'Posting...' : 'Post'}
             </Button>
           </div>
         </form>
