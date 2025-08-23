@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, ExternalLink, Download } from 'lucide-react';
-import { Event, EventService } from '@/services/eventService';
+import { Event, eventService } from '@/services/eventService';
 import { toast } from 'sonner';
 
 interface CalendarIntegrationProps {
@@ -17,7 +17,7 @@ export const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
 }) => {
   const handleAddToGoogleCalendar = () => {
     try {
-      const googleCalendarUrl = EventService.generateGoogleCalendarLink(event);
+      const googleCalendarUrl = eventService.generateGoogleCalendarLink(event);
       window.open(googleCalendarUrl, '_blank');
       toast.success('Opening Google Calendar...');
     } catch (error) {
@@ -27,7 +27,7 @@ export const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
 
   const handleAddToOutlook = () => {
     try {
-      const outlookUrl = EventService.generateOutlookCalendarLink(event);
+      const outlookUrl = eventService.generateOutlookCalendarLink(event);
       window.open(outlookUrl, '_blank');
       toast.success('Opening Outlook...');
     } catch (error) {

@@ -38,7 +38,16 @@ export interface CreateEventData {
   community_id?: string;
 }
 
-class EventService {
+export interface EventRSVP {
+  id: string;
+  event_id: string;
+  user_id: string;
+  status: 'going' | 'maybe' | 'not_going';
+  created_at: string;
+  updated_at: string;
+}
+
+export class EventService {
   async getEvents(filters?: {
     startDate?: string;
     endDate?: string;
@@ -153,6 +162,40 @@ class EventService {
       console.error('Error deleting event:', error);
       throw error;
     }
+  }
+
+  generateGoogleCalendarLink(event: Event): string {
+    const startDate = new Date(event.start_time);
+    const endDate = new Date(event.end_time);
+    
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: event.title,
+      dates: `${formatDate(startDate)}/${formatDate(endDate)}`,
+      details: event.description || '',
+      location: event.location || event.meeting_link || ''
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
+
+  generateOutlookCalendarLink(event: Event): string {
+    const startDate = new Date(event.start_time);
+    const endDate = new Date(event.end_time);
+
+    const params = new URLSearchParams({
+      subject: event.title,
+      startdt: startDate.toISOString(),
+      enddt: endDate.toISOString(),
+      body: event.description || '',
+      location: event.location || event.meeting_link || ''
+    });
+
+    return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
   }
 }
 

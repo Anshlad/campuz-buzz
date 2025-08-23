@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Calendar, Clock, MapPin, Users, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { EventService } from '@/services/eventService';
+import { eventService } from '@/services/eventService';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateEventModalProps {
@@ -78,7 +77,7 @@ export const CreateEventModal: React.FC<CreateEventModalProps> = ({
         attendee_count: 0
       };
 
-      await EventService.createEvent(eventData);
+      await eventService.createEvent(eventData);
 
       toast({
         title: "Event created!",

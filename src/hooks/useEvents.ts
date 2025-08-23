@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { EventService, Event, EventRSVP } from '@/services/eventService';
+import { eventService, Event, EventRSVP } from '@/services/eventService';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useEvents = (filters?: {
@@ -19,17 +19,17 @@ export const useEvents = (filters?: {
     error
   } = useQuery({
     queryKey: ['events', filters, page],
-    queryFn: () => EventService.getEvents(page, limit, filters),
+    queryFn: () => eventService.getEvents(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   return {
-    events: data?.events || [],
-    total: data?.total || 0,
+    events: data || [],
+    total: data?.length || 0,
     isLoading,
     error,
     loadMore: () => setPage(p => p + 1),
-    hasMore: page * limit < (data?.total || 0)
+    hasMore: false // Since we're not using pagination in the service yet
   };
 };
 
@@ -38,7 +38,7 @@ export const useEvent = (eventId: string) => {
 
   return useQuery({
     queryKey: ['event', eventId, user?.id],
-    queryFn: () => EventService.getEvent(eventId, user?.id),
+    queryFn: () => eventService.getEventById(eventId),
     enabled: !!eventId,
   });
 };
@@ -46,7 +46,24 @@ export const useEvent = (eventId: string) => {
 export const useEventAttendees = (eventId: string) => {
   return useQuery({
     queryKey: ['event-attendees', eventId],
-    queryFn: () => EventService.getEventAttendees(eventId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('event_rsvps')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq('event_id', eventId)
+        .eq('status', 'going');
+
+      if (error) throw error;
+      return data;
+    },
     enabled: !!eventId,
   });
 };
@@ -56,8 +73,22 @@ export const useEventRSVP = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: ({ eventId, status }: { eventId: string; status: 'going' | 'maybe' | 'not_going' }) =>
-      EventService.rsvpToEvent(eventId, user!.id, status),
+    mutationFn: async ({ eventId, status }: { eventId: string; status: 'going' | 'maybe' | 'not_going' }) => {
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('event_rsvps')
+        .upsert({
+          event_id: eventId,
+          user_id: user.id,
+          status: status
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
     onSuccess: (_, variables) => {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ['event', variables.eventId] });
