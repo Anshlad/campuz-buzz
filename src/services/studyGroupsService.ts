@@ -72,7 +72,7 @@ export interface StudyGroupStats {
 interface ChatRoom {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   is_private: boolean;
   created_by: string;
   created_at: string;
