@@ -1557,6 +1557,89 @@ export type Database = {
         }
         Relationships: []
       }
+      session_participants: {
+        Row: {
+          created_at: string
+          id: string
+          joined_at: string | null
+          left_at: string | null
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          session_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          joined_at?: string | null
+          left_at?: string | null
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      study_group_analytics: {
+        Row: {
+          id: string
+          metric_type: string
+          metric_value: Json
+          period_end: string | null
+          period_start: string | null
+          recorded_at: string
+          study_group_id: string
+        }
+        Insert: {
+          id?: string
+          metric_type: string
+          metric_value?: Json
+          period_end?: string | null
+          period_start?: string | null
+          recorded_at?: string
+          study_group_id: string
+        }
+        Update: {
+          id?: string
+          metric_type?: string
+          metric_value?: Json
+          period_end?: string | null
+          period_start?: string | null
+          recorded_at?: string
+          study_group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_group_analytics_study_group_id_fkey"
+            columns: ["study_group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       study_group_members: {
         Row: {
           id: string
@@ -1633,6 +1716,69 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      study_materials: {
+        Row: {
+          created_at: string
+          description: string | null
+          download_count: number | null
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+          is_public: boolean | null
+          study_group_id: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          download_count?: number | null
+          file_size: number
+          file_type: string
+          file_url: string
+          id?: string
+          is_public?: boolean | null
+          study_group_id: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          download_count?: number | null
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          id?: string
+          is_public?: boolean | null
+          study_group_id?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_materials_study_group_id_fkey"
+            columns: ["study_group_id"]
+            isOneToOne: false
+            referencedRelation: "study_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_materials_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       study_sessions: {
         Row: {
