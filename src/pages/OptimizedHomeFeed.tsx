@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 // Lazy load components for better performance
 const EnhancedPostCard = lazy(() => import('@/components/posts/EnhancedPostCard').then(module => ({ default: module.EnhancedPostCard })));
 const ProfileSidebar = lazy(() => import('@/components/feed/ProfileSidebar'));
-const TrendingSidebar = lazy(() => import('@/components/feed/TrendingSidebar'));
+const EnhancedFeedSidebar = lazy(() => import('@/components/feed/EnhancedFeedSidebar'));
 
 export default function OptimizedHomeFeed() {
   const { user } = useAuth();
@@ -214,11 +214,11 @@ export default function OptimizedHomeFeed() {
               </div>
             </div>
 
-            {/* Right Sidebar - Trending & Suggestions */}
+            {/* Right Sidebar - Enhanced with AI Suggestions and Achievements */}
             <div className="lg:col-span-1 hidden lg:block">
               <div className="sticky top-6">
                 <Suspense fallback={<SmartSkeletonLoader type="community" count={3} />}>
-                  <TrendingSidebar />
+                  <EnhancedFeedSidebar />
                 </Suspense>
               </div>
             </div>
