@@ -71,7 +71,7 @@ export interface StudyGroupStats {
 
 class StudyGroupsService {
   // Session Management
-  async createSession(sessionData: Omit<StudySession, 'id' | 'created_at' | 'participant_count'>) {
+  async createSession(sessionData: Omit<StudySession, 'id' | 'created_at' | 'participant_count'>): Promise<StudySession> {
     const { data, error } = await supabase
       .from('study_sessions')
       .insert(sessionData)
@@ -89,6 +89,7 @@ class StudyGroupsService {
         *,
         session_participants(
           id,
+          session_id,
           user_id,
           status,
           joined_at,
@@ -101,14 +102,26 @@ class StudyGroupsService {
 
     if (error) throw error;
 
-    return data?.map(session => ({
-      ...session,
-      participant_count: session.session_participants?.length || 0,
-      participants: session.session_participants || []
-    } as StudySession)) || [];
+    return data?.map(session => {
+      const participants: SessionParticipant[] = (session.session_participants || []).map((p: any) => ({
+        id: p.id,
+        session_id: p.session_id || session.id,
+        user_id: p.user_id,
+        status: p.status,
+        joined_at: p.joined_at,
+        left_at: p.left_at,
+        profiles: p.profiles
+      }));
+
+      return {
+        ...session,
+        participant_count: participants.length,
+        participants
+      } as StudySession;
+    }) || [];
   }
 
-  async joinSession(sessionId: string, userId: string) {
+  async joinSession(sessionId: string, userId: string): Promise<SessionParticipant> {
     const { data, error } = await supabase
       .from('session_participants')
       .insert({
@@ -123,7 +136,7 @@ class StudyGroupsService {
     return data;
   }
 
-  async updateSessionStatus(sessionId: string, userId: string, status: SessionParticipant['status']) {
+  async updateSessionStatus(sessionId: string, userId: string, status: SessionParticipant['status']): Promise<SessionParticipant> {
     const { data, error } = await supabase
       .from('session_participants')
       .update({ status })
@@ -136,7 +149,7 @@ class StudyGroupsService {
     return data;
   }
 
-  async leaveSession(sessionId: string, userId: string) {
+  async leaveSession(sessionId: string, userId: string): Promise<void> {
     const { error } = await supabase
       .from('session_participants')
       .delete()
@@ -196,7 +209,7 @@ class StudyGroupsService {
     return (data || []) as StudyMaterial[];
   }
 
-  async deleteMaterial(materialId: string, userId: string) {
+  async deleteMaterial(materialId: string, userId: string): Promise<void> {
     // Get material details first to delete file
     const { data: material, error: fetchError } = await supabase
       .from('study_materials')
@@ -220,7 +233,7 @@ class StudyGroupsService {
     if (error) throw error;
   }
 
-  async incrementDownloadCount(materialId: string) {
+  async incrementDownloadCount(materialId: string): Promise<void> {
     // Use manual increment since RPC function doesn't exist
     const { data: material } = await supabase
       .from('study_materials')
@@ -288,12 +301,14 @@ class StudyGroupsService {
 
     if (activityError) throw activityError;
 
-    return {
+    const stats: StudyGroupStats = {
       memberCount: memberCount || 0,
       sessionCount: sessionCount || 0,
       materialCount: materialCount || 0,
       recentActivity: (recentActivity || []) as StudyGroupAnalytics[]
     };
+
+    return stats;
   }
 
   // Chat Integration
