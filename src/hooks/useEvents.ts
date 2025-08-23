@@ -62,7 +62,7 @@ export const useEventAttendees = (eventId: string) => {
           user_id,
           status,
           created_at,
-          profiles:user_id (
+          profiles!event_rsvps_user_id_fkey (
             id,
             user_id,
             display_name,
