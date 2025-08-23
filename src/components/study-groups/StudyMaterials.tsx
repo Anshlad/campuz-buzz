@@ -265,12 +265,12 @@ export const StudyMaterials: React.FC<StudyMaterialsProps> = ({ studyGroupId }) 
                         <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                           <div className="flex items-center space-x-1">
                             <Avatar className="h-5 w-5">
-                              <AvatarImage src={material.uploader?.avatar_url} />
+                              <AvatarImage src={material.profiles?.avatar_url} />
                               <AvatarFallback className="text-xs">
-                                {material.uploader?.display_name?.charAt(0) || 'U'}
+                                {material.profiles?.display_name?.charAt(0) || 'U'}
                               </AvatarFallback>
                             </Avatar>
-                            <span>by {material.uploader?.display_name || 'Unknown'}</span>
+                            <span>by {material.profiles?.display_name || 'Unknown'}</span>
                           </div>
                           <span>{formatFileSize(material.file_size)}</span>
                           <span>{material.download_count} downloads</span>

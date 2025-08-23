@@ -57,6 +57,21 @@ export const StudyGroupAnalytics: React.FC<StudyGroupAnalyticsProps> = ({ studyG
     }
   };
 
+  const getActivityDescription = (activity: any) => {
+    try {
+      const value = typeof activity.metric_value === 'string' 
+        ? JSON.parse(activity.metric_value) 
+        : activity.metric_value;
+      
+      if (value && typeof value === 'object') {
+        return value.title || value.user_id || 'Activity recorded';
+      }
+      return 'Activity recorded';
+    } catch {
+      return 'Activity recorded';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Overview */}
@@ -130,9 +145,7 @@ export const StudyGroupAnalytics: React.FC<StudyGroupAnalyticsProps> = ({ studyG
                     <div>
                       <p className="font-medium">{formatActivityType(activity.metric_type)}</p>
                       <p className="text-sm text-muted-foreground">
-                        {activity.metric_value?.title || 
-                         activity.metric_value?.user_id || 
-                         'Activity recorded'}
+                        {getActivityDescription(activity)}
                       </p>
                     </div>
                   </div>

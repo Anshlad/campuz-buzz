@@ -26,7 +26,7 @@ export interface SessionParticipant {
   status: 'registered' | 'attended' | 'missed' | 'cancelled';
   joined_at: string;
   left_at?: string;
-  profile?: {
+  profiles?: {
     display_name: string;
     avatar_url?: string;
   };
@@ -46,7 +46,7 @@ export interface StudyMaterial {
   download_count: number;
   created_at: string;
   updated_at: string;
-  uploader?: {
+  profiles?: {
     display_name: string;
     avatar_url?: string;
   };
@@ -80,12 +80,12 @@ class StudyGroupsService {
       .from('study_sessions')
       .select(`
         *,
-        session_participants(count),
         session_participants(
           id,
           user_id,
           status,
           joined_at,
+          left_at,
           profiles:user_id(display_name, avatar_url)
         )
       `)
@@ -214,26 +214,18 @@ class StudyGroupsService {
   }
 
   async incrementDownloadCount(materialId: string) {
-    const { error } = await supabase.rpc('increment', {
-      table_name: 'study_materials',
-      row_id: materialId,
-      column_name: 'download_count'
-    });
+    // Use manual increment since RPC function doesn't exist
+    const { data: material } = await supabase
+      .from('study_materials')
+      .select('download_count')
+      .eq('id', materialId)
+      .single();
 
-    if (error) {
-      // Fallback to manual increment
-      const { data: material } = await supabase
+    if (material) {
+      await supabase
         .from('study_materials')
-        .select('download_count')
-        .eq('id', materialId)
-        .single();
-
-      if (material) {
-        await supabase
-          .from('study_materials')
-          .update({ download_count: material.download_count + 1 })
-          .eq('id', materialId);
-      }
+        .update({ download_count: material.download_count + 1 })
+        .eq('id', materialId);
     }
   }
 

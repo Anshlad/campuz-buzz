@@ -80,7 +80,8 @@ export const SessionsList: React.FC<SessionsListProps> = ({ studyGroupId }) => {
     <div className="space-y-4">
       {sessions.map((session) => {
         const sessionStatus = getSessionStatus(session.scheduled_at);
-        const isParticipant = session.participants?.some(p => p.user_id === user?.id);
+        const participants = Array.isArray(session.participants) ? session.participants : [];
+        const isParticipant = participants.some(p => p.user_id === user?.id);
         const isFull = session.max_participants && session.participant_count >= session.max_participants;
 
         return (
@@ -172,20 +173,20 @@ export const SessionsList: React.FC<SessionsListProps> = ({ studyGroupId }) => {
                 </div>
               </div>
               
-              {session.participants && session.participants.length > 0 && (
+              {participants.length > 0 && (
                 <div>
                   <h5 className="text-sm font-medium mb-2">Participants</h5>
                   <div className="flex flex-wrap gap-2">
-                    {session.participants.slice(0, 5).map((participant) => (
+                    {participants.slice(0, 5).map((participant) => (
                       <div key={participant.id} className="flex items-center space-x-1">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={participant.profile?.avatar_url} />
+                          <AvatarImage src={participant.profiles?.avatar_url} />
                           <AvatarFallback className="text-xs">
-                            {participant.profile?.display_name?.charAt(0) || 'U'}
+                            {participant.profiles?.display_name?.charAt(0) || 'U'}
                           </AvatarFallback>
                         </Avatar>
                         <span className="text-xs">
-                          {participant.profile?.display_name || 'User'}
+                          {participant.profiles?.display_name || 'User'}
                         </span>
                         {participant.status === 'attended' && (
                           <CheckCircle className="h-3 w-3 text-green-500" />
@@ -195,9 +196,9 @@ export const SessionsList: React.FC<SessionsListProps> = ({ studyGroupId }) => {
                         )}
                       </div>
                     ))}
-                    {session.participants.length > 5 && (
+                    {participants.length > 5 && (
                       <span className="text-xs text-muted-foreground">
-                        +{session.participants.length - 5} more
+                        +{participants.length - 5} more
                       </span>
                     )}
                   </div>
