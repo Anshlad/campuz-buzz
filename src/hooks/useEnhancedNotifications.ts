@@ -61,7 +61,14 @@ export const useEnhancedNotifications = () => {
       if (error) throw error;
 
       const enhancedNotifications: EnhancedNotification[] = (data || []).map(n => ({
-        ...n,
+        id: n.id,
+        user_id: n.user_id,
+        type: n.type as EnhancedNotification['type'],
+        title: n.title,
+        message: n.message || undefined,
+        data: n.data || undefined,
+        is_read: n.is_read ?? false,
+        created_at: n.created_at,
         priority: getPriority(n.type),
         category: getCategory(n.type)
       }));
@@ -164,9 +171,16 @@ export const useEnhancedNotifications = () => {
       // Send push notification if it's for the current user
       if (userId === user?.id) {
         const enhancedNotification: EnhancedNotification = {
-          ...notification,
-          priority: getPriority(type),
-          category: getCategory(type)
+          id: notification.id,
+          user_id: notification.user_id,
+          type: notification.type as EnhancedNotification['type'],
+          title: notification.title,
+          message: notification.message || undefined,
+          data: notification.data || undefined,
+          is_read: notification.is_read ?? false,
+          created_at: notification.created_at,
+          priority: getPriority(notification.type),
+          category: getCategory(notification.type)
         };
         sendPushNotification(enhancedNotification);
       }
@@ -194,7 +208,14 @@ export const useEnhancedNotifications = () => {
         },
         (payload) => {
           const newNotification: EnhancedNotification = {
-            ...payload.new as any,
+            id: payload.new.id,
+            user_id: payload.new.user_id,
+            type: payload.new.type as EnhancedNotification['type'],
+            title: payload.new.title,
+            message: payload.new.message || undefined,
+            data: payload.new.data || undefined,
+            is_read: payload.new.is_read ?? false,
+            created_at: payload.new.created_at,
             priority: getPriority(payload.new.type),
             category: getCategory(payload.new.type)
           };

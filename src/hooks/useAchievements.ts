@@ -158,7 +158,17 @@ export const useAchievements = () => {
         .order('earned_at', { ascending: false });
 
       if (error) throw error;
-      setAchievements(data || []);
+
+      // Transform the data to match our interface
+      const transformedAchievements: Achievement[] = (data || []).map(item => ({
+        id: item.id,
+        achievement_type: item.achievement_type,
+        achievement_data: item.achievement_data as Achievement['achievement_data'],
+        earned_at: item.earned_at || undefined,
+        is_visible: item.is_visible ?? true
+      }));
+
+      setAchievements(transformedAchievements);
     } catch (error) {
       console.error('Error loading achievements:', error);
     }

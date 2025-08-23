@@ -1,16 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOptimizedProfile } from '@/hooks/useOptimizedProfile';
-import { databaseService } from '@/services/databaseService';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
-import { PostCard } from '@/components/posts/PostCard';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import { AchievementsDisplay } from '@/components/achievements/AchievementsDisplay';
+import { UserPostsTab } from '@/components/profile/UserPostsTab';
+import { UserCommunitiesTab } from '@/components/profile/UserCommunitiesTab';
+import { UserActivityTab } from '@/components/profile/UserActivityTab';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -90,60 +92,17 @@ export default function Profile() {
             <Tabs defaultValue="posts" className="w-full">
               <TabsList>
                 <TabsTrigger value="posts">Posts</TabsTrigger>
-                <TabsTrigger value="comments">Comments</TabsTrigger>
-                <TabsTrigger value="likes">Likes</TabsTrigger>
+                <TabsTrigger value="communities">Communities</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
               </TabsList>
               <TabsContent value="posts">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Your Posts</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Here you can see all your posts.</p>
-                    {[...Array(3)].map((_, i) => (
-                      <PostCard
-                        key={i}
-                        post={{
-                          id: `post-${i}`,
-                          author: {
-                            name: profile?.display_name || 'Loading...',
-                            avatar: profile?.avatar_url,
-                            major: profile?.major || '',
-                            year: profile?.year || ''
-                          },
-                          content: 'This is a sample post content.',
-                          image: 'https://source.unsplash.com/random',
-                          timestamp: new Date().toISOString(),
-                          likes: 10,
-                          comments: 3,
-                          tags: ['sample', 'post'],
-                          isLiked: false
-                        }}
-                        onLike={() => {}}
-                      />
-                    ))}
-                  </CardContent>
-                </Card>
+                <UserPostsTab />
               </TabsContent>
-              <TabsContent value="comments">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Your Comments</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Here you can see all your comments.</p>
-                  </CardContent>
-                </Card>
+              <TabsContent value="communities">
+                <UserCommunitiesTab />
               </TabsContent>
-              <TabsContent value="likes">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Posts You Liked</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Here you can see all the posts you liked.</p>
-                  </CardContent>
-                </Card>
+              <TabsContent value="activity">
+                <UserActivityTab />
               </TabsContent>
             </Tabs>
           </div>
@@ -153,7 +112,6 @@ export default function Profile() {
       <EditProfileModal
         open={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        profile={profile}
         refetchProfile={refetchProfile}
       />
     </div>

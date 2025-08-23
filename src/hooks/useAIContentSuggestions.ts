@@ -36,9 +36,15 @@ export const useAIContentSuggestions = () => {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      const { data: communities } = await supabase
+      const { data: userCommunities } = await supabase
         .from('community_members')
-        .select('communities(category, name)')
+        .select(`
+          communities (
+            id,
+            name,
+            category
+          )
+        `)
         .eq('user_id', user.id);
 
       // Simple AI-like content matching
@@ -49,7 +55,9 @@ export const useAIContentSuggestions = () => {
       ].filter(Boolean);
 
       const postTags = recentPosts?.flatMap(p => p.tags || []) || [];
-      const communityCategories = communities?.map(c => c.communities?.category).filter(Boolean) || [];
+      const communityCategories = userCommunities
+        ?.map(uc => (uc.communities as any)?.category)
+        .filter(Boolean) || [];
 
       // Generate suggestions based on interests
       const suggestions: ContentSuggestion[] = [];
@@ -57,7 +65,14 @@ export const useAIContentSuggestions = () => {
       // Suggest trending posts in user's interests
       const { data: trendingPosts } = await supabase
         .from('posts')
-        .select('id, title, content, tags, user_id, profiles(display_name)')
+        .select(`
+          id, 
+          title, 
+          content, 
+          tags, 
+          user_id, 
+          profiles!inner (display_name)
+        `)
         .not('user_id', 'eq', user.id)
         .order('likes_count', { ascending: false })
         .limit(10);
@@ -75,7 +90,7 @@ export const useAIContentSuggestions = () => {
             id: `post-${post.id}`,
             type: 'post',
             title: `Popular post: ${post.title || 'Untitled'}`,
-            description: `By ${post.profiles?.display_name} - ${matchingTags.join(', ')}`,
+            description: `By ${(post.profiles as any)?.display_name} - ${matchingTags.join(', ')}`,
             relevance_score: Math.min(95, 60 + matchingTags.length * 10),
             metadata: { post_id: post.id, tags: matchingTags },
             created_at: new Date().toISOString()
@@ -87,7 +102,7 @@ export const useAIContentSuggestions = () => {
       const { data: recommendedCommunities } = await supabase
         .from('communities')
         .select('id, name, description, category, member_count')
-        .not('id', 'in', communities?.map(c => c.communities?.id) || [])
+        .not('id', 'in', userCommunities?.map(uc => (uc.communities as any)?.id).filter(Boolean) || [])
         .limit(5);
 
       recommendedCommunities?.forEach(community => {

@@ -47,7 +47,22 @@ export const useMentorshipMatching = () => {
         .limit(20);
 
       if (error) throw error;
-      setMentors(data || []);
+      
+      // Transform the data to match our interface
+      const transformedMentors: MentorProfile[] = (data || []).map(profile => ({
+        id: profile.id,
+        user_id: profile.user_id,
+        display_name: profile.display_name || 'Anonymous',
+        avatar_url: profile.avatar_url || undefined,
+        major: profile.major || undefined,
+        year: profile.year || undefined,
+        bio: profile.bio || undefined,
+        skills: profile.skills || undefined,
+        engagement_score: profile.engagement_score || 0,
+        is_mentor: profile.role === 'mentor'
+      }));
+      
+      setMentors(transformedMentors);
     } catch (error) {
       console.error('Error loading mentors:', error);
     }
@@ -61,14 +76,45 @@ export const useMentorshipMatching = () => {
         .from('mentorship_matches')
         .select(`
           *,
-          mentor:mentor_id (id, display_name, avatar_url, major, year),
-          mentee:mentee_id (id, display_name, avatar_url, major, year)
+          mentor:profiles!mentorship_matches_mentor_id_fkey (id, display_name, avatar_url, major, year),
+          mentee:profiles!mentorship_matches_mentee_id_fkey (id, display_name, avatar_url, major, year)
         `)
         .or(`mentor_id.eq.${user.id},mentee_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setMentorshipRequests(data || []);
+      
+      // Transform the data to match our interface
+      const transformedRequests: MentorshipRequest[] = (data || []).map(request => ({
+        id: request.id,
+        mentor_id: request.mentor_id,
+        mentee_id: request.mentee_id,
+        status: request.status as MentorshipRequest['status'],
+        message: request.message || undefined,
+        created_at: request.created_at,
+        mentor: request.mentor ? {
+          id: request.mentor.id,
+          user_id: request.mentor_id,
+          display_name: (request.mentor as any).display_name || 'Anonymous',
+          avatar_url: (request.mentor as any).avatar_url || undefined,
+          major: (request.mentor as any).major || undefined,
+          year: (request.mentor as any).year || undefined,
+          engagement_score: 0,
+          is_mentor: true
+        } : undefined,
+        mentee: request.mentee ? {
+          id: request.mentee.id,
+          user_id: request.mentee_id,
+          display_name: (request.mentee as any).display_name || 'Anonymous',
+          avatar_url: (request.mentee as any).avatar_url || undefined,
+          major: (request.mentee as any).major || undefined,
+          year: (request.mentee as any).year || undefined,
+          engagement_score: 0,
+          is_mentor: false
+        } : undefined
+      }));
+      
+      setMentorshipRequests(transformedRequests);
     } catch (error) {
       console.error('Error loading mentorship requests:', error);
     }
