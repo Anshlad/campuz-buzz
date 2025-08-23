@@ -16,13 +16,32 @@ import { UserActivityTab } from '@/components/profile/UserActivityTab';
 
 export default function Profile() {
   const { user } = useAuth();
-  const { profile, loading, refetchProfile } = useOptimizedProfile();
+  const { profile, loading, updateProfile } = useOptimizedProfile();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    refetchProfile();
-  }, [user, refetchProfile]);
+  const handleSaveProfile = async (updatedData: any) => {
+    if (updateProfile) {
+      await updateProfile(updatedData);
+    }
+  };
+
+  // Transform profile data to match EditProfileModal's expected format
+  const transformedUser = profile ? {
+    id: profile.id,
+    name: profile.display_name || '',
+    email: user?.email || '',
+    bio: profile.bio || '',
+    major: profile.major || '',
+    year: profile.year || '',
+    department: profile.department || '',
+    avatar: profile.avatar_url || '',
+    role: profile.role as 'student' | 'professor' | 'admin' | 'club',
+    privacy: {
+      profileVisible: profile.privacy_settings?.profile_visible ?? true,
+      emailVisible: profile.privacy_settings?.email_visible ?? false,
+      joinedGroupsVisible: profile.privacy_settings?.academic_info_visible ?? true,
+    }
+  } : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -109,11 +128,14 @@ export default function Profile() {
         </div>
       </div>
 
-      <EditProfileModal
-        open={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        refetchProfile={refetchProfile}
-      />
+      {transformedUser && (
+        <EditProfileModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          user={transformedUser}
+          onSave={handleSaveProfile}
+        />
+      )}
     </div>
   );
 }

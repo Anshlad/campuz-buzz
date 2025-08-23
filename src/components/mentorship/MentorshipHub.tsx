@@ -200,11 +200,6 @@ export const MentorshipHub: React.FC = () => {
                           <p className="text-sm text-muted-foreground">
                             {request.mentee?.major} • {request.mentee?.year}
                           </p>
-                          {request.message && (
-                            <p className="text-sm mt-2 p-2 bg-muted rounded">
-                              "{request.message}"
-                            </p>
-                          )}
                         </div>
                       </div>
                       <div className="flex space-x-2">

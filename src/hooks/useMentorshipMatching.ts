@@ -22,7 +22,6 @@ export interface MentorshipRequest {
   mentor_id: string;
   mentee_id: string;
   status: 'pending' | 'accepted' | 'declined';
-  message?: string;
   created_at: string;
   mentor?: MentorProfile;
   mentee?: MentorProfile;
@@ -74,45 +73,64 @@ export const useMentorshipMatching = () => {
     try {
       const { data, error } = await supabase
         .from('mentorship_matches')
-        .select(`
-          *,
-          mentor:profiles!mentorship_matches_mentor_id_fkey (id, display_name, avatar_url, major, year),
-          mentee:profiles!mentorship_matches_mentee_id_fkey (id, display_name, avatar_url, major, year)
-        `)
+        .select('*')
         .or(`mentor_id.eq.${user.id},mentee_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
+      // Get mentor and mentee profiles separately
+      const requests = data || [];
+      const mentorIds = [...new Set(requests.map(r => r.mentor_id))];
+      const menteeIds = [...new Set(requests.map(r => r.mentee_id))];
+      
+      const { data: mentorProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', mentorIds);
+        
+      const { data: menteeProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', menteeIds);
+      
       // Transform the data to match our interface
-      const transformedRequests: MentorshipRequest[] = (data || []).map(request => ({
-        id: request.id,
-        mentor_id: request.mentor_id,
-        mentee_id: request.mentee_id,
-        status: request.status as MentorshipRequest['status'],
-        message: request.message || undefined,
-        created_at: request.created_at,
-        mentor: request.mentor ? {
-          id: request.mentor.id,
-          user_id: request.mentor_id,
-          display_name: (request.mentor as any).display_name || 'Anonymous',
-          avatar_url: (request.mentor as any).avatar_url || undefined,
-          major: (request.mentor as any).major || undefined,
-          year: (request.mentor as any).year || undefined,
-          engagement_score: 0,
-          is_mentor: true
-        } : undefined,
-        mentee: request.mentee ? {
-          id: request.mentee.id,
-          user_id: request.mentee_id,
-          display_name: (request.mentee as any).display_name || 'Anonymous',
-          avatar_url: (request.mentee as any).avatar_url || undefined,
-          major: (request.mentee as any).major || undefined,
-          year: (request.mentee as any).year || undefined,
-          engagement_score: 0,
-          is_mentor: false
-        } : undefined
-      }));
+      const transformedRequests: MentorshipRequest[] = requests.map(request => {
+        const mentorProfile = mentorProfiles?.find(p => p.user_id === request.mentor_id);
+        const menteeProfile = menteeProfiles?.find(p => p.user_id === request.mentee_id);
+        
+        return {
+          id: request.id,
+          mentor_id: request.mentor_id,
+          mentee_id: request.mentee_id,
+          status: request.status as MentorshipRequest['status'],
+          created_at: request.created_at,
+          mentor: mentorProfile ? {
+            id: mentorProfile.id,
+            user_id: mentorProfile.user_id,
+            display_name: mentorProfile.display_name || 'Anonymous',
+            avatar_url: mentorProfile.avatar_url || undefined,
+            major: mentorProfile.major || undefined,
+            year: mentorProfile.year || undefined,
+            bio: mentorProfile.bio || undefined,
+            skills: mentorProfile.skills || undefined,
+            engagement_score: mentorProfile.engagement_score || 0,
+            is_mentor: true
+          } : undefined,
+          mentee: menteeProfile ? {
+            id: menteeProfile.id,
+            user_id: menteeProfile.user_id,
+            display_name: menteeProfile.display_name || 'Anonymous',
+            avatar_url: menteeProfile.avatar_url || undefined,
+            major: menteeProfile.major || undefined,
+            year: menteeProfile.year || undefined,
+            bio: menteeProfile.bio || undefined,
+            skills: menteeProfile.skills || undefined,
+            engagement_score: menteeProfile.engagement_score || 0,
+            is_mentor: false
+          } : undefined
+        };
+      });
       
       setMentorshipRequests(transformedRequests);
     } catch (error) {
@@ -129,8 +147,7 @@ export const useMentorshipMatching = () => {
         .insert({
           mentor_id: mentorId,
           mentee_id: user.id,
-          status: 'pending',
-          message: message || ''
+          status: 'pending'
         });
 
       if (error) throw error;
