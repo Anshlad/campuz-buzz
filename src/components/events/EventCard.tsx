@@ -1,146 +1,169 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Users, ExternalLink } from 'lucide-react';
-import { EventRSVPButton } from './EventRSVPButton';
-import { EventService, Event } from '@/services/eventService';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { Calendar, Clock, MapPin, Users, Video, Building2 } from 'lucide-react';
+import { format, isToday, isTomorrow, isYesterday } from 'date-fns';
+import { Event } from '@/services/eventService';
 
 interface EventCardProps {
-  event: Event & { userRsvp?: any };
+  event: Event;
+  onEventClick: (event: Event) => void;
   showRSVP?: boolean;
-  onEventClick?: (event: Event) => void;
+  compact?: boolean;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({
-  event,
+export const EventCard: React.FC<EventCardProps> = ({ 
+  event, 
+  onEventClick, 
   showRSVP = true,
-  onEventClick
+  compact = false 
 }) => {
-  const getCategoryColor = (eventType: string) => {
-    switch (eventType) {
-      case 'study_session': return 'bg-blue-100 text-blue-800';
-      case 'social': return 'bg-purple-100 text-purple-800';
-      case 'career': return 'bg-green-100 text-green-800';
-      case 'academic': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const formatEventDate = (date: string) => {
+    const eventDate = new Date(date);
+    if (isToday(eventDate)) return 'Today';
+    if (isTomorrow(eventDate)) return 'Tomorrow';
+    if (isYesterday(eventDate)) return 'Yesterday';
+    return format(eventDate, 'MMM d');
+  };
+
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case 'study_session': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'social': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'career': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'academic': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      case 'sports': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'workshop': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
-  const handleAddToCalendar = async (type: 'google' | 'outlook') => {
-    try {
-      let calendarUrl: string;
-      
-      if (type === 'google') {
-        calendarUrl = EventService.generateGoogleCalendarLink(event);
-      } else {
-        calendarUrl = EventService.generateOutlookCalendarLink(event);
-      }
-      
-      window.open(calendarUrl, '_blank');
-    } catch (error) {
-      toast.error('Failed to add to calendar');
-    }
-  };
+  const isPastEvent = new Date(event.end_time) < new Date();
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-4">
+    <Card 
+      className={`transition-all duration-200 hover:shadow-md cursor-pointer ${
+        isPastEvent ? 'opacity-75' : ''
+      } ${compact ? 'p-2' : ''}`}
+      onClick={() => onEventClick(event)}
+    >
+      <CardHeader className={compact ? 'p-3 pb-2' : 'pb-3'}>
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle 
-              className="text-lg font-semibold cursor-pointer hover:text-blue-600 transition-colors"
-              onClick={() => onEventClick?.(event)}
-            >
-              {event.title}
-            </CardTitle>
-            <div className="flex items-center space-x-2 mt-2">
-              <Badge className={getCategoryColor(event.event_type)}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge 
+                variant="secondary" 
+                className={`text-xs ${getEventTypeColor(event.event_type)}`}
+              >
                 {event.event_type.replace('_', ' ')}
               </Badge>
               {event.is_virtual && (
-                <Badge variant="outline">Virtual</Badge>
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <Video className="h-3 w-3" />
+                  Virtual
+                </Badge>
               )}
-              {event.max_attendees && (
-                <Badge variant="outline">
-                  Limited ({event.attendee_count}/{event.max_attendees})
+              {event.community_id && (
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  Community
+                </Badge>
+              )}
+              {isPastEvent && (
+                <Badge variant="secondary" className="text-xs">
+                  Past
                 </Badge>
               )}
             </div>
+            
+            <h3 className={`font-semibold ${compact ? 'text-sm' : 'text-lg'} truncate`}>
+              {event.title}
+            </h3>
+            
+            {!compact && event.description && (
+              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                {event.description}
+              </p>
+            )}
           </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {event.description && (
-          <p className="text-sm text-gray-600 line-clamp-2">{event.description}</p>
-        )}
-
-        <div className="space-y-2 text-sm text-gray-600">
-          <div className="flex items-center">
-            <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>{format(new Date(event.start_time), 'PPP')}</span>
-          </div>
-          <div className="flex items-center">
-            <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span>
-              {format(new Date(event.start_time), 'p')} - {format(new Date(event.end_time), 'p')}
-            </span>
-          </div>
-          {event.location && (
-            <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span className="truncate">{event.location}</span>
+          
+          {event.image_url && (
+            <div className="ml-3 flex-shrink-0">
+              <img 
+                src={event.image_url} 
+                alt={event.title}
+                className="w-16 h-16 rounded-lg object-cover"
+              />
             </div>
           )}
         </div>
+      </CardHeader>
 
-        {event.tags && event.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {event.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
-            {event.tags.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{event.tags.length - 3} more
-              </Badge>
+      <CardContent className={compact ? 'p-3 pt-0' : 'pt-0'}>
+        <div className="space-y-2">
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4 mr-2 text-primary" />
+            <span>{formatEventDate(event.start_time)}</span>
+            <span className="mx-2">•</span>
+            <Clock className="h-4 w-4 mr-1 text-primary" />
+            <span>
+              {format(new Date(event.start_time), 'h:mm a')}
+            </span>
+          </div>
+
+          {(event.location || event.meeting_link) && (
+            <div className="flex items-center text-sm text-muted-foreground">
+              {event.is_virtual ? (
+                <Video className="h-4 w-4 mr-2 text-primary" />
+              ) : (
+                <MapPin className="h-4 w-4 mr-2 text-primary" />
+              )}
+              <span className="truncate">
+                {event.is_virtual ? 'Virtual Event' : event.location}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Users className="h-4 w-4 mr-2 text-primary" />
+              <span>
+                {event.attendee_count} attending
+                {event.max_attendees && ` / ${event.max_attendees}`}
+              </span>
+            </div>
+
+            {!compact && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEventClick(event);
+                }}
+              >
+                View Details
+              </Button>
             )}
           </div>
-        )}
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t">
-          {showRSVP && (
-            <EventRSVPButton
-              eventId={event.id}
-              currentStatus={event.userRsvp?.status}
-              attendeeCount={event.attendee_count}
-              size="sm"
-            />
+          {event.tags && event.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {event.tags.slice(0, 3).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {event.tags.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{event.tags.length - 3}
+                </Badge>
+              )}
+            </div>
           )}
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleAddToCalendar('google')}
-            >
-              <ExternalLink className="h-3 w-3 mr-1" />
-              Google
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleAddToCalendar('outlook')}
-            >
-              <ExternalLink className="h-3 w-3 mr-1" />
-              Outlook
-            </Button>
-          </div>
         </div>
       </CardContent>
     </Card>

@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Clock, XCircle, Users } from 'lucide-react';
-import { useEventRSVP } from '@/hooks/useEvents';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -13,6 +12,7 @@ interface EventRSVPButtonProps {
   attendeeCount: number;
   disabled?: boolean;
   size?: 'sm' | 'default' | 'lg';
+  onRSVP?: (status: 'going' | 'maybe' | 'not_going') => void;
 }
 
 export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
@@ -20,10 +20,10 @@ export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
   currentStatus,
   attendeeCount,
   disabled = false,
-  size = 'default'
+  size = 'default',
+  onRSVP
 }) => {
   const { user } = useAuth();
-  const rsvpMutation = useEventRSVP();
 
   const handleRSVP = async (status: 'going' | 'maybe' | 'not_going') => {
     if (!user) {
@@ -31,11 +31,8 @@ export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
       return;
     }
 
-    try {
-      await rsvpMutation.mutateAsync({ eventId, status });
-      toast.success(`RSVP updated to ${status === 'going' ? 'Going' : status === 'maybe' ? 'Maybe' : 'Not Going'}`);
-    } catch (error) {
-      toast.error('Failed to update RSVP');
+    if (onRSVP) {
+      onRSVP(status);
     }
   };
 
@@ -48,12 +45,14 @@ export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, isSelected: boolean) => {
+    if (!isSelected) return '';
+    
     switch (status) {
-      case 'going': return 'bg-green-500 hover:bg-green-600';
-      case 'maybe': return 'bg-yellow-500 hover:bg-yellow-600';
-      case 'not_going': return 'bg-red-500 hover:bg-red-600';
-      default: return 'bg-blue-500 hover:bg-blue-600';
+      case 'going': return 'bg-green-600 hover:bg-green-700 text-white';
+      case 'maybe': return 'bg-yellow-600 hover:bg-yellow-700 text-white';
+      case 'not_going': return 'bg-red-600 hover:bg-red-700 text-white';
+      default: return '';
     }
   };
 
@@ -81,19 +80,19 @@ export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
   }
 
   return (
-    <div className="flex items-center space-x-2">
-      <Badge variant="outline" className="flex items-center space-x-1">
+    <div className="space-y-3">
+      <Badge variant="outline" className="flex items-center space-x-1 w-fit">
         <Users className="h-3 w-3" />
         <span>{attendeeCount} attending</span>
       </Badge>
       
-      <div className="flex items-center space-x-1">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={currentStatus === 'going' ? 'default' : 'outline'}
           size={size}
           onClick={() => handleRSVP('going')}
-          disabled={disabled || rsvpMutation.isPending}
-          className={currentStatus === 'going' ? getStatusColor('going') : ''}
+          disabled={disabled}
+          className={getStatusColor('going', currentStatus === 'going')}
         >
           {getStatusIcon('going')}
           <span className="ml-1">Going</span>
@@ -103,8 +102,8 @@ export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
           variant={currentStatus === 'maybe' ? 'default' : 'outline'}
           size={size}
           onClick={() => handleRSVP('maybe')}
-          disabled={disabled || rsvpMutation.isPending}
-          className={currentStatus === 'maybe' ? getStatusColor('maybe') : ''}
+          disabled={disabled}
+          className={getStatusColor('maybe', currentStatus === 'maybe')}
         >
           {getStatusIcon('maybe')}
           <span className="ml-1">Maybe</span>
@@ -114,8 +113,8 @@ export const EventRSVPButton: React.FC<EventRSVPButtonProps> = ({
           variant={currentStatus === 'not_going' ? 'default' : 'outline'}
           size={size}
           onClick={() => handleRSVP('not_going')}
-          disabled={disabled || rsvpMutation.isPending}
-          className={currentStatus === 'not_going' ? getStatusColor('not_going') : ''}
+          disabled={disabled}
+          className={getStatusColor('not_going', currentStatus === 'not_going')}
         >
           {getStatusIcon('not_going')}
           <span className="ml-1">Pass</span>
