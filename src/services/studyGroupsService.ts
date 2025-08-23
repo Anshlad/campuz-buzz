@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { fileUploadService, FileUploadType } from './fileUploadService';
 
@@ -73,9 +72,8 @@ interface ChatRoom {
   id: string;
   name: string;
   description?: string;
-  type: string;
+  is_private: boolean;
   created_by: string;
-  metadata?: any;
   created_at?: string;
   updated_at?: string;
 }
@@ -335,9 +333,8 @@ class StudyGroupsService {
       .insert({
         name: `${groupName} - Study Group Chat`,
         description: `Chat room for ${groupName} study group`,
-        type: 'study_group',
-        created_by: createdBy,
-        metadata: { study_group_id: studyGroupId }
+        is_private: false,
+        created_by: createdBy
       })
       .select('*')
       .single();
@@ -350,8 +347,8 @@ class StudyGroupsService {
     const { data, error } = await supabase
       .from('chat_rooms')
       .select('*')
-      .eq('type', 'study_group')
-      .contains('metadata', { study_group_id: studyGroupId })
+      .eq('name', `%${studyGroupId}%`)
+      .ilike('name', `%Study Group Chat%`)
       .single();
 
     if (error && error.code !== 'PGRST116') throw error;
