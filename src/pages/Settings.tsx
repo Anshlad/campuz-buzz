@@ -4,16 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Settings as SettingsIcon, Users, AlertTriangle } from 'lucide-react';
+import { Shield, Settings as SettingsIcon, Users, AlertTriangle, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRoleBasedAccess } from '@/hooks/useRoleBasedAccess';
 import { ModerationDashboard } from '@/components/moderation/ModerationDashboard';
+import { SecurityAuditDashboard } from '@/components/security/SecurityAuditDashboard';
+import { RoleGuard } from '@/components/security/RoleGuard';
 
 export default function Settings() {
   const { user } = useAuth();
+  const { permissions, userRole } = useRoleBasedAccess();
   const [activeTab, setActiveTab] = useState('general');
-
-  // Check if user is admin/moderator (you'd implement this based on your user role system)
-  const isModeratorOrAdmin = false; // Replace with actual role check
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -25,7 +26,7 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
           <TabsTrigger value="general">
             <SettingsIcon className="h-4 w-4 mr-2" />
             General
@@ -34,19 +35,23 @@ export default function Settings() {
             <Shield className="h-4 w-4 mr-2" />
             Privacy
           </TabsTrigger>
+          <TabsTrigger value="security">
+            <Eye className="h-4 w-4 mr-2" />
+            Security
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <AlertTriangle className="h-4 w-4 mr-2" />
             Notifications
           </TabsTrigger>
-          {isModeratorOrAdmin && (
+          <RoleGuard requiredRole="moderator">
             <TabsTrigger value="moderation">
               <Shield className="h-4 w-4 mr-2" />
               Moderation
               <Badge variant="destructive" className="ml-2">
-                Admin
+                {userRole?.toUpperCase()}
               </Badge>
             </TabsTrigger>
-          )}
+          </RoleGuard>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -59,6 +64,22 @@ export default function Settings() {
                 <div>
                   <p className="text-sm font-medium">Email</p>
                   <p className="text-sm text-muted-foreground">{user?.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">User Role</p>
+                  <Badge variant="outline">{userRole}</Badge>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Permissions</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(permissions).map(([permission, hasPermission]) => (
+                      hasPermission && (
+                        <Badge key={permission} variant="secondary" className="text-xs">
+                          {permission.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                        </Badge>
+                      )
+                    ))}
+                  </div>
                 </div>
                 <Button variant="outline">Update Profile</Button>
               </div>
@@ -79,6 +100,10 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="security" className="space-y-6">
+          <SecurityAuditDashboard />
+        </TabsContent>
+
         <TabsContent value="notifications" className="space-y-6">
           <Card>
             <CardHeader>
@@ -92,11 +117,11 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {isModeratorOrAdmin && (
+        <RoleGuard requiredRole="moderator">
           <TabsContent value="moderation">
             <ModerationDashboard />
           </TabsContent>
-        )}
+        </RoleGuard>
       </Tabs>
     </div>
   );

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { securityService } from '@/services/securityService';
 
 interface SecurityEvent {
   id: string;
@@ -31,6 +32,7 @@ export const useSecurityMonitoring = () => {
   useEffect(() => {
     if (user) {
       loadSecurityData();
+      setupRealtimeSubscription();
     }
   }, [user]);
 
@@ -46,11 +48,10 @@ export const useSecurityMonitoring = () => {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (eventsError) throw eventsError;
       
-      // Transform the data to match our interface
       const transformedEvents: SecurityEvent[] = (eventsData || []).map(event => ({
         id: event.id,
         event_type: event.event_type,
@@ -84,6 +85,15 @@ export const useSecurityMonitoring = () => {
         });
       }
 
+      // Check for account lockout
+      if (settings?.account_locked_until && new Date(settings.account_locked_until) > new Date()) {
+        toast({
+          title: "Account Locked",
+          description: "Your account has been temporarily locked due to suspicious activity.",
+          variant: "destructive"
+        });
+      }
+
     } catch (error) {
       console.error('Error loading security data:', error);
     } finally {
@@ -91,17 +101,44 @@ export const useSecurityMonitoring = () => {
     }
   };
 
+  const setupRealtimeSubscription = () => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('security_events')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'security_events',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newEvent = payload.new as SecurityEvent;
+          setSecurityEvents(prev => [newEvent, ...prev.slice(0, 19)]);
+          
+          // Show toast for high-severity events
+          if (newEvent.metadata?.severity === 'high') {
+            toast({
+              title: "Security Alert",
+              description: `New security event: ${newEvent.event_type.replace(/_/g, ' ')}`,
+              variant: "destructive"
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
   const logSecurityEvent = async (eventType: string, metadata: Record<string, any> = {}) => {
     try {
-      await supabase.from('security_events').insert({
-        user_id: user?.id,
-        event_type: eventType,
-        user_agent: navigator.userAgent,
-        metadata
-      });
-      
-      // Refresh security events
-      loadSecurityData();
+      await securityService.logSecurityEvent(eventType, metadata);
+      loadSecurityData(); // Refresh data
     } catch (error) {
       console.error('Failed to log security event:', error);
     }
@@ -111,23 +148,17 @@ export const useSecurityMonitoring = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('user_security_settings')
-        .upsert({
-          user_id: user.id,
-          ...updates,
-          updated_at: new Date().toISOString()
+      const success = await securityService.updateSecuritySettings(updates);
+      
+      if (success) {
+        loadSecurityData();
+        toast({
+          title: "Security settings updated",
+          description: "Your security preferences have been saved."
         });
-
-      if (error) throw error;
-
-      await logSecurityEvent('security_settings_updated', { changes: Object.keys(updates) });
-      loadSecurityData();
-
-      toast({
-        title: "Security settings updated",
-        description: "Your security preferences have been saved."
-      });
+      } else {
+        throw new Error('Failed to update security settings');
+      }
     } catch (error) {
       console.error('Error updating security settings:', error);
       toast({
@@ -138,12 +169,32 @@ export const useSecurityMonitoring = () => {
     }
   };
 
+  const enableTwoFactor = async () => {
+    await updateSecuritySettings({ two_factor_enabled: true });
+    await logSecurityEvent('two_factor_enabled');
+  };
+
+  const disableTwoFactor = async () => {
+    await updateSecuritySettings({ two_factor_enabled: false });
+    await logSecurityEvent('two_factor_disabled', {}, 'medium');
+  };
+
+  const reportSuspiciousActivity = async (description: string) => {
+    await logSecurityEvent('user_reported_suspicious_activity', {
+      description,
+      reported_at: new Date().toISOString()
+    }, 'high');
+  };
+
   return {
     securityEvents,
     securitySettings,
     loading,
     logSecurityEvent,
     updateSecuritySettings,
+    enableTwoFactor,
+    disableTwoFactor,
+    reportSuspiciousActivity,
     refreshSecurityData: loadSecurityData
   };
 };
