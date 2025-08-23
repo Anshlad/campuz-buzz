@@ -61,15 +61,14 @@ export const useEventAttendees = (eventId: string) => {
           user_id,
           status,
           created_at,
-          profiles!inner (
+          profiles (
             id,
             user_id,
             display_name,
             avatar_url
           )
         `)
-        .eq('event_id', eventId)
-        .eq('profiles.user_id', supabase.raw('event_rsvps.user_id'));
+        .eq('event_id', eventId);
 
       if (error) throw error;
       return data;
