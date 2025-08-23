@@ -61,7 +61,7 @@ export const useEventAttendees = (eventId: string) => {
           user_id,
           status,
           created_at,
-          profiles (
+          profiles:user_id (
             id,
             user_id,
             display_name,
