@@ -62,6 +62,13 @@ export interface StudyGroupAnalytics {
   period_end?: string;
 }
 
+export interface StudyGroupStats {
+  memberCount: number;
+  sessionCount: number;
+  materialCount: number;
+  recentActivity: StudyGroupAnalytics[];
+}
+
 class StudyGroupsService {
   // Session Management
   async createSession(sessionData: Omit<StudySession, 'id' | 'created_at' | 'participant_count'>) {
@@ -75,7 +82,7 @@ class StudyGroupsService {
     return data;
   }
 
-  async getGroupSessions(studyGroupId: string) {
+  async getGroupSessions(studyGroupId: string): Promise<StudySession[]> {
     const { data, error } = await supabase
       .from('study_sessions')
       .select(`
@@ -98,7 +105,7 @@ class StudyGroupsService {
       ...session,
       participant_count: session.session_participants?.length || 0,
       participants: session.session_participants || []
-    })) || [];
+    } as StudySession)) || [];
   }
 
   async joinSession(sessionId: string, userId: string) {
@@ -150,7 +157,7 @@ class StudyGroupsService {
       tags?: string[];
       is_public?: boolean;
     }
-  ) {
+  ): Promise<StudyMaterial> {
     // Upload file to Supabase Storage
     const uploadResult = await fileUploadService.uploadFile(file, 'attachment', userId);
 
@@ -172,10 +179,10 @@ class StudyGroupsService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as StudyMaterial;
   }
 
-  async getGroupMaterials(studyGroupId: string) {
+  async getGroupMaterials(studyGroupId: string): Promise<StudyMaterial[]> {
     const { data, error } = await supabase
       .from('study_materials')
       .select(`
@@ -186,7 +193,7 @@ class StudyGroupsService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as StudyMaterial[];
   }
 
   async deleteMaterial(materialId: string, userId: string) {
@@ -230,7 +237,7 @@ class StudyGroupsService {
   }
 
   // Analytics
-  async getGroupAnalytics(studyGroupId: string, metricType?: string) {
+  async getGroupAnalytics(studyGroupId: string, metricType?: string): Promise<StudyGroupAnalytics[]> {
     let query = supabase
       .from('study_group_analytics')
       .select('*')
@@ -243,30 +250,30 @@ class StudyGroupsService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    return (data || []) as StudyGroupAnalytics[];
   }
 
-  async getGroupStats(studyGroupId: string) {
+  async getGroupStats(studyGroupId: string): Promise<StudyGroupStats> {
     // Get member count
-    const { data: members, error: membersError } = await supabase
+    const { count: memberCount, error: membersError } = await supabase
       .from('study_group_members')
-      .select('id')
+      .select('*', { count: 'exact', head: true })
       .eq('study_group_id', studyGroupId);
 
     if (membersError) throw membersError;
 
     // Get session count
-    const { data: sessions, error: sessionsError } = await supabase
+    const { count: sessionCount, error: sessionsError } = await supabase
       .from('study_sessions')
-      .select('id')
+      .select('*', { count: 'exact', head: true })
       .eq('study_group_id', studyGroupId);
 
     if (sessionsError) throw sessionsError;
 
     // Get materials count
-    const { data: materials, error: materialsError } = await supabase
+    const { count: materialCount, error: materialsError } = await supabase
       .from('study_materials')
-      .select('id')
+      .select('*', { count: 'exact', head: true })
       .eq('study_group_id', studyGroupId);
 
     if (materialsError) throw materialsError;
@@ -282,10 +289,10 @@ class StudyGroupsService {
     if (activityError) throw activityError;
 
     return {
-      memberCount: members?.length || 0,
-      sessionCount: sessions?.length || 0,
-      materialCount: materials?.length || 0,
-      recentActivity: recentActivity || []
+      memberCount: memberCount || 0,
+      sessionCount: sessionCount || 0,
+      materialCount: materialCount || 0,
+      recentActivity: (recentActivity || []) as StudyGroupAnalytics[]
     };
   }
 
