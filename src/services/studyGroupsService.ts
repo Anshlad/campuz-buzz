@@ -107,7 +107,7 @@ class StudyGroupsService {
         id: p.id,
         session_id: p.session_id || session.id,
         user_id: p.user_id,
-        status: p.status,
+        status: p.status as SessionParticipant['status'],
         joined_at: p.joined_at,
         left_at: p.left_at,
         profiles: p.profiles
@@ -133,7 +133,10 @@ class StudyGroupsService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      status: data.status as SessionParticipant['status']
+    };
   }
 
   async updateSessionStatus(sessionId: string, userId: string, status: SessionParticipant['status']): Promise<SessionParticipant> {
@@ -146,7 +149,10 @@ class StudyGroupsService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      status: data.status as SessionParticipant['status']
+    };
   }
 
   async leaveSession(sessionId: string, userId: string): Promise<void> {
@@ -312,7 +318,7 @@ class StudyGroupsService {
   }
 
   // Chat Integration
-  async createGroupChatRoom(studyGroupId: string, groupName: string, createdBy: string) {
+  async createGroupChatRoom(studyGroupId: string, groupName: string, createdBy: string): Promise<any> {
     const { data, error } = await supabase
       .from('chat_rooms')
       .insert({
@@ -329,7 +335,7 @@ class StudyGroupsService {
     return data;
   }
 
-  async getGroupChatRoom(studyGroupId: string) {
+  async getGroupChatRoom(studyGroupId: string): Promise<any> {
     const { data, error } = await supabase
       .from('chat_rooms')
       .select('*')
