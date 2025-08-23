@@ -116,14 +116,14 @@ export const EventAttendeesList: React.FC<EventAttendeesListProps> = ({ eventId 
             <div key={attendee.id} className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={attendee.profile?.avatar_url} />
+                  <AvatarImage src={attendee.profiles?.avatar_url} />
                   <AvatarFallback>
-                    {attendee.profile?.display_name?.[0]?.toUpperCase() || 'U'}
+                    {attendee.profiles?.display_name?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-medium text-sm">
-                    {attendee.profile?.display_name || 'Anonymous User'}
+                    {attendee.profiles?.display_name || 'Anonymous User'}
                   </p>
                 </div>
               </div>

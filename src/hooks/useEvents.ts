@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,13 +12,20 @@ export const useEvents = (filters?: {
   const [page, setPage] = useState(0);
   const limit = 10;
 
+  // Map the filters to match what eventService expects
+  const mappedFilters = filters ? {
+    communityId: filters.community_id,
+    eventType: filters.event_type,
+    startDate: filters.upcoming_only ? new Date().toISOString() : undefined,
+  } : undefined;
+
   const {
     data,
     isLoading,
     error
   } = useQuery({
     queryKey: ['events', filters, page],
-    queryFn: () => eventService.getEvents(filters),
+    queryFn: () => eventService.getEvents(mappedFilters),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -51,15 +57,14 @@ export const useEventAttendees = (eventId: string) => {
         .from('event_rsvps')
         .select(`
           *,
-          profiles:user_id (
+          profiles:profiles!event_rsvps_user_id_fkey (
             id,
-            username,
-            full_name,
+            user_id,
+            display_name,
             avatar_url
           )
         `)
-        .eq('event_id', eventId)
-        .eq('status', 'going');
+        .eq('event_id', eventId);
 
       if (error) throw error;
       return data;
