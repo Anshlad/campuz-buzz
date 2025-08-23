@@ -36,7 +36,7 @@ export const useUserCommunities = (userId?: string) => {
           .from('community_members')
           .select(`
             joined_at,
-            communities:community_id (
+            communities!inner (
               id,
               name,
               description,
@@ -52,10 +52,18 @@ export const useUserCommunities = (userId?: string) => {
 
         const transformedData = (data || [])
           .filter(item => item.communities)
-          .map(item => ({
-            ...item.communities,
-            joined_at: item.joined_at
-          })) as UserCommunity[];
+          .map(item => {
+            const community = Array.isArray(item.communities) ? item.communities[0] : item.communities;
+            return {
+              id: community.id,
+              name: community.name,
+              description: community.description,
+              category: community.category,
+              member_count: community.member_count,
+              is_private: community.is_private,
+              joined_at: item.joined_at
+            };
+          }) as UserCommunity[];
 
         setCommunities(transformedData);
       } catch (err) {

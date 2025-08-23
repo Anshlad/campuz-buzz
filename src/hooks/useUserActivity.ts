@@ -39,12 +39,12 @@ export const useUserActivity = (userId?: string) => {
           .order('created_at', { ascending: false })
           .limit(10);
 
-        // Fetch recent comments
+        // Fetch recent comments with proper join
         const { data: comments } = await supabase
           .from('comments')
           .select(`
             id, content, created_at,
-            posts:post_id (title, content)
+            posts!inner (title, content)
           `)
           .eq('user_id', targetUserId)
           .order('created_at', { ascending: false })
@@ -55,7 +55,7 @@ export const useUserActivity = (userId?: string) => {
           .from('community_members')
           .select(`
             id, joined_at,
-            communities:community_id (name)
+            communities!inner (name)
           `)
           .eq('user_id', targetUserId)
           .order('joined_at', { ascending: false })
@@ -66,7 +66,7 @@ export const useUserActivity = (userId?: string) => {
           .from('event_rsvps')
           .select(`
             id, created_at, status,
-            events:event_id (title)
+            events!inner (title)
           `)
           .eq('user_id', targetUserId)
           .eq('status', 'going')
@@ -82,7 +82,7 @@ export const useUserActivity = (userId?: string) => {
             id: `post-${post.id}`,
             type: 'post',
             title: 'Created a post',
-            description: post.title || post.content.substring(0, 100) + '...',
+            description: post.title || post.content?.substring(0, 100) + '...' || 'No content',
             created_at: post.created_at,
             metadata: { post_type: post.post_type }
           });
@@ -90,42 +90,45 @@ export const useUserActivity = (userId?: string) => {
 
         // Add comments
         (comments || []).forEach(comment => {
+          const postData = Array.isArray(comment.posts) ? comment.posts[0] : comment.posts;
           allActivities.push({
             id: `comment-${comment.id}`,
             type: 'comment',
             title: 'Commented on a post',
-            description: comment.content.substring(0, 100) + '...',
+            description: comment.content?.substring(0, 100) + '...' || 'No content',
             created_at: comment.created_at,
             metadata: { 
-              post_title: comment.posts?.title || comment.posts?.content?.substring(0, 50)
+              post_title: postData?.title || postData?.content?.substring(0, 50) || 'Unknown post'
             }
           });
         });
 
         // Add community joins
         (communityJoins || []).forEach(join => {
-          if (join.communities) {
+          const communityData = Array.isArray(join.communities) ? join.communities[0] : join.communities;
+          if (communityData) {
             allActivities.push({
               id: `community-${join.id}`,
               type: 'community_join',
               title: 'Joined a community',
-              description: `Joined ${join.communities.name}`,
+              description: `Joined ${communityData.name}`,
               created_at: join.joined_at,
-              metadata: { community_name: join.communities.name }
+              metadata: { community_name: communityData.name }
             });
           }
         });
 
         // Add event RSVPs
         (eventRsvps || []).forEach(rsvp => {
-          if (rsvp.events) {
+          const eventData = Array.isArray(rsvp.events) ? rsvp.events[0] : rsvp.events;
+          if (eventData) {
             allActivities.push({
               id: `event-${rsvp.id}`,
               type: 'event_rsvp',
               title: 'RSVP\'d to an event',
-              description: `Going to ${rsvp.events.title}`,
+              description: `Going to ${eventData.title}`,
               created_at: rsvp.created_at,
-              metadata: { event_title: rsvp.events.title }
+              metadata: { event_title: eventData.title }
             });
           }
         });
