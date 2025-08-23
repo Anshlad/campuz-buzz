@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,14 +61,15 @@ export const useEventAttendees = (eventId: string) => {
           user_id,
           status,
           created_at,
-          profiles!event_rsvps_user_id_fkey (
+          profiles!inner (
             id,
             user_id,
             display_name,
             avatar_url
           )
         `)
-        .eq('event_id', eventId);
+        .eq('event_id', eventId)
+        .eq('profiles.user_id', supabase.raw('event_rsvps.user_id'));
 
       if (error) throw error;
       return data;
