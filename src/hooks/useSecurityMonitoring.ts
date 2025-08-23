@@ -119,7 +119,8 @@ export const useSecurityMonitoring = () => {
           setSecurityEvents(prev => [newEvent, ...prev.slice(0, 19)]);
           
           // Show toast for high-severity events
-          if (newEvent.metadata?.severity === 'high') {
+          const metadata = newEvent.metadata as any;
+          if (metadata?.severity === 'high') {
             toast({
               title: "Security Alert",
               description: `New security event: ${newEvent.event_type.replace(/_/g, ' ')}`,
@@ -176,14 +177,14 @@ export const useSecurityMonitoring = () => {
 
   const disableTwoFactor = async () => {
     await updateSecuritySettings({ two_factor_enabled: false });
-    await logSecurityEvent('two_factor_disabled', {}, 'medium');
+    await logSecurityEvent('two_factor_disabled');
   };
 
   const reportSuspiciousActivity = async (description: string) => {
     await logSecurityEvent('user_reported_suspicious_activity', {
       description,
       reported_at: new Date().toISOString()
-    }, 'high');
+    });
   };
 
   return {

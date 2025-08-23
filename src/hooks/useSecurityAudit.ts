@@ -53,11 +53,12 @@ export const useSecurityAudit = () => {
         throw settingsError;
       }
 
-      // Analyze suspicious activity
-      const suspiciousActivity = events?.filter(event => 
-        event.metadata?.severity === 'high' || 
-        event.event_type === 'suspicious_activity_detected'
-      ) || [];
+      // Analyze suspicious activity - properly handle metadata type
+      const suspiciousActivity = events?.filter(event => {
+        const metadata = event.metadata as any;
+        return metadata?.severity === 'high' || 
+               event.event_type === 'suspicious_activity_detected';
+      }) || [];
 
       // Count failed logins in the last 24 hours
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
