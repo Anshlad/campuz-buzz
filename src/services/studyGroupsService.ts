@@ -69,6 +69,17 @@ export interface StudyGroupStats {
   recentActivity: StudyGroupAnalytics[];
 }
 
+interface ChatRoom {
+  id: string;
+  name: string;
+  description?: string;
+  type: string;
+  created_by: string;
+  metadata?: any;
+  created_at?: string;
+  updated_at?: string;
+}
+
 class StudyGroupsService {
   // Session Management
   async createSession(sessionData: Omit<StudySession, 'id' | 'created_at' | 'participant_count'>): Promise<StudySession> {
@@ -79,7 +90,7 @@ class StudyGroupsService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as StudySession;
   }
 
   async getGroupSessions(studyGroupId: string): Promise<StudySession[]> {
@@ -318,7 +329,7 @@ class StudyGroupsService {
   }
 
   // Chat Integration
-  async createGroupChatRoom(studyGroupId: string, groupName: string, createdBy: string): Promise<any> {
+  async createGroupChatRoom(studyGroupId: string, groupName: string, createdBy: string): Promise<ChatRoom> {
     const { data, error } = await supabase
       .from('chat_rooms')
       .insert({
@@ -332,10 +343,10 @@ class StudyGroupsService {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as ChatRoom;
   }
 
-  async getGroupChatRoom(studyGroupId: string): Promise<any> {
+  async getGroupChatRoom(studyGroupId: string): Promise<ChatRoom | null> {
     const { data, error } = await supabase
       .from('chat_rooms')
       .select('*')
@@ -344,7 +355,7 @@ class StudyGroupsService {
       .single();
 
     if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    return data as ChatRoom | null;
   }
 }
 
