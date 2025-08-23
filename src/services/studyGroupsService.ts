@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { fileUploadService, FileUploadType } from './fileUploadService';
 
@@ -74,8 +75,8 @@ interface ChatRoom {
   description?: string;
   is_private: boolean;
   created_by: string;
-  created_at?: string;
-  updated_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 class StudyGroupsService {
