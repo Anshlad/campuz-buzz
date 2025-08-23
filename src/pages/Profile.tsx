@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOptimizedProfile } from '@/hooks/useOptimizedProfile';
 import { useToast } from '@/hooks/use-toast';
+import { UserPostsTab } from '@/components/profile/UserPostsTab';
+import { UserCommunitiesTab } from '@/components/profile/UserCommunitiesTab';
+import { UserActivityTab } from '@/components/profile/UserActivityTab';
 import { 
   User, 
   Edit3, 
@@ -146,43 +149,22 @@ const Profile = () => {
 
       {/* Profile Tabs */}
       <Tabs defaultValue="posts" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="communities">Communities</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
         
         <TabsContent value="posts" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Your posts will appear here.</p>
-            </CardContent>
-          </Card>
+          <UserPostsTab />
         </TabsContent>
         
         <TabsContent value="communities" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Joined Communities</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Communities you've joined will appear here.</p>
-            </CardContent>
-          </Card>
+          <UserCommunitiesTab />
         </TabsContent>
         
         <TabsContent value="activity" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Your recent activity will appear here.</p>
-            </CardContent>
-          </Card>
+          <UserActivityTab />
         </TabsContent>
       </Tabs>
 
