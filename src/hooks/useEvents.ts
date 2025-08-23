@@ -57,8 +57,12 @@ export const useEventAttendees = (eventId: string) => {
       const { data, error } = await supabase
         .from('event_rsvps')
         .select(`
-          *,
-          profiles!inner(
+          id,
+          event_id,
+          user_id,
+          status,
+          created_at,
+          profiles:user_id (
             id,
             user_id,
             display_name,
