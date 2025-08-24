@@ -1,5 +1,7 @@
 import React from 'react';
 import { AuthTestRunner } from '@/components/testing/AuthTestRunner';
+import { PostTestRunner } from '@/components/testing/PostTestRunner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Testing = () => {
   return (
@@ -10,11 +12,24 @@ export const Testing = () => {
             CampuzBuzz Testing Suite
           </h1>
           <p className="text-lg text-muted-foreground">
-            Authentication Testing: Login, Signup & Logout Verification
+            Comprehensive testing for authentication, posts, and community features
           </p>
         </div>
         
-        <AuthTestRunner />
+        <Tabs defaultValue="auth" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="auth">Authentication Tests</TabsTrigger>
+            <TabsTrigger value="posts">Post Creation Tests</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="auth" className="mt-6">
+            <AuthTestRunner />
+          </TabsContent>
+          
+          <TabsContent value="posts" className="mt-6">
+            <PostTestRunner />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
