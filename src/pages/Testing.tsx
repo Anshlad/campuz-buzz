@@ -1,6 +1,7 @@
 import React from 'react';
 import { AuthTestRunner } from '@/components/testing/AuthTestRunner';
 import { PostTestRunner } from '@/components/testing/PostTestRunner';
+import { PostInteractionTestRunner } from '@/components/testing/PostInteractionTestRunner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Testing = () => {
@@ -17,9 +18,10 @@ export const Testing = () => {
         </div>
         
         <Tabs defaultValue="auth" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="auth">Authentication Tests</TabsTrigger>
             <TabsTrigger value="posts">Post Creation Tests</TabsTrigger>
+            <TabsTrigger value="interactions">Post Interaction Tests</TabsTrigger>
           </TabsList>
           
           <TabsContent value="auth" className="mt-6">
@@ -28,6 +30,10 @@ export const Testing = () => {
           
           <TabsContent value="posts" className="mt-6">
             <PostTestRunner />
+          </TabsContent>
+          
+          <TabsContent value="interactions" className="mt-6">
+            <PostInteractionTestRunner />
           </TabsContent>
         </Tabs>
       </div>

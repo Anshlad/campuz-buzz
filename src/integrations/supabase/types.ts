@@ -2151,6 +2151,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      delete_post_cascade: {
+        Args: { post_uuid: string }
+        Returns: boolean
+      }
       extract_hashtags: {
         Args: { content: string }
         Returns: string[]
