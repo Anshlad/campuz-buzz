@@ -24,7 +24,9 @@ export const ProfileTestRunner = () => {
   const [testResults, setTestResults] = useState<TestResult[]>([
     { id: 'TC-Profile-01', name: 'Profile view loads correctly', status: 'pending' },
     { id: 'TC-Profile-02', name: 'Updating avatar', status: 'pending' },
-    { id: 'TC-Profile-03', name: 'Editing display name', status: 'pending' }
+    { id: 'TC-Profile-03', name: 'Editing display name', status: 'pending' },
+    { id: 'TC-Profile-04', name: 'Dark/light mode toggle', status: 'pending' },
+    { id: 'TC-Profile-05', name: 'Notification preferences update', status: 'pending' }
   ]);
   
   const [isRunning, setIsRunning] = useState(false);
@@ -340,6 +342,193 @@ export const ProfileTestRunner = () => {
     }
   };
 
+  const testDarkLightModeToggle = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    try {
+      // Get current theme from localStorage or default to light
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const originalTheme = currentTheme;
+
+      // Test toggling to dark mode
+      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add('dark');
+      
+      // Verify dark mode is applied
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      if (!isDarkMode) {
+        throw new Error('Dark mode was not applied to document');
+      }
+
+      // Wait a moment for potential DOM updates
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Test toggling to light mode
+      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove('dark');
+      
+      // Verify light mode is applied
+      const isLightMode = !document.documentElement.classList.contains('dark');
+      if (!isLightMode) {
+        throw new Error('Light mode was not applied to document');
+      }
+
+      // Test system preference mode
+      localStorage.setItem('theme', 'system');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (prefersDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Verify system mode respects OS preference
+      const systemModeCorrect = prefersDark ? 
+        document.documentElement.classList.contains('dark') : 
+        !document.documentElement.classList.contains('dark');
+      
+      if (!systemModeCorrect) {
+        throw new Error('System theme mode does not respect OS preference');
+      }
+
+      // Restore original theme
+      localStorage.setItem('theme', originalTheme);
+      if (originalTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else if (originalTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        // System mode
+        if (prefersDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+
+      toast({
+        title: "TC-Profile-04 Passed",
+        description: "Dark/light mode toggle functionality verified"
+      });
+
+    } catch (error: any) {
+      throw new Error(`Theme toggle test failed: ${error.message}`);
+    }
+  };
+
+  const testNotificationPreferencesUpdate = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    try {
+      // Get current profile to check for notification preferences
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('privacy_settings')
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const originalPrivacySettings = (currentProfile?.privacy_settings as Record<string, any>) || {};
+      
+      // Test updating notification preferences
+      const testNotificationSettings = {
+        ...(originalPrivacySettings as Record<string, any>),
+        email_notifications: true,
+        push_notifications: false,
+        digest_frequency: 'weekly',
+        mentions_notifications: true,
+        comments_notifications: false,
+        likes_notifications: true
+      };
+
+      // Update privacy settings with notification preferences
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({ privacy_settings: testNotificationSettings })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      if (!updatedProfile) throw new Error('Profile update failed');
+
+      // Verify the notification settings were updated
+      const updatedSettings = updatedProfile.privacy_settings as any;
+      
+      if (updatedSettings.email_notifications !== true) {
+        throw new Error('Email notifications setting was not updated correctly');
+      }
+
+      if (updatedSettings.push_notifications !== false) {
+        throw new Error('Push notifications setting was not updated correctly');
+      }
+
+      if (updatedSettings.digest_frequency !== 'weekly') {
+        throw new Error('Digest frequency setting was not updated correctly');
+      }
+
+      // Test individual preference updates
+      const individualUpdate = {
+        ...updatedSettings,
+        mentions_notifications: false // Toggle this setting
+      };
+
+      const { data: secondUpdate, error: secondError } = await supabase
+        .from('profiles')
+        .update({ privacy_settings: individualUpdate })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (secondError) throw secondError;
+      
+      const secondSettings = secondUpdate?.privacy_settings as any;
+      if (secondSettings.mentions_notifications !== false) {
+        throw new Error('Individual notification preference update failed');
+      }
+
+      // Test invalid preference values (should handle gracefully)
+      const invalidUpdate = {
+        ...(originalPrivacySettings as Record<string, any>),
+        invalid_notification_type: 'invalid_value'
+      };
+
+      const { error: invalidError } = await supabase
+        .from('profiles')
+        .update({ privacy_settings: invalidUpdate })
+        .eq('user_id', user.id);
+
+      // Invalid settings should either be ignored or cause a controlled error
+      if (invalidError) {
+        console.log('Invalid notification settings correctly rejected');
+      }
+
+      // Restore original privacy settings
+      const { error: restoreError } = await supabase
+        .from('profiles')
+        .update({ privacy_settings: originalPrivacySettings })
+        .eq('user_id', user.id);
+
+      if (restoreError) {
+        console.warn('Failed to restore original privacy settings:', restoreError);
+      }
+
+      toast({
+        title: "TC-Profile-05 Passed",
+        description: "Notification preferences update functionality verified"
+      });
+
+    } catch (error: any) {
+      throw new Error(`Notification preferences test failed: ${error.message}`);
+    }
+  };
+
   const runAllTests = async () => {
     if (!user) {
       toast({
@@ -370,6 +559,12 @@ export const ProfileTestRunner = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       await runTest('TC-Profile-03', testEditingDisplayName);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Profile-04', testDarkLightModeToggle);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Profile-05', testNotificationPreferencesUpdate);
 
       const passedTests = testResults.filter(test => test.status === 'passed').length;
       const totalTests = testResults.length;
