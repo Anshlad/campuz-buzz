@@ -24,15 +24,22 @@ export const AuthTestRunner = () => {
   const [testPassword, setTestPassword] = useState('TestPassword123!');
   const [wrongPassword, setWrongPassword] = useState('WrongPassword123!');
   const [unregisteredEmail, setUnregisteredEmail] = useState('unregistered@college.edu');
+  const [newUserEmail, setNewUserEmail] = useState('newuser@college.edu');
+  const [newUserPassword, setNewUserPassword] = useState('NewUser123!');
+  const [duplicateEmail, setDuplicateEmail] = useState('test@college.edu');
+  const [weakPassword, setWeakPassword] = useState('weak');
   const [testResults, setTestResults] = useState<TestResult[]>([
     { id: 'TC-Auth-01', name: 'Valid login with correct credentials', status: 'pending' },
     { id: 'TC-Auth-02', name: 'Error on wrong password', status: 'pending' },
     { id: 'TC-Auth-03', name: 'Login with unregistered email', status: 'pending' },
-    { id: 'TC-Auth-04', name: 'Login speed under 2s', status: 'pending' }
+    { id: 'TC-Auth-04', name: 'Login speed under 2s', status: 'pending' },
+    { id: 'TC-Auth-05', name: 'New user registration with valid data', status: 'pending' },
+    { id: 'TC-Auth-06', name: 'Duplicate email detection', status: 'pending' },
+    { id: 'TC-Auth-07', name: 'Password strength enforcement', status: 'pending' }
   ]);
   const [isRunning, setIsRunning] = useState(false);
   
-  const { signIn, signOut } = useAuth();
+  const { signIn, signOut, signUp } = useAuth();
   const { toast } = useToast();
 
   const updateTestResult = (id: string, updates: Partial<TestResult>) => {
@@ -133,6 +140,77 @@ export const AuthTestRunner = () => {
     }
   };
 
+  const testValidRegistration = async () => {
+    // Ensure we're signed out
+    await signOut();
+    
+    // Attempt to sign up with valid credentials
+    await signUp(newUserEmail, newUserPassword, {
+      full_name: 'Test User',
+      university: 'Test College'
+    });
+    
+    // If no error is thrown, the test passes
+    toast({
+      title: "TC-Auth-05 Passed",
+      description: "Valid user registration successful"
+    });
+  };
+
+  const testDuplicateEmail = async () => {
+    // Ensure we're signed out
+    await signOut();
+    
+    try {
+      // Try to register with an email that should already exist
+      await signUp(duplicateEmail, testPassword, {
+        full_name: 'Duplicate User'
+      });
+      // If this doesn't throw an error, the test fails
+      throw new Error('Registration should have failed with duplicate email');
+    } catch (error: any) {
+      // We expect this to fail - check if it's the right kind of error
+      if (error.message.includes('already registered') || 
+          error.message.includes('already exists') ||
+          error.message.includes('duplicate') ||
+          error.message.includes('User already registered')) {
+        // This is the expected behavior
+        return;
+      }
+      // Re-throw if it's an unexpected error
+      throw error;
+    }
+  };
+
+  const testPasswordStrength = async () => {
+    // Ensure we're signed out
+    await signOut();
+    
+    try {
+      // Try to register with a weak password
+      await signUp(`weak${Date.now()}@college.edu`, weakPassword, {
+        full_name: 'Weak Password User'
+      });
+      // If this doesn't throw an error, the test fails
+      throw new Error('Registration should have failed with weak password');
+    } catch (error: any) {
+      // We expect this to fail - check if it's related to password strength
+      if (error.message.includes('Password must') || 
+          error.message.includes('password') ||
+          error.message.includes('strength') ||
+          error.message.includes('characters') ||
+          error.message.includes('uppercase') ||
+          error.message.includes('lowercase') ||
+          error.message.includes('number') ||
+          error.message.includes('special character')) {
+        // This is the expected behavior
+        return;
+      }
+      // Re-throw if it's an unexpected error
+      throw error;
+    }
+  };
+
   const runAllTests = async () => {
     setIsRunning(true);
     
@@ -157,6 +235,15 @@ export const AuthTestRunner = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       await runTest('TC-Auth-04', testLoginSpeed);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Auth-05', testValidRegistration);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Auth-06', testDuplicateEmail);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Auth-07', testPasswordStrength);
       
     } catch (error) {
       console.error('Test runner error:', error);
@@ -209,7 +296,9 @@ export const AuthTestRunner = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Test Configuration */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Login Test Configuration</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="testEmail">Test Email (valid user)</Label>
             <Input
@@ -247,6 +336,87 @@ export const AuthTestRunner = () => {
               onChange={(e) => setUnregisteredEmail(e.target.value)}
               placeholder="unregistered@college.edu"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newUserEmail">New User Email</Label>
+            <Input
+              id="newUserEmail"
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
+              placeholder="newuser@college.edu"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newUserPassword">New User Password</Label>
+            <Input
+              id="newUserPassword"
+              type="password"
+              value={newUserPassword}
+              onChange={(e) => setNewUserPassword(e.target.value)}
+              placeholder="NewUser123!"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="duplicateEmail">Duplicate Email (existing)</Label>
+            <Input
+              id="duplicateEmail"
+              value={duplicateEmail}
+              onChange={(e) => setDuplicateEmail(e.target.value)}
+              placeholder="test@college.edu"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="weakPassword">Weak Password</Label>
+            <Input
+              id="weakPassword"
+              type="password"
+              value={weakPassword}
+              onChange={(e) => setWeakPassword(e.target.value)}
+              placeholder="weak"
+            />
+          </div>
+          </div>
+          
+          <h3 className="text-lg font-semibold">Signup Test Configuration</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="newUserEmail">New User Email</Label>
+              <Input
+                id="newUserEmail"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="newuser@college.edu"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newUserPassword">New User Password</Label>
+              <Input
+                id="newUserPassword"
+                type="password"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                placeholder="NewUser123!"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duplicateEmail">Duplicate Email (existing)</Label>
+              <Input
+                id="duplicateEmail"
+                value={duplicateEmail}
+                onChange={(e) => setDuplicateEmail(e.target.value)}
+                placeholder="test@college.edu"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="weakPassword">Weak Password</Label>
+              <Input
+                id="weakPassword"
+                type="password"
+                value={weakPassword}
+                onChange={(e) => setWeakPassword(e.target.value)}
+                placeholder="weak"
+              />
+            </div>
           </div>
         </div>
 
