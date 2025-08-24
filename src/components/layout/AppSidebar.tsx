@@ -63,6 +63,7 @@ export const AppSidebar = () => {
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/', color: 'text-blue-500' },
+    { icon: User, label: 'Profile', path: '/profile', color: 'text-cyan-500' },
     { icon: TrendingUp, label: 'Trending', path: '/explore', color: 'text-orange-500' },
     { icon: Users, label: 'Communities', path: '/communities', color: 'text-green-500' },
     { icon: Calendar, label: 'Events', path: '/events', color: 'text-purple-500' },
@@ -106,10 +107,11 @@ export const AppSidebar = () => {
         {/* User Profile Card */}
         {!isCollapsed && (
           <div className="p-2">
-            <motion.div 
-              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
-              whileHover={{ scale: 1.02 }}
-            >
+            <NavLink to="/profile">
+              <motion.div 
+                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
+                whileHover={{ scale: 1.02 }}
+              >
               <div className="relative">
                 <Avatar className="h-10 w-10 ring-2 ring-primary/20">
                   <AvatarImage src={profile?.avatar_url} />
@@ -140,6 +142,7 @@ export const AppSidebar = () => {
                 </div>
               </div>
             </motion.div>
+            </NavLink>
           </div>
         )}
 
