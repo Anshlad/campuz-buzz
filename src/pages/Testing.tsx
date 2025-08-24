@@ -6,6 +6,7 @@ import { EventTestRunner } from '@/components/testing/EventTestRunner';
 import { ChatTestRunner } from '@/components/testing/ChatTestRunner';
 import { ProfileTestRunner } from '@/components/testing/ProfileTestRunner';
 import { SecurityTestRunner } from '@/components/testing/SecurityTestRunner';
+import { ErrorHandlingTestRunner } from '@/components/testing/ErrorHandlingTestRunner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Testing = () => {
@@ -22,7 +23,7 @@ export const Testing = () => {
         </div>
         
         <Tabs defaultValue="auth" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="auth">Authentication</TabsTrigger>
           <TabsTrigger value="posts">Post Creation</TabsTrigger>
           <TabsTrigger value="interactions">Post Interactions</TabsTrigger>
@@ -30,6 +31,7 @@ export const Testing = () => {
           <TabsTrigger value="chat">Direct Messaging</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="errors">Error Handling</TabsTrigger>
         </TabsList>
           
           <TabsContent value="auth" className="mt-6">
@@ -58,6 +60,10 @@ export const Testing = () => {
 
           <TabsContent value="security" className="mt-6">
             <SecurityTestRunner />
+          </TabsContent>
+
+          <TabsContent value="errors" className="mt-6">
+            <ErrorHandlingTestRunner />
           </TabsContent>
         </Tabs>
       </div>
