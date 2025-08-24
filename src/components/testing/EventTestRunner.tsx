@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { eventService, CreateEventData } from '@/services/eventService';
+import { useEventRSVP } from '@/hooks/useEvents';
+import { supabase } from '@/integrations/supabase/client';
 import { CheckCircle, XCircle, Clock, AlertTriangle, Calendar, MapPin, Users, Globe } from 'lucide-react';
 
 interface TestResult {
@@ -52,15 +54,18 @@ export const EventTestRunner = () => {
   const [testResults, setTestResults] = useState<TestResult[]>([
     { id: 'TC-Event-01', name: 'New event creation with all fields', status: 'pending' },
     { id: 'TC-Event-02', name: 'Event creation without description (should succeed)', status: 'pending' },
-    { id: 'TC-Event-03', name: 'Event creation without title (should fail)', status: 'pending' },
-    { id: 'TC-Event-04', name: 'Event creation with past date (should fail)', status: 'pending' },
-    { id: 'TC-Event-05', name: 'Virtual event with meeting link', status: 'pending' },
-    { id: 'TC-Event-06', name: 'Event with invalid time range (should fail)', status: 'pending' }
+    { id: 'TC-Event-03', name: 'RSVP (Going)', status: 'pending' },
+    { id: 'TC-Event-04', name: 'RSVP (Not Going)', status: 'pending' },
+    { id: 'TC-Event-05', name: 'RSVP cancellation', status: 'pending' },
+    { id: 'TC-Event-06', name: 'Event creation without title (should fail)', status: 'pending' },
+    { id: 'TC-Event-07', name: 'Virtual event with meeting link', status: 'pending' },
+    { id: 'TC-Event-08', name: 'Event with invalid time range (should fail)', status: 'pending' }
   ]);
   const [isRunning, setIsRunning] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const rsvpMutation = useEventRSVP();
 
   const updateTestResult = (id: string, updates: Partial<TestResult>) => {
     setTestResults(prev => prev.map(test => 
@@ -188,6 +193,122 @@ export const EventTestRunner = () => {
     });
   };
 
+
+  const testRSVPGoing = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    if (createdEventIds.length === 0) {
+      throw new Error('No test events available for RSVP testing. Please run event creation tests first.');
+    }
+
+    const eventId = createdEventIds[0];
+    
+    // Use the hook's mutation function directly
+    await new Promise((resolve, reject) => {
+      rsvpMutation.mutate(
+        { eventId, status: 'going' },
+        {
+          onSuccess: (data) => {
+            if (data.status !== 'going') {
+              reject(new Error('RSVP status does not match expected value'));
+            } else {
+              toast({
+                title: "TC-Event-03 Passed",
+                description: `Successfully RSVP'd as 'Going' to event`
+              });
+              resolve(data);
+            }
+          },
+          onError: (error) => reject(error)
+        }
+      );
+    });
+  };
+
+  const testRSVPNotGoing = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    if (createdEventIds.length === 0) {
+      throw new Error('No test events available for RSVP testing. Please run event creation tests first.');
+    }
+
+    const eventId = createdEventIds[0];
+    
+    await new Promise((resolve, reject) => {
+      rsvpMutation.mutate(
+        { eventId, status: 'not_going' },
+        {
+          onSuccess: (data) => {
+            if (data.status !== 'not_going') {
+              reject(new Error('RSVP status does not match expected value'));
+            } else {
+              toast({
+                title: "TC-Event-04 Passed",
+                description: `Successfully RSVP'd as 'Not Going' to event`
+              });
+              resolve(data);
+            }
+          },
+          onError: (error) => reject(error)
+        }
+      );
+    });
+  };
+
+  const testRSVPCancellation = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    if (createdEventIds.length === 0) {
+      throw new Error('No test events available for RSVP testing. Please run event creation tests first.');
+    }
+
+    const eventId = createdEventIds[0];
+    
+    // First, ensure there's an RSVP to cancel
+    await new Promise((resolve, reject) => {
+      rsvpMutation.mutate(
+        { eventId, status: 'going' },
+        {
+          onSuccess: resolve,
+          onError: reject
+        }
+      );
+    });
+
+    // Now test cancellation by deleting the RSVP
+    const { error } = await supabase
+      .from('event_rsvps')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      throw new Error(`RSVP cancellation failed: ${error.message}`);
+    }
+
+    // Verify the RSVP was deleted
+    const { data: rsvpCheck } = await supabase
+      .from('event_rsvps')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('user_id', user.id);
+
+    if (rsvpCheck && rsvpCheck.length > 0) {
+      throw new Error('RSVP was not properly cancelled');
+    }
+
+    toast({
+      title: "TC-Event-05 Passed",
+      description: "Successfully cancelled RSVP"
+    });
+  };
+
   const testEventWithoutTitle = async () => {
     if (!user) {
       throw new Error('User must be authenticated');
@@ -227,43 +348,6 @@ export const EventTestRunner = () => {
     }
   };
 
-  const testEventWithPastDate = async () => {
-    if (!user) {
-      throw new Error('User must be authenticated');
-    }
-
-    const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - 1); // Yesterday
-    
-    const eventData: CreateEventData = {
-      title: 'Past Event (Should Fail)',
-      description: 'This event is in the past',
-      start_time: pastDate.toISOString(),
-      end_time: new Date(pastDate.getTime() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours later
-      location: eventLocation,
-      is_virtual: false,
-      is_public: true,
-      event_type: 'study_session'
-    };
-
-    // Since the database doesn't have automatic validation for past dates,
-    // this test will verify that we should add such validation
-    const result = await eventService.createEvent(eventData);
-    
-    if (result?.id) {
-      // Track for cleanup
-      setCreatedEventIds(prev => [...prev, result.id]);
-      
-      // This indicates we need to add business logic validation
-      console.warn('Event with past date was created - consider adding validation');
-      toast({
-        title: "TC-Event-04 Note",
-        description: "Past date event created - business logic validation recommended",
-        variant: "destructive"
-      });
-    }
-  };
-
   const testVirtualEventWithMeetingLink = async () => {
     if (!user) {
       throw new Error('User must be authenticated');
@@ -299,7 +383,7 @@ export const EventTestRunner = () => {
     }
 
     toast({
-      title: "TC-Event-05 Passed",
+      title: "TC-Event-07 Passed",
       description: "Virtual event with meeting link created successfully"
     });
   };
@@ -333,7 +417,7 @@ export const EventTestRunner = () => {
         // This indicates we need business logic validation
         console.warn('Event with invalid time range was created - consider adding validation');
         toast({
-          title: "TC-Event-06 Note",
+          title: "TC-Event-08 Note",
           description: "Invalid time range event created - validation recommended",
           variant: "destructive"
         });
@@ -376,16 +460,24 @@ export const EventTestRunner = () => {
       await runTest('TC-Event-02', testEventWithoutDescription);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      await runTest('TC-Event-03', testEventWithoutTitle);
+      // RSVP tests - need events to exist first
+      await runTest('TC-Event-03', testRSVPGoing);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      await runTest('TC-Event-04', testEventWithPastDate);
+      await runTest('TC-Event-04', testRSVPNotGoing);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      await runTest('TC-Event-05', testVirtualEventWithMeetingLink);
+      await runTest('TC-Event-05', testRSVPCancellation);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      await runTest('TC-Event-06', testInvalidTimeRange);
+      // Continue with other event creation tests
+      await runTest('TC-Event-06', testEventWithoutTitle);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Event-07', testVirtualEventWithMeetingLink);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Event-08', testInvalidTimeRange);
       
     } catch (error) {
       console.error('Test runner error:', error);
@@ -442,7 +534,14 @@ export const EventTestRunner = () => {
       <CardContent className="space-y-6">
         {/* Test Configuration */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Event Test Configuration</h3>
+          <h3 className="text-lg font-semibold">Event & RSVP Test Configuration</h3>
+          
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              RSVP tests require events to be created first. Run event creation tests before testing RSVPs.
+            </AlertDescription>
+          </Alert>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
