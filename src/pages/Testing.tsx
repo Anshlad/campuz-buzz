@@ -5,6 +5,7 @@ import { PostInteractionTestRunner } from '@/components/testing/PostInteractionT
 import { EventTestRunner } from '@/components/testing/EventTestRunner';
 import { ChatTestRunner } from '@/components/testing/ChatTestRunner';
 import { ProfileTestRunner } from '@/components/testing/ProfileTestRunner';
+import { SecurityTestRunner } from '@/components/testing/SecurityTestRunner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Testing = () => {
@@ -21,13 +22,14 @@ export const Testing = () => {
         </div>
         
         <Tabs defaultValue="auth" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="auth">Authentication</TabsTrigger>
           <TabsTrigger value="posts">Post Creation</TabsTrigger>
           <TabsTrigger value="interactions">Post Interactions</TabsTrigger>
           <TabsTrigger value="events">Events & RSVPs</TabsTrigger>
           <TabsTrigger value="chat">Direct Messaging</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
           
           <TabsContent value="auth" className="mt-6">
@@ -52,6 +54,10 @@ export const Testing = () => {
 
           <TabsContent value="profile" className="mt-6">
             <ProfileTestRunner />
+          </TabsContent>
+
+          <TabsContent value="security" className="mt-6">
+            <SecurityTestRunner />
           </TabsContent>
         </Tabs>
       </div>
