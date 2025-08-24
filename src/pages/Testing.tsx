@@ -3,6 +3,7 @@ import { AuthTestRunner } from '@/components/testing/AuthTestRunner';
 import { PostTestRunner } from '@/components/testing/PostTestRunner';
 import { PostInteractionTestRunner } from '@/components/testing/PostInteractionTestRunner';
 import { EventTestRunner } from '@/components/testing/EventTestRunner';
+import { ChatTestRunner } from '@/components/testing/ChatTestRunner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export const Testing = () => {
@@ -19,12 +20,13 @@ export const Testing = () => {
         </div>
         
         <Tabs defaultValue="auth" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="auth">Authentication</TabsTrigger>
-            <TabsTrigger value="posts">Post Creation</TabsTrigger>
-            <TabsTrigger value="interactions">Post Interactions</TabsTrigger>
-            <TabsTrigger value="events">Events & RSVPs</TabsTrigger>
-          </TabsList>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="auth">Authentication</TabsTrigger>
+          <TabsTrigger value="posts">Post Creation</TabsTrigger>
+          <TabsTrigger value="interactions">Post Interactions</TabsTrigger>
+          <TabsTrigger value="events">Events & RSVPs</TabsTrigger>
+          <TabsTrigger value="chat">Direct Messaging</TabsTrigger>
+        </TabsList>
           
           <TabsContent value="auth" className="mt-6">
             <AuthTestRunner />
@@ -40,6 +42,10 @@ export const Testing = () => {
           
           <TabsContent value="events" className="mt-6">
             <EventTestRunner />
+          </TabsContent>
+
+          <TabsContent value="chat" className="mt-6">
+            <ChatTestRunner />
           </TabsContent>
         </Tabs>
       </div>

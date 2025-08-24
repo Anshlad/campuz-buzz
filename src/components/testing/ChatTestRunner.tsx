@@ -1,0 +1,585 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { chatService } from '@/services/chatService';
+import { sendMessage, getMessages, type MessageWithAuthor } from '@/services/messageService';
+import { supabase } from '@/integrations/supabase/client';
+import { CheckCircle, XCircle, Clock, AlertTriangle, MessageSquare, Users, Wifi, History } from 'lucide-react';
+
+interface TestResult {
+  id: string;
+  name: string;
+  status: 'pending' | 'running' | 'passed' | 'failed';
+  duration?: number;
+  error?: string;
+  details?: string;
+}
+
+export const ChatTestRunner = () => {
+  // Test configuration state
+  const [recipientUserId, setRecipientUserId] = useState('');
+  const [testMessage, setTestMessage] = useState('Hello! This is a test message from the automated testing suite.');
+  const [invalidUserId, setInvalidUserId] = useState('00000000-0000-0000-0000-000000000000');
+  
+  const [createdConversationIds, setCreatedConversationIds] = useState<string[]>([]);
+  const [receivedMessages, setReceivedMessages] = useState<MessageWithAuthor[]>([]);
+  const [realtimeChannel, setRealtimeChannel] = useState<any>(null);
+  
+  const [testResults, setTestResults] = useState<TestResult[]>([
+    { id: 'TC-Chat-01', name: 'Sending message to valid user', status: 'pending' },
+    { id: 'TC-Chat-02', name: 'Sending message to invalid user fails', status: 'pending' },
+    { id: 'TC-Chat-03', name: 'Receiving messages in real-time', status: 'pending' },
+    { id: 'TC-Chat-04', name: 'Message history loads correctly', status: 'pending' }
+  ]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<Array<{ user_id: string; display_name: string }>>([]);
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Load available users for testing
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .neq('user_id', user.id)
+          .limit(5);
+
+        if (error) throw error;
+        
+        setAvailableUsers(data || []);
+        if (data && data.length > 0) {
+          setRecipientUserId(data[0].user_id);
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+      }
+    };
+
+    loadUsers();
+  }, [user]);
+
+  const updateTestResult = (id: string, updates: Partial<TestResult>) => {
+    setTestResults(prev => prev.map(test => 
+      test.id === id ? { ...test, ...updates } : test
+    ));
+  };
+
+  const runTest = async (testId: string, testFn: () => Promise<void>) => {
+    updateTestResult(testId, { status: 'running' });
+    const startTime = Date.now();
+    
+    try {
+      await testFn();
+      const duration = Date.now() - startTime;
+      updateTestResult(testId, { 
+        status: 'passed', 
+        duration,
+        details: `Completed in ${duration}ms`
+      });
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      updateTestResult(testId, { 
+        status: 'failed', 
+        duration,
+        error: error.message,
+        details: `Failed after ${duration}ms`
+      });
+    }
+  };
+
+  const testSendMessageToValidUser = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    if (!recipientUserId) {
+      throw new Error('No valid recipient user selected');
+    }
+
+    // First, create or find a DM conversation
+    const conversation = await chatService.createDMConversation([recipientUserId]);
+    
+    if (!conversation?.id) {
+      throw new Error('Failed to create DM conversation');
+    }
+
+    // Track created conversation for cleanup
+    setCreatedConversationIds(prev => [...prev, conversation.id]);
+
+    // Send a test message
+    const message = await sendMessage(
+      testMessage,
+      undefined, // channelId
+      conversation.id // conversationId
+    );
+
+    if (!message?.id) {
+      throw new Error('Failed to send message - no message ID returned');
+    }
+
+    // Verify the message was created correctly
+    if (message.content !== testMessage) {
+      throw new Error('Message content does not match sent content');
+    }
+
+    if (message.user_id !== user.id) {
+      throw new Error('Message user_id does not match current user');
+    }
+
+    if (message.dm_conversation_id !== conversation.id) {
+      throw new Error('Message conversation_id does not match target conversation');
+    }
+
+    toast({
+      title: "TC-Chat-01 Passed",
+      description: `Message sent successfully to valid user (ID: ${message.id.slice(0, 8)}...)`
+    });
+  };
+
+  const testSendMessageToInvalidUser = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    try {
+      // Attempt to create conversation with invalid user
+      const conversation = await chatService.createDMConversation([invalidUserId]);
+      
+      if (conversation?.id) {
+        // Track for cleanup even if it shouldn't have been created
+        setCreatedConversationIds(prev => [...prev, conversation.id]);
+        
+        // Try to send message to this conversation
+        await sendMessage(
+          'This message should fail',
+          undefined,
+          conversation.id
+        );
+        
+        // If we get here, the test failed because it should have thrown an error
+        throw new Error('Message to invalid user should have failed but succeeded');
+      }
+    } catch (error: any) {
+      // Check if it's the expected error about invalid user
+      if (error.message.includes('should have failed') || 
+          error.message.includes('invalid user') ||
+          error.message.includes('not found') ||
+          error.message.includes('does not exist')) {
+        // For the "should have failed" case, re-throw
+        if (error.message.includes('should have failed')) {
+          throw error;
+        }
+        // Otherwise, this is expected behavior
+        toast({
+          title: "TC-Chat-02 Passed",
+          description: "Message to invalid user correctly failed as expected"
+        });
+        return;
+      }
+      
+      // Check for database constraint violations or other expected failures
+      if (error.message.includes('foreign key') ||
+          error.message.includes('constraint') ||
+          error.message.includes('violates')) {
+        toast({
+          title: "TC-Chat-02 Passed",
+          description: "Message to invalid user correctly failed with database constraint"
+        });
+        return;
+      }
+      
+      // Re-throw unexpected errors
+      throw error;
+    }
+  };
+
+  const testRealTimeMessageReceiving = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    if (createdConversationIds.length === 0) {
+      throw new Error('No test conversations available. Please run valid user message test first.');
+    }
+
+    const conversationId = createdConversationIds[0];
+    
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('test-messages')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `dm_conversation_id=eq.${conversationId}`
+      }, (payload) => {
+        console.log('Real-time message received:', payload);
+        // Add to received messages list
+        setReceivedMessages(prev => [...prev, payload.new as any]);
+      })
+      .subscribe();
+
+    setRealtimeChannel(channel);
+
+    // Wait a moment for subscription to be established
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Send a test message that should be received in real-time
+    const testRealtimeMessage = `Real-time test message sent at ${new Date().toISOString()}`;
+    
+    const message = await sendMessage(
+      testRealtimeMessage,
+      undefined,
+      conversationId
+    );
+
+    // Wait for real-time message to be received
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Check if the message was received via real-time
+    const receivedMessage = receivedMessages.find(msg => msg.id === message.id);
+    
+    if (!receivedMessage) {
+      throw new Error('Message was not received via real-time subscription');
+    }
+
+    if (receivedMessage.content !== testRealtimeMessage) {
+      throw new Error('Received message content does not match sent message');
+    }
+
+    toast({
+      title: "TC-Chat-03 Passed",
+      description: `Real-time message received successfully (${receivedMessages.length} total received)`
+    });
+  };
+
+  const testMessageHistoryLoading = async () => {
+    if (!user) {
+      throw new Error('User must be authenticated');
+    }
+
+    if (createdConversationIds.length === 0) {
+      throw new Error('No test conversations available. Please run other tests first.');
+    }
+
+    const conversationId = createdConversationIds[0];
+
+    // Send multiple test messages to create history
+    const testMessages = [
+      'History test message 1',
+      'History test message 2',
+      'History test message 3'
+    ];
+
+    const sentMessages = [];
+    for (const content of testMessages) {
+      const message = await sendMessage(content, undefined, conversationId);
+      sentMessages.push(message);
+      // Small delay between messages
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Wait a moment for messages to be fully processed
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Load message history
+    const history = await getMessages(undefined, conversationId);
+
+    if (!history || history.length === 0) {
+      throw new Error('No message history loaded');
+    }
+
+    // Verify that our test messages are in the history
+    for (const sentMessage of sentMessages) {
+      const foundMessage = history.find(msg => msg.id === sentMessage.id);
+      
+      if (!foundMessage) {
+        throw new Error(`Sent message ${sentMessage.id} not found in history`);
+      }
+
+      if (foundMessage.content !== sentMessage.content) {
+        throw new Error(`Message content mismatch in history for message ${sentMessage.id}`);
+      }
+
+      if (!foundMessage.author) {
+        throw new Error(`Message author information missing for message ${sentMessage.id}`);
+      }
+    }
+
+    // Verify messages are in chronological order
+    for (let i = 1; i < history.length; i++) {
+      const prevDate = new Date(history[i - 1].created_at);
+      const currentDate = new Date(history[i].created_at);
+      
+      if (currentDate < prevDate) {
+        throw new Error('Messages are not in chronological order');
+      }
+    }
+
+    toast({
+      title: "TC-Chat-04 Passed",
+      description: `Message history loaded correctly (${history.length} messages, ${sentMessages.length} test messages verified)`
+    });
+  };
+
+  const runAllTests = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to run chat tests",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsRunning(true);
+    
+    // Reset all test results
+    setTestResults(prev => prev.map(test => ({ 
+      ...test, 
+      status: 'pending', 
+      duration: undefined, 
+      error: undefined,
+      details: undefined
+    })));
+
+    // Clear previous test data
+    setReceivedMessages([]);
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      setRealtimeChannel(null);
+    }
+
+    try {
+      // Run tests sequentially to avoid conflicts
+      await runTest('TC-Chat-01', testSendMessageToValidUser);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Chat-02', testSendMessageToInvalidUser);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Chat-03', testRealTimeMessageReceiving);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await runTest('TC-Chat-04', testMessageHistoryLoading);
+      
+    } catch (error) {
+      console.error('Test runner error:', error);
+    } finally {
+      setIsRunning(false);
+      
+      // Clean up real-time channel
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+        setRealtimeChannel(null);
+      }
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'passed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'failed':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'running':
+        return <Clock className="h-4 w-4 text-blue-500 animate-spin" />;
+      default:
+        return <AlertTriangle className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, any> = {
+      passed: 'default',
+      failed: 'destructive',
+      running: 'secondary',
+      pending: 'outline'
+    };
+    
+    return (
+      <Badge variant={variants[status] || 'outline'}>
+        {status.toUpperCase()}
+      </Badge>
+    );
+  };
+
+  const passedTests = testResults.filter(t => t.status === 'passed').length;
+  const failedTests = testResults.filter(t => t.status === 'failed').length;
+
+  return (
+    <Card className="w-full max-w-4xl">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            Direct Messaging Testing Suite
+          </span>
+          <div className="flex gap-2 text-sm">
+            <span className="text-green-600">Passed: {passedTests}</span>
+            <span className="text-red-600">Failed: {failedTests}</span>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Test Configuration */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Chat Test Configuration</h3>
+          
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Real-time tests require active conversations. Tests will create DM conversations and verify message delivery.
+            </AlertDescription>
+          </Alert>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="recipientUser">Test Recipient User</Label>
+              <select
+                id="recipientUser"
+                value={recipientUserId}
+                onChange={(e) => setRecipientUserId(e.target.value)}
+                className="w-full p-2 border rounded-md"
+                disabled={availableUsers.length === 0}
+              >
+                {availableUsers.length === 0 ? (
+                  <option value="">No users available</option>
+                ) : (
+                  availableUsers.map(user => (
+                    <option key={user.user_id} value={user.user_id}>
+                      {user.display_name} ({user.user_id.slice(0, 8)}...)
+                    </option>
+                  ))
+                )}
+              </select>
+              {availableUsers.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No other users found. Create additional user accounts to test messaging.
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="invalidUserId">Invalid User ID (for testing)</Label>
+              <Input
+                id="invalidUserId"
+                value={invalidUserId}
+                onChange={(e) => setInvalidUserId(e.target.value)}
+                placeholder="00000000-0000-0000-0000-000000000000"
+              />
+            </div>
+            
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="testMessage">Test Message Content</Label>
+              <Textarea
+                id="testMessage"
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                placeholder="Enter test message content..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          {/* Real-time Status */}
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <Wifi className="h-4 w-4" />
+            <span className="text-sm">
+              Real-time Status: {realtimeChannel ? 'Connected' : 'Disconnected'} | 
+              Messages Received: {receivedMessages.length} | 
+              Conversations Created: {createdConversationIds.length}
+            </span>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Test Controls */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button 
+            onClick={runAllTests} 
+            disabled={isRunning || !user || availableUsers.length === 0}
+            className="flex-1"
+          >
+            {isRunning ? 'Running Tests...' : 'Run All Chat Tests'}
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Test Results */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Test Results
+          </h3>
+          
+          <div className="space-y-3">
+            {testResults.map((test) => (
+              <div
+                key={test.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  {getStatusIcon(test.status)}
+                  <div>
+                    <div className="font-medium">{test.id}</div>
+                    <div className="text-sm text-muted-foreground">{test.name}</div>
+                    {test.details && (
+                      <div className="text-xs text-muted-foreground mt-1">{test.details}</div>
+                    )}
+                    {test.error && (
+                      <div className="text-xs text-red-600 mt-1">{test.error}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {test.duration && (
+                    <span className="text-xs text-muted-foreground">{test.duration}ms</span>
+                  )}
+                  {getStatusBadge(test.status)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Test Summary */}
+        <div className="p-4 bg-muted rounded-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-blue-600">{testResults.length}</div>
+              <div className="text-sm text-muted-foreground">Total Tests</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-600">{passedTests}</div>
+              <div className="text-sm text-muted-foreground">Passed</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-red-600">{failedTests}</div>
+              <div className="text-sm text-muted-foreground">Failed</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-yellow-600">{receivedMessages.length}</div>
+              <div className="text-sm text-muted-foreground">Real-time Messages</div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
