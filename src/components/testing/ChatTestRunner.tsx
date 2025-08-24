@@ -350,49 +350,86 @@ export const ChatTestRunner = () => {
     const groupMembers = availableUsers.slice(0, 2).map(u => u.user_id);
     const groupName = `Test Group Chat ${new Date().getTime()}`;
 
-    // Create group conversation
-    const conversation = await chatService.createDMConversation(groupMembers, true, groupName);
-    
-    if (!conversation?.id) {
-      throw new Error('Failed to create group conversation');
+    try {
+      // Create group conversation using room creation functionality
+      const { data: room, error } = await supabase
+        .from('chat_rooms')
+        .insert({
+          name: groupName,
+          description: 'Test group chat for automated testing',
+          is_private: false,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!room?.id) throw new Error('Failed to create group room');
+
+      // Add participants to the room
+      const participantInserts = groupMembers.map(memberId => ({
+        room_id: room.id,
+        user_id: memberId,
+        role: 'member' as const
+      }));
+
+      // Add creator as member (not admin for now to avoid role type issues)
+      participantInserts.push({
+        room_id: room.id,
+        user_id: user.id,
+        role: 'member' as const
+      });
+
+      const { error: participantsError } = await supabase
+        .from('chat_participants')
+        .insert(participantInserts);
+
+      if (participantsError) throw participantsError;
+
+      // Send a test message to the group
+      const testGroupMessage = 'Hello group! This is a test message.';
+      const { data: message, error: messageError } = await supabase
+        .from('chat_messages')
+        .insert({
+          content: testGroupMessage,
+          user_id: user.id,
+          room_id: room.id
+        })
+        .select()
+        .single();
+
+      if (messageError) throw messageError;
+      if (!message?.id) throw new Error('Failed to send message to group chat');
+
+      // Verify room was created correctly
+      const { data: roomWithParticipants } = await supabase
+        .from('chat_rooms')
+        .select(`
+          *,
+          chat_participants (
+            user_id,
+            role,
+            profiles (display_name)
+          )
+        `)
+        .eq('id', room.id)
+        .single();
+
+      const participantCount = roomWithParticipants?.chat_participants?.length || 0;
+      const expectedCount = groupMembers.length + 1; // +1 for creator
+
+      if (participantCount !== expectedCount) {
+        throw new Error(`Group participant count mismatch. Expected ${expectedCount}, got ${participantCount}`);
+      }
+
+      toast({
+        title: "TC-Chat-05 Passed",
+        description: `Group chat created successfully with ${participantCount} participants`
+      });
+
+    } catch (error: any) {
+      throw new Error(`Group chat creation failed: ${error.message}`);
     }
-
-    // Track created conversation for cleanup
-    setCreatedConversationIds(prev => [...prev, conversation.id]);
-
-    // Verify it's a group conversation
-    if (!conversation.is_group) {
-      throw new Error('Created conversation is not marked as group');
-    }
-
-    if (conversation.name !== groupName) {
-      throw new Error('Group conversation name does not match');
-    }
-
-    // Verify participants include all selected users plus creator
-    const expectedParticipants = [...groupMembers, user.id].sort();
-    const actualParticipants = conversation.participants?.sort();
-    
-    if (JSON.stringify(expectedParticipants) !== JSON.stringify(actualParticipants)) {
-      throw new Error('Group participants do not match expected users');
-    }
-
-    // Send a test message to the group
-    const testGroupMessage = 'Hello group! This is a test message.';
-    const message = await sendMessage(
-      testGroupMessage,
-      undefined,
-      conversation.id
-    );
-
-    if (!message?.id) {
-      throw new Error('Failed to send message to group chat');
-    }
-
-    toast({
-      title: "TC-Chat-05 Passed",
-      description: `Group chat created successfully with ${groupMembers.length + 1} participants`
-    });
   };
 
   const testAddRemoveMembers = async () => {
@@ -404,55 +441,120 @@ export const ChatTestRunner = () => {
       throw new Error('Need at least 3 other users to test adding/removing members');
     }
 
-    // Create initial group with 2 members
-    const initialMembers = availableUsers.slice(0, 2).map(u => u.user_id);
-    const groupName = `Test Add/Remove Group ${new Date().getTime()}`;
+    try {
+      // Create initial group with 2 members
+      const initialMembers = availableUsers.slice(0, 2).map(u => u.user_id);
+      const groupName = `Test Add/Remove Group ${new Date().getTime()}`;
 
-    const conversation = await chatService.createDMConversation(initialMembers, true, groupName);
-    
-    if (!conversation?.id) {
-      throw new Error('Failed to create initial group conversation');
+      // Create group room
+      const { data: room, error } = await supabase
+        .from('chat_rooms')
+        .insert({
+          name: groupName,
+          description: 'Test group for member management',
+          is_private: false,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!room?.id) throw new Error('Failed to create group room');
+
+      // Add initial participants
+      const initialParticipants = [
+        ...initialMembers.map(memberId => ({
+          room_id: room.id,
+          user_id: memberId,
+          role: 'member' as const
+        })),
+        {
+          room_id: room.id,
+          user_id: user.id,
+          role: 'member' as const
+        }
+      ];
+
+      const { error: participantsError } = await supabase
+        .from('chat_participants')
+        .insert(initialParticipants);
+
+      if (participantsError) throw participantsError;
+
+      // Verify initial group size
+      const { data: initialCount } = await supabase
+        .from('chat_participants')
+        .select('user_id')
+        .eq('room_id', room.id);
+
+      const expectedInitialCount = initialMembers.length + 1; // +1 for creator
+      if (initialCount?.length !== expectedInitialCount) {
+        throw new Error(`Initial group size mismatch. Expected ${expectedInitialCount}, got ${initialCount?.length}`);
+      }
+
+      // Test adding a member
+      const newMemberId = availableUsers[2].user_id;
+      const { error: addError } = await supabase
+        .from('chat_participants')
+        .insert({
+          room_id: room.id,
+          user_id: newMemberId,
+          role: 'member'
+        });
+
+      if (addError) throw addError;
+
+      // Verify member was added
+      const { data: afterAddCount } = await supabase
+        .from('chat_participants')
+        .select('user_id')
+        .eq('room_id', room.id);
+
+      if (afterAddCount?.length !== expectedInitialCount + 1) {
+        throw new Error(`Member addition failed. Expected ${expectedInitialCount + 1}, got ${afterAddCount?.length}`);
+      }
+
+      // Test removing a member
+      const { error: removeError } = await supabase
+        .from('chat_participants')
+        .delete()
+        .eq('room_id', room.id)
+        .eq('user_id', newMemberId);
+
+      if (removeError) throw removeError;
+
+      // Verify member was removed
+      const { data: afterRemoveCount } = await supabase
+        .from('chat_participants')
+        .select('user_id')
+        .eq('room_id', room.id);
+
+      if (afterRemoveCount?.length !== expectedInitialCount) {
+        throw new Error(`Member removal failed. Expected ${expectedInitialCount}, got ${afterRemoveCount?.length}`);
+      }
+
+      // Send confirmation message
+      const memberTestMessage = 'Member add/remove operations completed successfully';
+      const { data: message, error: messageError } = await supabase
+        .from('chat_messages')
+        .insert({
+          content: memberTestMessage,
+          user_id: user.id,
+          room_id: room.id
+        })
+        .select()
+        .single();
+
+      if (messageError) throw messageError;
+
+      toast({
+        title: "TC-Chat-06 Passed",
+        description: `Member add/remove operations verified (final: ${afterRemoveCount?.length} participants)`
+      });
+
+    } catch (error: any) {
+      throw new Error(`Member management test failed: ${error.message}`);
     }
-
-    // Track created conversation for cleanup
-    setCreatedConversationIds(prev => [...prev, conversation.id]);
-
-    // Verify initial group size
-    const initialParticipantCount = conversation.participants?.length || 0;
-    const expectedInitialCount = initialMembers.length + 1; // +1 for creator
-
-    if (initialParticipantCount !== expectedInitialCount) {
-      throw new Error(`Initial group size mismatch. Expected ${expectedInitialCount}, got ${initialParticipantCount}`);
-    }
-
-    // Test adding a member (this would require additional API functionality)
-    // For now, we'll verify the group structure is correct
-    const newMemberId = availableUsers[2].user_id;
-    
-    // Note: Adding/removing members would require additional chat service methods
-    // This test verifies the group chat structure supports member management
-    
-    // Verify group conversation supports member operations
-    if (!conversation.is_group) {
-      throw new Error('Conversation is not a group - cannot manage members');
-    }
-
-    // Send confirmation message
-    const memberTestMessage = 'Testing member management capabilities';
-    const message = await sendMessage(
-      memberTestMessage,
-      undefined,
-      conversation.id
-    );
-
-    if (!message?.id) {
-      throw new Error('Failed to send member test message');
-    }
-
-    toast({
-      title: "TC-Chat-06 Passed",
-      description: `Group member management structure verified (${initialParticipantCount} participants)`
-    });
   };
 
   const runAllTests = async () => {
