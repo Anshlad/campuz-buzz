@@ -39,14 +39,7 @@ class OptimizedEventsService {
     try {
       let query = supabase
         .from('events')
-        .select(`
-          *,
-          created_by_profile:profiles!created_by (
-            user_id,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('start_time', { ascending: true });
 
       if (filters?.upcoming) {
@@ -62,6 +55,22 @@ class OptimizedEventsService {
 
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
+
+      // Get profile data separately for all unique created_by IDs
+      let profilesMap = new Map();
+      if (eventsData && eventsData.length > 0) {
+        const createdByIds = [...new Set(eventsData.map(event => event.created_by))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', createdByIds);
+        
+        if (profilesData) {
+          profilesData.forEach(profile => {
+            profilesMap.set(profile.user_id, profile);
+          });
+        }
+      }
 
       // Get RSVP statuses in batch if user is authenticated
       let rsvpData: any[] = [];
@@ -81,7 +90,7 @@ class OptimizedEventsService {
         rsvpMap.set(rsvp.event_id, rsvp.status);
       });
 
-      const transformedEvents = (eventsData || []).map(event => this.transformEvent(event, rsvpMap));
+      const transformedEvents = (eventsData || []).map(event => this.transformEvent(event, rsvpMap, profilesMap));
 
       // Filter by attendance if requested
       if (filters?.attending) {
@@ -125,19 +134,24 @@ class OptimizedEventsService {
           event_type: eventData.event_type || 'other',
           tags: eventData.tags || []
         })
-        .select(`
-          *,
-          created_by_profile:profiles!created_by (
-            user_id,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
 
-      return this.transformEvent(data, new Map());
+      // Get profile data separately
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+
+      const profilesMap = new Map();
+      if (profileData) {
+        profilesMap.set(profileData.user_id, profileData);
+      }
+
+      return this.transformEvent(data, new Map(), profilesMap);
     } catch (error) {
       console.error('Error creating event:', error);
       throw error;
@@ -196,11 +210,7 @@ class OptimizedEventsService {
         .select(`
           user_id,
           status,
-          created_at,
-          user_profile:profiles!user_id (
-            display_name,
-            avatar_url
-          )
+          created_at
         `)
         .eq('event_id', eventId)
         .eq('status', 'going')
@@ -208,10 +218,22 @@ class OptimizedEventsService {
 
       if (error) throw error;
 
+      // Get profile data separately for attendees
+      const userIds = (data || []).map(rsvp => rsvp.user_id);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+
+      const profilesMap = new Map();
+      (profilesData || []).forEach(profile => {
+        profilesMap.set(profile.user_id, profile);
+      });
+
       return (data || []).map(rsvp => ({
         user_id: rsvp.user_id,
-        display_name: (rsvp.user_profile as any)?.display_name || 'Anonymous User',
-        avatar_url: (rsvp.user_profile as any)?.avatar_url,
+        display_name: profilesMap.get(rsvp.user_id)?.display_name || 'Anonymous User',
+        avatar_url: profilesMap.get(rsvp.user_id)?.avatar_url,
         status: rsvp.status,
         rsvp_date: rsvp.created_at
       }));
@@ -221,8 +243,8 @@ class OptimizedEventsService {
     }
   }
 
-  private transformEvent(dbEvent: any, rsvpMap: Map<string, string>): OptimizedEvent {
-    const profile = Array.isArray(dbEvent.created_by_profile) ? dbEvent.created_by_profile[0] : dbEvent.created_by_profile;
+  private transformEvent(dbEvent: any, rsvpMap: Map<string, string>, profilesMap: Map<string, any>): OptimizedEvent {
+    const profile = profilesMap.get(dbEvent.created_by);
     const userRsvpStatus = rsvpMap.get(dbEvent.id) || null;
     
     return {
