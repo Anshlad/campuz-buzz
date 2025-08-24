@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { OptimizedUserProfile } from '@/hooks/useOptimizedProfile';
 import { 
   User, 
   GraduationCap, 
@@ -26,7 +27,7 @@ import {
 interface EnhancedEditProfileModalProps {
   open: boolean;
   onClose: () => void;
-  profile: any;
+  profile: OptimizedUserProfile;
   onProfileUpdate: () => void;
 }
 

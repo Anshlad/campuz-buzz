@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOptimizedProfile } from '@/hooks/useOptimizedProfile';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EditProfileModal } from '@/components/profile/EditProfileModal';
+import { EnhancedEditProfileModal } from '@/components/profile/EnhancedEditProfileModal';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import { AchievementsDisplay } from '@/components/achievements/AchievementsDisplay';
@@ -16,32 +16,37 @@ import { UserActivityTab } from '@/components/profile/UserActivityTab';
 
 export default function Profile() {
   const { user } = useAuth();
-  const { profile, loading, updateProfile } = useOptimizedProfile();
+  const { profile, loading, updateProfile, refetchProfile } = useOptimizedProfile();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const handleSaveProfile = async (updatedData: any) => {
-    if (updateProfile) {
-      await updateProfile(updatedData);
+  const handleProfileUpdate = async () => {
+    if (refetchProfile) {
+      await refetchProfile();
     }
   };
 
-  // Transform profile data to match EditProfileModal's expected format
-  const transformedUser = profile ? {
-    id: profile.id,
-    name: profile.display_name || '',
-    email: user?.email || '',
-    bio: profile.bio || '',
-    major: profile.major || '',
-    year: profile.year || '',
-    department: profile.department || '',
-    avatar: profile.avatar_url || '',
-    role: profile.role as 'student' | 'professor' | 'admin' | 'club',
-    privacy: {
-      profileVisible: profile.privacy_settings?.profile_visible ?? true,
-      emailVisible: profile.privacy_settings?.email_visible ?? false,
-      joinedGroupsVisible: profile.privacy_settings?.academic_info_visible ?? true,
-    }
-  } : null;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-6">
+          <Card className="mb-6">
+            <CardHeader>
+              <Skeleton className="h-8 w-48" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-16 w-16 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,7 +54,7 @@ export default function Profile() {
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-2xl font-semibold">
-              {profile?.display_name || 'Loading...'}
+              {profile?.display_name || 'Your Profile'}
             </CardTitle>
             <Button variant="ghost" onClick={() => setIsEditModalOpen(true)}>
               <Settings className="h-4 w-4 mr-2" />
@@ -58,17 +63,13 @@ export default function Profile() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-4">
-              {loading ? (
-                <Skeleton className="h-16 w-16 rounded-full" />
-              ) : (
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={profile?.avatar_url} alt={profile?.display_name} />
-                  <AvatarFallback>{profile?.display_name?.[0] || 'U'}</AvatarFallback>
-                </Avatar>
-              )}
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.display_name || 'User'} />
+                <AvatarFallback>{profile?.display_name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {profile?.major} - {profile?.year}
+                  {profile?.major && profile?.year ? `${profile.major} - ${profile.year}` : 'No academic info'}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {profile?.bio || 'No bio yet'}
@@ -90,17 +91,22 @@ export default function Profile() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm">
-                    <span className="font-bold">Name:</span> {profile.display_name}
+                    <span className="font-bold">Name:</span> {profile.display_name || 'Not set'}
                   </div>
                   <div className="text-sm">
-                    <span className="font-bold">Major:</span> {profile.major || 'N/A'}
+                    <span className="font-bold">Major:</span> {profile.major || 'Not set'}
                   </div>
                   <div className="text-sm">
-                    <span className="font-bold">Year:</span> {profile.year || 'N/A'}
+                    <span className="font-bold">Year:</span> {profile.year || 'Not set'}
                   </div>
                   <div className="text-sm">
-                    <span className="font-bold">School:</span> {profile.school || 'N/A'}
+                    <span className="font-bold">School:</span> {profile.school || 'Not set'}
                   </div>
+                  {profile.skills && profile.skills.length > 0 && (
+                    <div className="text-sm">
+                      <span className="font-bold">Skills:</span> {profile.skills.join(', ')}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -128,12 +134,12 @@ export default function Profile() {
         </div>
       </div>
 
-      {transformedUser && (
-        <EditProfileModal
+      {profile && (
+        <EnhancedEditProfileModal
           open={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          user={transformedUser}
-          onSave={handleSaveProfile}
+          profile={profile}
+          onProfileUpdate={handleProfileUpdate}
         />
       )}
     </div>

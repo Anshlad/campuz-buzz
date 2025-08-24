@@ -54,56 +54,65 @@ export const useOptimizedProfile = () => {
   const fetchProfile = useCallback(async (): Promise<OptimizedUserProfile | null> => {
     if (!user) return null;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // Create profile if it doesn't exist
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
-            role: 'student',
-            engagement_score: 0,
-            privacy_settings: {
-              email_visible: false,
-              profile_visible: true,
-              academic_info_visible: true,
-              notifications: {
-                posts: true,
-                comments: true,
-                mentions: true,
-                messages: true,
-                events: true
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Create profile if it doesn't exist
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: user.id,
+              display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'New User',
+              role: 'student',
+              engagement_score: 0,
+              privacy_settings: {
+                email_visible: false,
+                profile_visible: true,
+                academic_info_visible: true,
+                notifications: {
+                  posts: true,
+                  comments: true,
+                  mentions: true,
+                  messages: true,
+                  events: true
+                }
               }
-            }
-          })
-          .select()
-          .single();
+            })
+            .select()
+            .single();
 
-        if (createError) throw createError;
-        
-        // Convert the data to match our interface
-        return {
-          ...newProfile,
-          social_links: convertJsonToRecord(newProfile.social_links),
-          privacy_settings: convertJsonToRecord(newProfile.privacy_settings)
-        } as OptimizedUserProfile;
+          if (createError) {
+            console.error('Error creating profile:', createError);
+            throw createError;
+          }
+          
+          // Convert the data to match our interface
+          return {
+            ...newProfile,
+            social_links: convertJsonToRecord(newProfile.social_links),
+            privacy_settings: convertJsonToRecord(newProfile.privacy_settings)
+          } as OptimizedUserProfile;
+        }
+        console.error('Error fetching profile:', error);
+        throw error;
       }
+
+      // Convert the data to match our interface
+      return {
+        ...data,
+        social_links: convertJsonToRecord(data.social_links),
+        privacy_settings: convertJsonToRecord(data.privacy_settings)
+      } as OptimizedUserProfile;
+    } catch (error) {
+      console.error('Profile fetch error:', error);
       throw error;
     }
-
-    // Convert the data to match our interface
-    return {
-      ...data,
-      social_links: convertJsonToRecord(data.social_links),
-      privacy_settings: convertJsonToRecord(data.privacy_settings)
-    } as OptimizedUserProfile;
   }, [user]);
 
   const { 
@@ -132,7 +141,8 @@ export const useOptimizedProfile = () => {
       setIsUpdating(true);
 
       // Optimistically update local state
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      const optimisticProfile = { ...profile, ...updates };
+      setProfile(optimisticProfile);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -144,7 +154,10 @@ export const useOptimizedProfile = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile update error:', error);
+        throw error;
+      }
 
       // Convert the data to match our interface
       const convertedProfile: OptimizedUserProfile = {
