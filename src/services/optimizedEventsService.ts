@@ -41,7 +41,7 @@ class OptimizedEventsService {
         .from('events')
         .select(`
           *,
-          profiles:created_by (
+          created_by_profile:profiles!created_by (
             user_id,
             display_name,
             avatar_url
@@ -127,7 +127,7 @@ class OptimizedEventsService {
         })
         .select(`
           *,
-          profiles:created_by (
+          created_by_profile:profiles!created_by (
             user_id,
             display_name,
             avatar_url
@@ -197,7 +197,7 @@ class OptimizedEventsService {
           user_id,
           status,
           created_at,
-          profiles:user_id (
+          user_profile:profiles!user_id (
             display_name,
             avatar_url
           )
@@ -210,8 +210,8 @@ class OptimizedEventsService {
 
       return (data || []).map(rsvp => ({
         user_id: rsvp.user_id,
-        display_name: (rsvp.profiles as any)?.display_name || 'Anonymous User',
-        avatar_url: (rsvp.profiles as any)?.avatar_url,
+        display_name: (rsvp.user_profile as any)?.display_name || 'Anonymous User',
+        avatar_url: (rsvp.user_profile as any)?.avatar_url,
         status: rsvp.status,
         rsvp_date: rsvp.created_at
       }));
@@ -222,7 +222,7 @@ class OptimizedEventsService {
   }
 
   private transformEvent(dbEvent: any, rsvpMap: Map<string, string>): OptimizedEvent {
-    const profile = Array.isArray(dbEvent.profiles) ? dbEvent.profiles[0] : dbEvent.profiles;
+    const profile = Array.isArray(dbEvent.created_by_profile) ? dbEvent.created_by_profile[0] : dbEvent.created_by_profile;
     const userRsvpStatus = rsvpMap.get(dbEvent.id) || null;
     
     return {
