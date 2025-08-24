@@ -53,6 +53,11 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     if (eventId && open) {
       loadEventDetails();
       loadAttendees();
+    } else if (!open) {
+      // Reset state when modal is closed
+      setEvent(null);
+      setAttendees([]);
+      setLoading(true);
     }
   }, [eventId, open]);
 
@@ -65,7 +70,10 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
       setEvent(eventDetails);
     } catch (error) {
       console.error('Error loading event details:', error);
-      toast.error('Failed to load event details');
+      // Only show toast if modal is still open
+      if (open) {
+        toast.error('Failed to load event details');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,6 +87,7 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
       setAttendees(attendeesData);
     } catch (error) {
       console.error('Error loading attendees:', error);
+      // Only log error, don't show toast for attendees as it's less critical
     }
   };
 
@@ -87,9 +96,12 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     
     try {
       await eventManagementService.rsvpToEvent(eventId, status);
-      await loadEventDetails();
-      await loadAttendees();
+      // Only reload if the modal is still open
+      if (open) {
+        await Promise.all([loadEventDetails(), loadAttendees()]);
+      }
     } catch (error) {
+      console.error('RSVP error:', error);
       toast.error('Failed to update RSVP');
     }
   };

@@ -16,6 +16,12 @@ export const useOptimizedEvents = (filters?: {
   const [error, setError] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
+    if (!user) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -32,7 +38,7 @@ export const useOptimizedEvents = (filters?: {
     } finally {
       setLoading(false);
     }
-  }, [filters, toast]);
+  }, [filters, toast, user]);
 
   const handleRSVP = useCallback(async (eventId: string, status: 'going' | 'maybe' | 'not_going') => {
     if (!user) return;
@@ -113,7 +119,12 @@ export const useOptimizedEvents = (filters?: {
   }, [toast]);
 
   useEffect(() => {
-    loadEvents();
+    // Add a small delay to prevent rapid calls
+    const timeoutId = setTimeout(() => {
+      loadEvents();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [loadEvents]);
 
   return {
