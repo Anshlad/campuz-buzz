@@ -10,7 +10,7 @@ export const Testing = () => {
             CampuzBuzz Testing Suite
           </h1>
           <p className="text-lg text-muted-foreground">
-            Comprehensive authentication and user management testing
+            Authentication Testing: Login, Signup & Logout Verification
           </p>
         </div>
         
