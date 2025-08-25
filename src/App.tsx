@@ -85,36 +85,17 @@ const AppContent: React.FC = () => {
         <ThemeProvider>
           <SecurityMonitor />
           <AuthGuard>
-            <EnhancedAppLayout>
-              {!isOnline && (
-                <div className="bg-destructive text-destructive-foreground p-2 text-center text-sm">
-                  You're offline. Some features may not work properly.
-                </div>
-              )}
-              {isSlowConnection && (
-                <div className="bg-warning text-warning-foreground p-2 text-center text-sm">
-                  Slow connection detected. Content may load slowly.
-                </div>
-              )}
-              <Routes>
-                <Route path="/" element={<HomeFeed />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/communities" element={<Communities />} />
-                <Route path="/events" element={<EventCalendar />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/study-groups" element={<StudyGroups />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/testing" element={<Testing />} />
-                <Route path="/mentorship" element={<Mentorship />} />
-                <Route path="/announcements" element={<Announcements />} />
-                <Route path="/documentation" element={<Documentation />} />
-                <Route path="/admin/deployment" element={<DeploymentStatus />} />
-                <Route path="/admin/monitoring" element={<MonitoringDashboard />} />
-                <Route path="/404" element={<NotFound />} />
-                <Route path="*" element={<Navigate to="/404" replace />} />
-              </Routes>
-            </EnhancedAppLayout>
+            {!isOnline && (
+              <div className="bg-destructive text-destructive-foreground p-2 text-center text-sm">
+                You're offline. Some features may not work properly.
+              </div>
+            )}
+            {isSlowConnection && (
+              <div className="bg-warning text-warning-foreground p-2 text-center text-sm">
+                Slow connection detected. Content may load slowly.
+              </div>
+            )}
+            <EnhancedAppLayout />
           </AuthGuard>
         </ThemeProvider>
       </AuthProvider>

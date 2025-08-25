@@ -2,14 +2,14 @@
 import React, { lazy, Suspense, memo } from 'react';
 import { LoadingSkeletons } from './LoadingSkeletons';
 
-// Enhanced lazy loading with error boundaries
-export const withLazyLoading = <T extends Record<string, any>>(
-  importFunc: () => Promise<{ default: React.ComponentType<T> }>,
+// Enhanced lazy loading with error boundaries - simplified types
+export const withLazyLoading = (
+  importFunc: () => Promise<{ default: React.ComponentType<any> }>,
   fallback?: React.ReactNode
 ) => {
   const LazyComponent = lazy(importFunc);
   
-  return memo((props: T) => (
+  return memo((props: any) => (
     <Suspense fallback={fallback || <LoadingSkeletons type="feed" count={1} />}>
       <LazyComponent {...props} />
     </Suspense>
