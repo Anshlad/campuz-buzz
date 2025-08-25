@@ -12,19 +12,19 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useAdvancedErrorBoundary } from '@/hooks/useAdvancedErrorBoundary';
 import { withLazyLoading, useMemoryTracker } from '@/components/common/PerformanceOptimizer';
 
-// Lazy load components for better performance
-const EnhancedAppLayout = withLazyLoading(() => import('@/components/layout/EnhancedAppLayout'));
+// Lazy load components for better performance - fixed imports
+const EnhancedAppLayout = withLazyLoading(() => import('@/components/layout/EnhancedAppLayout').then(module => ({ default: module.EnhancedAppLayout })));
 const HomeFeed = withLazyLoading(() => import('@/pages/HomeFeed'));
 const Profile = withLazyLoading(() => import('@/pages/Profile'));
 const Communities = withLazyLoading(() => import('@/pages/Communities'));
-const EventCalendar = withLazyLoading(() => import('@/pages/EventCalendar'));
-const Chat = withLazyLoading(() => import('@/pages/Chat'));
+const EventCalendar = withLazyLoading(() => import('@/pages/EventCalendar').then(module => ({ default: module.EventCalendar })));
+const Chat = withLazyLoading(() => import('@/pages/Chat').then(module => ({ default: module.Chat })));
 const StudyGroups = withLazyLoading(() => import('@/pages/StudyGroups'));
 const Explore = withLazyLoading(() => import('@/pages/Explore'));
 const Settings = withLazyLoading(() => import('@/pages/Settings'));
-const Testing = withLazyLoading(() => import('@/pages/Testing'));
+const Testing = withLazyLoading(() => import('@/pages/Testing').then(module => ({ default: module.Testing })));
 const Mentorship = withLazyLoading(() => import('@/pages/Mentorship'));
-const Announcements = withLazyLoading(() => import('@/pages/Announcements'));
+const Announcements = withLazyLoading(() => import('@/pages/Announcements').then(module => ({ default: module.Announcements })));
 const Documentation = withLazyLoading(() => import('@/pages/Documentation'));
 const DeploymentStatus = withLazyLoading(() => import('@/pages/admin/DeploymentStatus'));
 const MonitoringDashboard = withLazyLoading(() => import('@/pages/admin/MonitoringDashboard'));
@@ -61,7 +61,7 @@ const AppContent: React.FC = () => {
     // Log app startup
     console.log('CampuzBuzz initialized');
     
-    // Performance observer for monitoring
+    // Performance observer for monitoring - fixed type issues
     if ('PerformanceObserver' in window) {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
@@ -69,7 +69,8 @@ const AppContent: React.FC = () => {
             console.log('LCP:', entry.startTime);
           }
           if (entry.entryType === 'first-input') {
-            console.log('FID:', entry.processingStart - entry.startTime);
+            const fidEntry = entry as PerformanceEventTiming;
+            console.log('FID:', fidEntry.processingStart - fidEntry.startTime);
           }
         }
       });
