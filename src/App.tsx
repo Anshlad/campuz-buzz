@@ -1,90 +1,67 @@
 
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { AuthGuard } from '@/components/auth/AuthGuard';
-import { EnhancedErrorBoundary } from '@/components/common/EnhancedErrorBoundary';
-import { SecurityMonitor } from '@/components/security/SecurityMonitor';
 import { Toaster } from '@/components/ui/toaster';
+import { SecurityMonitor } from '@/components/security/SecurityMonitor';
+import { PerformanceMonitor } from '@/components/common/PerformanceMonitor';
+import { ErrorBoundaryWithRetry } from '@/components/common/ErrorBoundaryWithRetry';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { useAdvancedErrorBoundary } from '@/hooks/useAdvancedErrorBoundary';
-import { withLazyLoading, useMemoryTracker } from '@/components/common/PerformanceOptimizer';
+import { LoadingSkeletons } from '@/components/common/LoadingSkeletons';
 
-// Lazy load components for better performance - fixed imports
-const EnhancedAppLayout = withLazyLoading(() => import('@/components/layout/EnhancedAppLayout').then(module => ({ default: module.EnhancedAppLayout })));
-const HomeFeed = withLazyLoading(() => import('@/pages/HomeFeed'));
-const Profile = withLazyLoading(() => import('@/pages/Profile'));
-const Communities = withLazyLoading(() => import('@/pages/Communities'));
-const EventCalendar = withLazyLoading(() => import('@/pages/EventCalendar').then(module => ({ default: module.EventCalendar })));
-const Chat = withLazyLoading(() => import('@/pages/Chat').then(module => ({ default: module.Chat })));
-const StudyGroups = withLazyLoading(() => import('@/pages/StudyGroups'));
-const Explore = withLazyLoading(() => import('@/pages/Explore'));
-const Settings = withLazyLoading(() => import('@/pages/Settings'));
-const Testing = withLazyLoading(() => import('@/pages/Testing').then(module => ({ default: module.Testing })));
-const Mentorship = withLazyLoading(() => import('@/pages/Mentorship'));
-const Announcements = withLazyLoading(() => import('@/pages/Announcements').then(module => ({ default: module.Announcements })));
-const Documentation = withLazyLoading(() => import('@/pages/Documentation'));
-const DeploymentStatus = withLazyLoading(() => import('@/pages/admin/DeploymentStatus'));
-const MonitoringDashboard = withLazyLoading(() => import('@/pages/admin/MonitoringDashboard'));
-const NotFound = withLazyLoading(() => import('@/pages/NotFound'));
+// Lazy load components for better performance
+const EnhancedAppLayout = lazy(() => import('@/components/layout/EnhancedAppLayout').then(module => ({ default: module.default })));
+const HomeFeed = lazy(() => import('@/pages/HomeFeed'));
+const Profile = lazy(() => import('@/pages/Profile'));
+const Communities = lazy(() => import('@/pages/Communities'));
+const EventCalendar = lazy(() => import('@/pages/EventCalendar').then(module => ({ default: module.default })));
+const Chat = lazy(() => import('@/pages/Chat'));
+const StudyGroups = lazy(() => import('@/pages/StudyGroups'));
+const Explore = lazy(() => import('@/pages/Explore'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Testing = lazy(() => import('@/pages/Testing').then(module => ({ default: module.default })));
+const Mentorship = lazy(() => import('@/pages/Mentorship'));
+const Announcements = lazy(() => import('@/pages/Announcements'));
+const Documentation = lazy(() => import('@/pages/Documentation'));
+const DeploymentStatus = lazy(() => import('@/pages/admin/DeploymentStatus'));
+const MonitoringDashboard = lazy(() => import('@/pages/admin/MonitoringDashboard'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
 
-// Enhanced query client with better error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors (client errors)
-        if (error?.status >= 400 && error?.status < 500) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
       refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 1,
     },
   },
 });
 
-const AppContent: React.FC = () => {
+function AppContent() {
   const { isOnline, isSlowConnection } = useNetworkStatus();
-  const { logError } = useAdvancedErrorBoundary();
-  useMemoryTracker();
 
+  // Measure Core Web Vitals
   React.useEffect(() => {
-    // Log app startup
-    console.log('CampuzBuzz initialized');
-    
-    // Performance observer for monitoring - fixed type issues
-    if ('PerformanceObserver' in window) {
-      const observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'largest-contentful-paint') {
-            console.log('LCP:', entry.startTime);
-          }
-          if (entry.entryType === 'first-input') {
-            const fidEntry = entry as PerformanceEventTiming;
-            console.log('FID:', fidEntry.processingStart - fidEntry.startTime);
-          }
-        }
+    if ('web-vitals' in window) {
+      import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+        getCLS(console.log);
+        getFID(console.log);
+        getFCP(console.log);
+        getLCP(console.log);
+        getTTFB(console.log);
       });
-      
-      observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input'] });
     }
   }, []);
 
   return (
-    <Router>
-      <AuthProvider>
-        <ThemeProvider>
-          <SecurityMonitor />
-          <AuthGuard>
+    <ErrorBoundaryWithRetry>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <SecurityMonitor />
+            <PerformanceMonitor />
+            
             {!isOnline && (
               <div className="bg-destructive text-destructive-foreground p-2 text-center text-sm">
                 You're offline. Some features may not work properly.
@@ -95,22 +72,103 @@ const AppContent: React.FC = () => {
                 Slow connection detected. Content may load slowly.
               </div>
             )}
-            <EnhancedAppLayout />
-          </AuthGuard>
-        </ThemeProvider>
-      </AuthProvider>
-    </Router>
+
+            <Suspense fallback={<LoadingSkeletons type="layout" count={1} />}>
+              <EnhancedAppLayout>
+                <Routes>
+                  <Route path="/" element={
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={3} />}>
+                      <HomeFeed />
+                    </Suspense>
+                  } />
+                  <Route path="/profile" element={
+                    <Suspense fallback={<LoadingSkeletons type="profile" count={1} />}>
+                      <Profile />
+                    </Suspense>
+                  } />
+                  <Route path="/communities" element={
+                    <Suspense fallback={<LoadingSkeletons type="communities" count={6} />}>
+                      <Communities />
+                    </Suspense>
+                  } />
+                  <Route path="/events" element={
+                    <Suspense fallback={<LoadingSkeletons type="events" count={4} />}>
+                      <EventCalendar />
+                    </Suspense>
+                  } />
+                  <Route path="/chat" element={
+                    <Suspense fallback={<LoadingSkeletons type="chat" count={1} />}>
+                      <Chat />
+                    </Suspense>
+                  } />
+                  <Route path="/study-groups" element={
+                    <Suspense fallback={<LoadingSkeletons type="groups" count={4} />}>
+                      <StudyGroups />
+                    </Suspense>
+                  } />
+                  <Route path="/explore" element={
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={6} />}>
+                      <Explore />
+                    </Suspense>
+                  } />
+                  <Route path="/settings" element={
+                    <Suspense fallback={<LoadingSkeletons type="settings" count={1} />}>
+                      <Settings />
+                    </Suspense>
+                  } />
+                  <Route path="/testing" element={
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={3} />}>
+                      <Testing />
+                    </Suspense>
+                  } />
+                  <Route path="/mentorship" element={
+                    <Suspense fallback={<LoadingSkeletons type="mentorship" count={4} />}>
+                      <Mentorship />
+                    </Suspense>
+                  } />
+                  <Route path="/announcements" element={
+                    <Suspense fallback={<LoadingSkeletons type="announcements" count={5} />}>
+                      <Announcements />
+                    </Suspense>
+                  } />
+                  <Route path="/documentation" element={
+                    <Suspense fallback={<LoadingSkeletons type="docs" count={1} />}>
+                      <Documentation />
+                    </Suspense>
+                  } />
+                  <Route path="/admin/deployment" element={
+                    <Suspense fallback={<LoadingSkeletons type="admin" count={1} />}>
+                      <DeploymentStatus />
+                    </Suspense>
+                  } />
+                  <Route path="/admin/monitoring" element={
+                    <Suspense fallback={<LoadingSkeletons type="admin" count={1} />}>
+                      <MonitoringDashboard />
+                    </Suspense>
+                  } />
+                  <Route path="/404" element={
+                    <Suspense fallback={<div>Loading...</div>}>
+                      <NotFound />
+                    </Suspense>
+                  } />
+                  <Route path="*" element={<Navigate to="/404" replace />} />
+                </Routes>
+              </EnhancedAppLayout>
+            </Suspense>
+            
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundaryWithRetry>
   );
-};
+}
 
 function App() {
   return (
-    <EnhancedErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AppContent />
-        <Toaster />
-      </QueryClientProvider>
-    </EnhancedErrorBoundary>
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

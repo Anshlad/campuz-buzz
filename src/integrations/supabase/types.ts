@@ -593,6 +593,27 @@ export type Database = {
           },
         ]
       }
+      compromised_passwords: {
+        Row: {
+          id: string
+          password_hash: string
+          reported_at: string | null
+          source: string | null
+        }
+        Insert: {
+          id?: string
+          password_hash: string
+          reported_at?: string | null
+          source?: string | null
+        }
+        Update: {
+          id?: string
+          password_hash?: string
+          reported_at?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       content_flags: {
         Row: {
           auto_actioned: boolean | null
@@ -1527,6 +1548,36 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_tokens: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_used: string | null
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used?: string | null
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used?: string | null
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           action_type: string
@@ -1982,6 +2033,39 @@ export type Database = {
           id?: string
           is_visible?: boolean | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_analytics: {
+        Row: {
+          created_at: string | null
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
