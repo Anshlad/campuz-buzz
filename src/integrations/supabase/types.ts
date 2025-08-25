@@ -1527,6 +1527,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          action_type: string
+          attempts: number | null
+          blocked_until: string | null
+          created_at: string | null
+          id: string
+          identifier: string
+          window_start: string | null
+        }
+        Insert: {
+          action_type: string
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          id?: string
+          identifier: string
+          window_start?: string | null
+        }
+        Update: {
+          action_type?: string
+          attempts?: number | null
+          blocked_until?: string | null
+          created_at?: string | null
+          id?: string
+          identifier?: string
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       security_events: {
         Row: {
           created_at: string
@@ -2211,6 +2241,10 @@ export type Database = {
       is_study_group_member: {
         Args: { group_uuid: string; user_uuid: string }
         Returns: boolean
+      }
+      log_failed_login_attempt: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       set_limit: {
         Args: { "": number }
