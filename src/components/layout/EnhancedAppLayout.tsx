@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { EnhancedTopBar } from './EnhancedTopBar';
 import { AppSidebar } from './AppSidebar';
@@ -9,24 +9,54 @@ import { PerformanceMonitor } from '@/components/common/PerformanceMonitor';
 import { PWAInstallBanner } from '@/components/common/PWAInstallBanner';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { LoadingSkeletons } from '@/components/common/LoadingSkeletons';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Import page components - optimized loading
-import FastHomeFeed from '@/pages/FastHomeFeed';
-import { Chat } from '@/pages/Chat';
-import Communities from '@/pages/Communities';
-import StudyGroups from '@/pages/StudyGroups';
-import { EventCalendar } from '@/pages/EventCalendar';
-import Profile from '@/pages/Profile';
-import Settings from '@/pages/Settings';
-import Explore from '@/pages/Explore';
-import { Announcements } from '@/pages/Announcements';
+// Lazy load page components with better error handling
+const LazyComponent = ({ importFunc }: { importFunc: () => Promise<any> }) => {
+  const [Component, setComponent] = React.useState<React.ComponentType | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    importFunc()
+      .then((module) => {
+        // Handle both default and named exports
+        const ComponentToLoad = module.default || module[Object.keys(module)[0]];
+        setComponent(() => ComponentToLoad);
+      })
+      .catch((err) => {
+        console.error('Failed to load component:', err);
+        setError('Failed to load page component');
+      });
+  }, [importFunc]);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold mb-2">Loading Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!Component) {
+    return <LoadingSkeletons type="feed" count={1} />;
+  }
+
+  return <Component />;
+};
 
 export const EnhancedAppLayout: React.FC = () => {
   const { user } = useAuth();
 
   if (!user) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
@@ -41,17 +71,49 @@ export const EnhancedAppLayout: React.FC = () => {
           
           <main className="flex-1 p-4 pb-20 md:pb-4">
             <div className="max-w-7xl mx-auto">
-              <Routes>
-                <Route path="/" element={<FastHomeFeed />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/communities" element={<Communities />} />
-                <Route path="/study-groups" element={<StudyGroups />} />
-                <Route path="/events" element={<EventCalendar />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/announcements" element={<Announcements />} />
-              </Routes>
+              <Suspense fallback={<LoadingSkeletons type="feed" count={3} />}>
+                <Routes>
+                  <Route path="/" element={
+                    <LazyComponent importFunc={() => import('@/pages/FastHomeFeed')} />
+                  } />
+                  <Route path="/chat" element={
+                    <LazyComponent importFunc={() => import('@/pages/Chat')} />
+                  } />
+                  <Route path="/communities" element={
+                    <LazyComponent importFunc={() => import('@/pages/Communities')} />
+                  } />
+                  <Route path="/study-groups" element={
+                    <LazyComponent importFunc={() => import('@/pages/StudyGroups')} />
+                  } />
+                  <Route path="/events" element={
+                    <LazyComponent importFunc={() => import('@/pages/EventCalendar')} />
+                  } />
+                  <Route path="/profile" element={
+                    <LazyComponent importFunc={() => import('@/pages/Profile')} />
+                  } />
+                  <Route path="/settings" element={
+                    <LazyComponent importFunc={() => import('@/pages/Settings')} />
+                  } />
+                  <Route path="/explore" element={
+                    <LazyComponent importFunc={() => import('@/pages/Explore')} />
+                  } />
+                  <Route path="/announcements" element={
+                    <LazyComponent importFunc={() => import('@/pages/Announcements')} />
+                  } />
+                  <Route path="/testing" element={
+                    <LazyComponent importFunc={() => import('@/pages/Testing')} />
+                  } />
+                  <Route path="/mentorship" element={
+                    <LazyComponent importFunc={() => import('@/pages/Mentorship')} />
+                  } />
+                  <Route path="/documentation" element={
+                    <LazyComponent importFunc={() => import('@/pages/Documentation')} />
+                  } />
+                  
+                  {/* Catch-all route */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
             </div>
           </main>
           
