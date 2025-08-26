@@ -64,7 +64,12 @@ export class PushNotificationService {
         .order('last_used', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      // Type cast the platform field to ensure it matches our interface
+      return (data || []).map(token => ({
+        ...token,
+        platform: token.platform as 'web' | 'android' | 'ios'
+      })) as PushNotificationToken[];
     } catch (error) {
       console.error('Error fetching user tokens:', error);
       return [];

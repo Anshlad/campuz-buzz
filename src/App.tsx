@@ -12,16 +12,16 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { LoadingSkeletons } from '@/components/common/LoadingSkeletons';
 
 // Lazy load components for better performance
-const EnhancedAppLayout = lazy(() => import('@/components/layout/EnhancedAppLayout').then(module => ({ default: module.default })));
+const EnhancedAppLayout = lazy(() => import('@/components/layout/EnhancedAppLayout'));
 const HomeFeed = lazy(() => import('@/pages/HomeFeed'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Communities = lazy(() => import('@/pages/Communities'));
-const EventCalendar = lazy(() => import('@/pages/EventCalendar').then(module => ({ default: module.default })));
+const EventCalendar = lazy(() => import('@/pages/EventCalendar'));
 const Chat = lazy(() => import('@/pages/Chat'));
 const StudyGroups = lazy(() => import('@/pages/StudyGroups'));
 const Explore = lazy(() => import('@/pages/Explore'));
 const Settings = lazy(() => import('@/pages/Settings'));
-const Testing = lazy(() => import('@/pages/Testing').then(module => ({ default: module.default })));
+const Testing = lazy(() => import('@/pages/Testing'));
 const Mentorship = lazy(() => import('@/pages/Mentorship'));
 const Announcements = lazy(() => import('@/pages/Announcements'));
 const Documentation = lazy(() => import('@/pages/Documentation'));
@@ -41,19 +41,6 @@ const queryClient = new QueryClient({
 function AppContent() {
   const { isOnline, isSlowConnection } = useNetworkStatus();
 
-  // Measure Core Web Vitals
-  React.useEffect(() => {
-    if ('web-vitals' in window) {
-      import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-        getCLS(console.log);
-        getFID(console.log);
-        getFCP(console.log);
-        getLCP(console.log);
-        getTTFB(console.log);
-      });
-    }
-  }, []);
-
   return (
     <ErrorBoundaryWithRetry>
       <QueryClientProvider client={queryClient}>
@@ -68,12 +55,12 @@ function AppContent() {
               </div>
             )}
             {isSlowConnection && (
-              <div className="bg-warning text-warning-foreground p-2 text-center text-sm">
+              <div className="bg-orange-500 text-white p-2 text-center text-sm">
                 Slow connection detected. Content may load slowly.
               </div>
             )}
 
-            <Suspense fallback={<LoadingSkeletons type="layout" count={1} />}>
+            <Suspense fallback={<LoadingSkeletons type="feed" count={1} />}>
               <EnhancedAppLayout>
                 <Routes>
                   <Route path="/" element={
@@ -92,7 +79,7 @@ function AppContent() {
                     </Suspense>
                   } />
                   <Route path="/events" element={
-                    <Suspense fallback={<LoadingSkeletons type="events" count={4} />}>
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={4} />}>
                       <EventCalendar />
                     </Suspense>
                   } />
@@ -102,7 +89,7 @@ function AppContent() {
                     </Suspense>
                   } />
                   <Route path="/study-groups" element={
-                    <Suspense fallback={<LoadingSkeletons type="groups" count={4} />}>
+                    <Suspense fallback={<LoadingSkeletons type="communities" count={4} />}>
                       <StudyGroups />
                     </Suspense>
                   } />
@@ -112,7 +99,7 @@ function AppContent() {
                     </Suspense>
                   } />
                   <Route path="/settings" element={
-                    <Suspense fallback={<LoadingSkeletons type="settings" count={1} />}>
+                    <Suspense fallback={<LoadingSkeletons type="profile" count={1} />}>
                       <Settings />
                     </Suspense>
                   } />
@@ -122,27 +109,27 @@ function AppContent() {
                     </Suspense>
                   } />
                   <Route path="/mentorship" element={
-                    <Suspense fallback={<LoadingSkeletons type="mentorship" count={4} />}>
+                    <Suspense fallback={<LoadingSkeletons type="communities" count={4} />}>
                       <Mentorship />
                     </Suspense>
                   } />
                   <Route path="/announcements" element={
-                    <Suspense fallback={<LoadingSkeletons type="announcements" count={5} />}>
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={5} />}>
                       <Announcements />
                     </Suspense>
                   } />
                   <Route path="/documentation" element={
-                    <Suspense fallback={<LoadingSkeletons type="docs" count={1} />}>
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={1} />}>
                       <Documentation />
                     </Suspense>
                   } />
                   <Route path="/admin/deployment" element={
-                    <Suspense fallback={<LoadingSkeletons type="admin" count={1} />}>
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={1} />}>
                       <DeploymentStatus />
                     </Suspense>
                   } />
                   <Route path="/admin/monitoring" element={
-                    <Suspense fallback={<LoadingSkeletons type="admin" count={1} />}>
+                    <Suspense fallback={<LoadingSkeletons type="feed" count={1} />}>
                       <MonitoringDashboard />
                     </Suspense>
                   } />
