@@ -1,10 +1,11 @@
+
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Toaster } from '@/components/ui/toaster';
-import { LoadingSkeletons } from '@/components/ui/loading-skeletons';
+import { LoadingSkeletons } from '@/components/common/LoadingSkeletons';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
 // Lazy load components with proper named export handling
@@ -15,7 +16,7 @@ const EventCalendar = React.lazy(() =>
   import('@/pages/EventCalendar').then(module => ({ default: module.EventCalendar }))
 );
 const Testing = React.lazy(() => 
-  import('@/pages/Testing').then(module => ({ default: module.default }))
+  import('@/pages/Testing').then(module => ({ default: module.Testing }))
 );
 
 // Other imports
@@ -32,8 +33,8 @@ import NotFound from '@/pages/NotFound';
 const Settings = React.lazy(() => import('@/pages/Settings'));
 const Mentorship = React.lazy(() => import('@/pages/Mentorship'));
 const Documentation = React.lazy(() => import('@/pages/Documentation'));
-const DeploymentStatus = React.lazy(() => import('@/pages/DeploymentStatus'));
-const MonitoringDashboard = React.lazy(() => import('@/pages/MonitoringDashboard'));
+const DeploymentStatus = React.lazy(() => import('@/pages/admin/DeploymentStatus'));
+const MonitoringDashboard = React.lazy(() => import('@/pages/admin/MonitoringDashboard'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
