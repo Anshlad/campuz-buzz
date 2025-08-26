@@ -146,6 +146,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Signup error:', error);
       await logSecurityEvent('user_signup_failed', { error: error.message });
+      
+      // Show specific error message
+      toast({
+        title: "Signup failed",
+        description: error.message || "Please try again.",
+        variant: "destructive"
+      });
+      
       throw error;
     }
   };
@@ -157,7 +165,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific auth errors
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and confirm your account before signing in.');
+        } else if (error.message.includes('Too many requests')) {
+          throw new Error('Too many login attempts. Please wait a moment before trying again.');
+        }
+        throw error;
+      }
 
       await logSecurityEvent('user_signin_success', { email });
 
@@ -167,7 +185,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       console.error('Signin error:', error);
-      await logSecurityEvent('user_signin_failed', { error: error.message });
+      await logSecurityEvent('user_signin_failed', { error: error.message, email });
+      
+      // Show specific error message to user
+      toast({
+        title: "Sign in failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive"
+      });
+      
       throw error;
     }
   };
@@ -185,6 +211,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       console.error('Signout error:', error);
+      toast({
+        title: "Error signing out",
+        description: "Please try again.",
+        variant: "destructive"
+      });
       throw error;
     }
   };
@@ -207,6 +238,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       console.error('Password reset error:', error);
+      toast({
+        title: "Error sending reset email",
+        description: error.message || "Please try again.",
+        variant: "destructive"
+      });
       throw error;
     }
   };
