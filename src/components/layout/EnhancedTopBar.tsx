@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, Search, Plus, Menu, Sun, Moon, RefreshCw, User } from 'lucide-react';
+import { Bell, Search, Plus, Menu, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,24 +8,21 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { EnhancedCreatePostModal } from '@/components/posts/EnhancedCreatePostModal';
 import { useOptimizedPosts } from '@/hooks/useOptimizedPosts';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 interface EnhancedTopBarProps {
-  sidebarCollapsed: boolean;
-  onSidebarToggle: () => void;
+  onMobileMenuToggle?: () => void;
+  showMobileMenu?: boolean;
 }
 
 export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
-  sidebarCollapsed,
-  onSidebarToggle
+  onMobileMenuToggle,
+  showMobileMenu = false
 }) => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { createPost, isCreating } = useOptimizedPosts();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [showCreatePost, setShowCreatePost] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleCreatePost = async (postData: any) => {
     try {
@@ -45,19 +42,6 @@ export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
     }
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      window.location.reload();
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 1000);
-    }
-  };
-
-  const handleProfileClick = () => {
-    navigate('/profile');
-  };
-
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -68,37 +52,13 @@ export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
               variant="ghost"
               size="sm"
               className="md:hidden"
-              onClick={onSidebarToggle}
+              onClick={onMobileMenuToggle}
             >
               <Menu className="h-5 w-5" />
             </Button>
             
-            <div className="flex items-center space-x-3">
-              {/* CampuzBuzz Logo/Text with animation */}
-              <div className="flex items-center space-x-2">
-                {sidebarCollapsed ? (
-                  <div className="animate-scale-in">
-                    <div className="w-8 h-8 bg-gradient-to-r from-primary to-primary/80 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                      CB
-                    </div>
-                  </div>
-                ) : (
-                  <div className="font-bold text-xl text-primary animate-fade-in">
-                    CampuzBuzz
-                  </div>
-                )}
-              </div>
-
-              {/* Refresh Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
+            <div className="flex items-center space-x-2">
+              <div className="font-bold text-xl text-primary">CampuzBuzz</div>
             </div>
           </div>
 
@@ -110,8 +70,6 @@ export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
                 type="text"
                 placeholder="Search posts, users, communities..."
                 className="w-full pl-10 pr-4 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                onClick={() => navigate('/explore')}
-                readOnly
               />
             </div>
           </div>
@@ -143,30 +101,24 @@ export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
               <span className="hidden sm:ml-2 sm:inline">Create</span>
             </Button>
 
+            {/* Notifications */}
+            <Button variant="ghost" size="sm" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs"></span>
+            </Button>
+
             {/* Search Button (mobile only) */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="md:hidden"
-              onClick={() => navigate('/explore')}
-            >
+            <Button variant="ghost" size="sm" className="md:hidden">
               <Search className="h-5 w-5" />
             </Button>
 
-            {/* Profile Avatar */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleProfileClick}
-              className="p-1"
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback>
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-            </Button>
+            {/* User Avatar */}
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={user?.user_metadata?.avatar_url} />
+              <AvatarFallback>
+                {user?.user_metadata?.display_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </div>
       </header>
