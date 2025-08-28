@@ -1,7 +1,6 @@
 
-import React, { useState, useCallback } from 'react';
-import { cn } from '@/lib/utils';
-import { useLazyLoading } from '@/hooks/useLazyLoading';
+import React from 'react';
+import { EnhancedMedia } from './EnhancedMedia';
 
 interface OptimizedImageProps {
   src: string;
@@ -13,6 +12,8 @@ interface OptimizedImageProps {
   priority?: boolean;
   onLoad?: () => void;
   onError?: () => void;
+  width?: number;
+  height?: number;
 }
 
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
@@ -21,87 +22,24 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   className,
   fallbackSrc = '/placeholder.svg',
   placeholder,
-  sizes,
   priority = false,
   onLoad,
-  onError
+  onError,
+  width,
+  height
 }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
-  const [currentSrc, setCurrentSrc] = useState(priority ? src : '');
-  
-  const { ref, hasIntersected } = useLazyLoading({
-    enabled: !priority,
-    threshold: 0.1,
-    rootMargin: '50px'
-  });
-
-  const handleLoad = useCallback(() => {
-    setImageLoaded(true);
-    onLoad?.();
-  }, [onLoad]);
-
-  const handleError = useCallback(() => {
-    if (currentSrc !== fallbackSrc) {
-      setCurrentSrc(fallbackSrc);
-    } else {
-      setImageError(true);
-    }
-    onError?.();
-  }, [currentSrc, fallbackSrc, onError]);
-
-  // Load image when it becomes visible or if priority is set
-  React.useEffect(() => {
-    if ((hasIntersected || priority) && !currentSrc && !imageError) {
-      setCurrentSrc(src);
-    }
-  }, [hasIntersected, priority, src, currentSrc, imageError]);
-
-  if (imageError && !placeholder) {
-    return (
-      <div 
-        ref={ref}
-        className={cn(
-          "flex items-center justify-center bg-muted text-muted-foreground text-sm",
-          className
-        )}
-      >
-        Failed to load image
-      </div>
-    );
-  }
-
   return (
-    <div ref={ref} className={cn("relative overflow-hidden", className)}>
-      {/* Placeholder or loading state */}
-      {(!imageLoaded || !currentSrc) && (
-        <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center">
-          {placeholder && (
-            <img 
-              src={placeholder} 
-              alt="" 
-              className="opacity-50 max-w-full max-h-full object-cover"
-            />
-          )}
-        </div>
-      )}
-      
-      {/* Actual image */}
-      {currentSrc && (
-        <img
-          src={currentSrc}
-          alt={alt}
-          sizes={sizes}
-          className={cn(
-            "transition-opacity duration-300",
-            imageLoaded ? "opacity-100" : "opacity-0",
-            className
-          )}
-          onLoad={handleLoad}
-          onError={handleError}
-          loading={priority ? "eager" : "lazy"}
-        />
-      )}
-    </div>
+    <EnhancedMedia
+      src={src}
+      alt={alt}
+      type="image"
+      className={className}
+      fallbackSrc={fallbackSrc}
+      lazy={!priority}
+      onLoad={onLoad}
+      onError={onError}
+      width={width}
+      height={height}
+    />
   );
 };

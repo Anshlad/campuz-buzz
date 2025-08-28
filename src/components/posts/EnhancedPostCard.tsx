@@ -1,309 +1,192 @@
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { EnhancedCard } from '@/components/ui/enhanced-card';
+import React, { memo } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useAuth } from '@/contexts/AuthContext';
-import { formatDistanceToNow } from 'date-fns';
-import {
-  Heart,
-  MessageCircle,
-  Share2,
-  Bookmark,
+import { 
+  Heart, 
+  MessageCircle, 
+  Share2, 
+  Bookmark, 
   MoreHorizontal,
-  MapPin,
-  Eye,
-  Users,
-  Lock,
-  Globe,
-  Image as ImageIcon,
-  Video,
-  FileText,
-  Edit,
-  Trash2
+  Calendar
 } from 'lucide-react';
-
-interface PostAuthor {
-  id: string;
-  display_name: string;
-  avatar_url?: string;
-  major?: string;
-  year?: string;
-}
-
-interface PostImage {
-  url: string;
-  fileName: string;
-  fileType: string;
-  mimeType: string;
-}
-
-interface Post {
-  id: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-  likes_count: number;
-  comments_count: number;
-  shares_count: number;
-  saves_count: number;
-  visibility: 'public' | 'friends' | 'private';
-  post_type: 'text' | 'image' | 'video' | 'poll';
-  images?: PostImage[];
-  location?: string;
-  tags?: string[];
-  mentions?: string[];
-  is_liked?: boolean;
-  is_saved?: boolean;
-  author: PostAuthor;
-}
+import { EnhancedMedia } from '@/components/common/EnhancedMedia';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
+import type { EnhancedPostData } from '@/types/posts';
 
 interface EnhancedPostCardProps {
-  post: Post;
-  onLike?: (postId: string) => void;
-  onComment?: (postId: string) => void;
-  onShare?: (postId: string) => void;
+  post: EnhancedPostData;
+  onReact?: (postId: string, reactionType: string) => void;
   onSave?: (postId: string) => void;
-  onEdit?: (postId: string) => void;
-  onDelete?: (postId: string) => void;
-  onReact?: (postId: string, reaction: string) => void;
+  onShare?: (postId: string) => void;
+  onComment?: (postId: string) => void;
   className?: string;
 }
 
-export const EnhancedPostCard: React.FC<EnhancedPostCardProps> = ({
+export const EnhancedPostCard = memo<EnhancedPostCardProps>(({
   post,
-  onLike,
-  onComment,
-  onShare,
-  onSave,
-  onEdit,
-  onDelete,
   onReact,
-  className = ''
+  onSave,
+  onShare,
+  onComment,
+  className
 }) => {
-  const { user } = useAuth();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const handleLike = () => onReact?.(post.id, 'like');
+  const handleSave = () => onSave?.(post.id);
+  const handleShare = () => onShare?.(post.id);
+  const handleComment = () => onComment?.(post.id);
 
-  const isOwnPost = user?.id === post.user_id;
-  const shouldTruncate = post.content.length > 300;
-  const displayContent = shouldTruncate && !isExpanded 
-    ? post.content.slice(0, 300) + '...' 
-    : post.content;
-
-  const getVisibilityIcon = () => {
-    switch (post.visibility) {
-      case 'public': return <Globe className="h-3 w-3" />;
-      case 'friends': return <Users className="h-3 w-3" />;
-      case 'private': return <Lock className="h-3 w-3" />;
-    }
-  };
-
-  const getMediaIcon = () => {
-    switch (post.post_type) {
-      case 'image': return <ImageIcon className="h-3 w-3" />;
-      case 'video': return <Video className="h-3 w-3" />;
-      case 'poll': return <FileText className="h-3 w-3" />;
-      default: return null;
-    }
+  const getMediaType = (url: string): 'image' | 'video' | 'auto' => {
+    if (!url) return 'auto';
+    if (/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url)) return 'video';
+    if (/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url)) return 'image';
+    return 'auto';
   };
 
   return (
-    <EnhancedCard variant="glass" className={`overflow-hidden ${className}`}>
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-start gap-3 flex-1">
-            <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-              <AvatarImage src={post.author.avatar_url} />
-              <AvatarFallback className="bg-gradient-to-r from-primary to-accent text-primary-foreground font-semibold">
-                {post.author.display_name?.charAt(0) || 'U'}
+    <Card className={cn("w-full max-w-2xl mx-auto", className)}>
+      <CardHeader className="pb-3">
+        {/* Author Info */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage 
+                src={post.author?.avatar_url} 
+                alt={post.author?.display_name || 'User'} 
+              />
+              <AvatarFallback>
+                {(post.author?.display_name || 'U').charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-sm">{post.author.display_name || 'Anonymous'}</h3>
-                {post.author.major && post.author.year && (
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-sm text-foreground truncate">
+                  {post.author?.display_name || 'Anonymous User'}
+                </h3>
+                {post.author?.major && (
                   <Badge variant="secondary" className="text-xs">
-                    {post.author.major} • {post.author.year}
+                    {post.author.major}
                   </Badge>
                 )}
               </div>
               
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
-                {getVisibilityIcon()}
-                {getMediaIcon()}
-                {post.location && (
-                  <>
-                    <MapPin className="h-3 w-3" />
-                    <span className="truncate max-w-24">{post.location}</span>
-                  </>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                <time dateTime={post.created_at}>
+                  {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                </time>
+                {post.visibility !== 'public' && (
+                  <Badge variant="outline" className="text-xs">
+                    {post.visibility}
+                  </Badge>
                 )}
               </div>
             </div>
           </div>
-
-          {isOwnPost && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit?.(post.id)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete?.(post.id)}
-                  className="text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          
+          <Button variant="ghost" size="sm">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Content */}
-        <div className="space-y-4">
-          <div className="prose prose-sm max-w-none">
-            <p className="whitespace-pre-wrap break-words">{displayContent}</p>
-            {shouldTruncate && (
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="p-0 h-auto text-primary"
-              >
-                {isExpanded ? 'Show less' : 'Show more'}
-              </Button>
-            )}
+        {/* Post Title */}
+        {post.title && (
+          <h2 className="text-lg font-semibold text-foreground mt-2">
+            {post.title}
+          </h2>
+        )}
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Post Content */}
+        {post.content && (
+          <div className="text-foreground whitespace-pre-wrap break-words">
+            {post.content}
           </div>
+        )}
 
-          {/* Media */}
-          {post.images && post.images.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-              {post.images.slice(0, 4).map((image, index) => (
-                <motion.div
-                  key={index}
-                  className="relative aspect-square overflow-hidden bg-muted"
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  <img
-                    src={image.url}
-                    alt={image.fileName}
-                    className="w-full h-full object-cover"
-                  />
-                  {index === 3 && post.images.length > 4 && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <span className="text-white font-medium">
-                        +{post.images.length - 4} more
-                      </span>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {post.tags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className="text-xs text-blue-600 border-blue-200 hover:bg-blue-50 cursor-pointer"
-                >
-                  #{tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <Separator className="my-4" />
-
-        {/* Engagement Stats */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-          <div className="flex items-center gap-4">
-            {post.likes_count > 0 && (
-              <span className="flex items-center gap-1">
-                <Heart className="h-3 w-3 fill-red-500 text-red-500" />
-                {post.likes_count}
-              </span>
-            )}
-            {post.comments_count > 0 && (
-              <span>{post.comments_count} comments</span>
-            )}
-            {post.shares_count > 0 && (
-              <span>{post.shares_count} shares</span>
-            )}
+        {/* Media Content */}
+        {post.image_url && (
+          <div className="rounded-lg overflow-hidden bg-muted">
+            <EnhancedMedia
+              src={post.image_url}
+              alt={post.title || post.content || 'Post media'}
+              type={getMediaType(post.image_url)}
+              className="w-full max-h-96"
+              fallbackSrc="/placeholder.svg"
+              lazy={true}
+              onError={(error) => console.error('Media loading error:', error)}
+            />
           </div>
-          <div className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            <span>124 views</span>
+        )}
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {post.tags.map((tag, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                #{tag}
+              </Badge>
+            ))}
           </div>
-        </div>
+        )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="flex items-center space-x-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onLike?.(post.id)}
-              className={`gap-2 ${post.is_liked ? 'text-red-500' : ''}`}
+              onClick={handleLike}
+              className={cn(
+                "text-muted-foreground hover:text-red-500",
+                post.is_liked && "text-red-500"
+              )}
             >
-              <Heart className={`h-4 w-4 ${post.is_liked ? 'fill-current' : ''}`} />
-              <span className="hidden sm:inline">Like</span>
+              <Heart className={cn("h-4 w-4 mr-1", post.is_liked && "fill-current")} />
+              <span className="text-sm">{post.likes_count || 0}</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onComment?.(post.id)}
-              className="gap-2"
+              onClick={handleComment}
+              className="text-muted-foreground hover:text-blue-500"
             >
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Comment</span>
+              <MessageCircle className="h-4 w-4 mr-1" />
+              <span className="text-sm">{post.comments_count || 0}</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onShare?.(post.id)}
-              className="gap-2"
+              onClick={handleShare}
+              className="text-muted-foreground hover:text-green-500"
             >
-              <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Share</span>
+              <Share2 className="h-4 w-4 mr-1" />
+              <span className="text-sm">{post.shares_count || 0}</span>
             </Button>
           </div>
 
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onSave?.(post.id)}
-            className={`gap-2 ${post.is_saved ? 'text-primary' : ''}`}
+            onClick={handleSave}
+            className={cn(
+              "text-muted-foreground hover:text-yellow-500",
+              post.is_saved && "text-yellow-500"
+            )}
           >
-            <Bookmark className={`h-4 w-4 ${post.is_saved ? 'fill-current' : ''}`} />
+            <Bookmark className={cn("h-4 w-4", post.is_saved && "fill-current")} />
           </Button>
         </div>
-      </div>
-    </EnhancedCard>
+      </CardContent>
+    </Card>
   );
-};
+});
+
+EnhancedPostCard.displayName = 'EnhancedPostCard';

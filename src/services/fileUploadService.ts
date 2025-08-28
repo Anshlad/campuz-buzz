@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { mediaService } from './mediaService';
 
 export interface UploadResult {
   fileName: string;
@@ -32,13 +33,6 @@ class FileUploadService {
     }
   }
 
-  private generateFileName(originalName: string, userId: string): string {
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 8);
-    const extension = originalName.split('.').pop();
-    return `${userId}/${timestamp}_${randomString}.${extension}`;
-  }
-
   async uploadFile(
     file: File,
     type: FileUploadType,
@@ -46,37 +40,13 @@ class FileUploadService {
     onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     const bucketName = this.getBucketName(type);
-    const fileName = this.generateFileName(file.name, userId);
-
-    // Simulate progress updates
-    const progressInterval = setInterval(() => {
-      if (onProgress) {
-        const progress = Math.min(90, Math.random() * 80 + 10);
-        onProgress(progress);
-      }
-    }, 100);
 
     try {
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+      // Use the enhanced media service for upload
+      const result = await mediaService.uploadMedia(file, bucketName as any, userId, onProgress);
 
-      clearInterval(progressInterval);
-
-      if (error) {
-        throw new Error(`Upload failed: ${error.message}`);
-      }
-
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(data.path);
-
-      if (onProgress) {
-        onProgress(100);
+      if (!result.success || !result.url) {
+        throw new Error(result.error || 'Upload failed');
       }
 
       return {
@@ -84,10 +54,9 @@ class FileUploadService {
         fileSize: file.size,
         fileType: file.type.split('/')[1],
         mimeType: file.type,
-        url: publicUrlData.publicUrl
+        url: result.url
       };
     } catch (error) {
-      clearInterval(progressInterval);
       console.error('File upload error:', error);
       throw error instanceof Error ? error : new Error('Unknown upload error');
     }
@@ -96,21 +65,9 @@ class FileUploadService {
   async deleteFile(url: string, type: FileUploadType): Promise<void> {
     const bucketName = this.getBucketName(type);
     
-    // Extract file path from URL
-    const urlParts = url.split('/');
-    const bucketIndex = urlParts.findIndex(part => part === bucketName);
-    if (bucketIndex === -1) {
-      throw new Error('Invalid file URL');
-    }
-    
-    const filePath = urlParts.slice(bucketIndex + 1).join('/');
-
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .remove([filePath]);
-
-    if (error) {
-      throw new Error(`Delete failed: ${error.message}`);
+    const success = await mediaService.deleteMedia(url, bucketName as any);
+    if (!success) {
+      throw new Error('Failed to delete file');
     }
   }
 
@@ -144,59 +101,13 @@ class FileUploadService {
   }
 
   validateFile(file: File, type: FileUploadType): ValidationResult {
-    // Define limits based on type
-    let maxSizeInMB: number;
-    let allowedTypes: string[];
-
-    switch (type) {
-      case 'avatar':
-        maxSizeInMB = 5;
-        allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        break;
-      case 'post':
-        maxSizeInMB = 10;
-        allowedTypes = ['image/*', 'video/*'];
-        break;
-      case 'attachment':
-        maxSizeInMB = 25;
-        allowedTypes = []; // Allow all types
-        break;
-      case 'community':
-        maxSizeInMB = 5;
-        allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        break;
-      default:
-        maxSizeInMB = 10;
-        allowedTypes = [];
-    }
-
-    // Check file size
-    const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
-    if (file.size > maxSizeInBytes) {
-      return {
-        valid: false,
-        error: `File size must be less than ${maxSizeInMB}MB`
-      };
-    }
-
-    // Check file type if specified
-    if (allowedTypes.length > 0) {
-      const isAllowed = allowedTypes.some(type => {
-        if (type.endsWith('/*')) {
-          return file.type.startsWith(type.slice(0, -1));
-        }
-        return file.type === type;
-      });
-
-      if (!isAllowed) {
-        return {
-          valid: false,
-          error: `File type not allowed. Allowed types: ${allowedTypes.join(', ')}`
-        };
-      }
-    }
-
-    return { valid: true };
+    // Use the media service for validation
+    const validation = mediaService.validateFile(file);
+    
+    return {
+      valid: validation.isValid,
+      error: validation.error
+    };
   }
 }
 
