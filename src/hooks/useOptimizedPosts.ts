@@ -43,6 +43,7 @@ export const useOptimizedPosts = () => {
         visibility: post.visibility as 'public' | 'friends' | 'private',
         author: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
           id: post.user_id,
+          user_id: post.user_id,
           display_name: 'Anonymous User',
           avatar_url: undefined,
           major: undefined,
@@ -54,7 +55,14 @@ export const useOptimizedPosts = () => {
         reactions: safeParseReactions(post.reactions),
         hashtags: post.hashtags || [],
         mentions: post.mentions || [],
-        tags: post.tags || []
+        tags: post.tags || [],
+        profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
+          id: post.user_id,
+          display_name: 'Anonymous User',
+          avatar_url: undefined,
+          major: undefined,
+          year: undefined
+        }
       }));
 
       setPosts(optimizedPosts);
@@ -106,6 +114,7 @@ export const useOptimizedPosts = () => {
         visibility: data.visibility as 'public' | 'friends' | 'private',
         author: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles || {
           id: data.user_id,
+          user_id: data.user_id,
           display_name: 'Anonymous User',
           avatar_url: undefined,
           major: undefined,
@@ -117,7 +126,14 @@ export const useOptimizedPosts = () => {
         reactions: safeParseReactions(data.reactions),
         hashtags: data.hashtags || [],
         mentions: data.mentions || [],
-        tags: data.tags || []
+        tags: data.tags || [],
+        profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles || {
+          id: data.user_id,
+          display_name: 'Anonymous User',
+          avatar_url: undefined,
+          major: undefined,
+          year: undefined
+        }
       };
 
       setPosts(prev => [newPost, ...prev]);

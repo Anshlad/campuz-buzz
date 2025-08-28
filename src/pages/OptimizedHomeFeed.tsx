@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { EnhancedTopBar } from '@/components/layout/EnhancedTopBar';
 import { OptimizedPostsList } from '@/components/feed/OptimizedPostsList';
-import { EnhancedFeedSidebar } from '@/components/feed/EnhancedFeedSidebar';
+import EnhancedFeedSidebar from '@/components/feed/EnhancedFeedSidebar';
 import { TrendingTopicsWidget } from '@/components/feed/TrendingTopicsWidget';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
 import { Button } from '@/components/ui/button';
@@ -101,7 +101,7 @@ const OptimizedHomeFeed: React.FC = () => {
       {/* Create Post Modal */}
       <CreatePostModal
         open={showCreatePost}
-        onOpenChange={setShowCreatePost}
+        onClose={() => setShowCreatePost(false)}
         onSubmit={handleCreatePost}
         isLoading={isCreating}
       />
