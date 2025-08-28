@@ -3,9 +3,24 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
+interface UserPermissions {
+  canModerate: boolean;
+  canAdmin: boolean;
+  canManageUsers: boolean;
+  canViewAnalytics: boolean;
+  canManageContent: boolean;
+}
+
 export const useRoleBasedAccess = () => {
   const { user } = useAuth();
   const [userRole, setUserRole] = useState<string>('student');
+  const [permissions, setPermissions] = useState<UserPermissions>({
+    canModerate: false,
+    canAdmin: false,
+    canManageUsers: false,
+    canViewAnalytics: false,
+    canManageContent: false,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,11 +38,22 @@ export const useRoleBasedAccess = () => {
           .single();
 
         if (profile) {
-          setUserRole(profile.role || 'student');
+          const role = profile.role || 'student';
+          setUserRole(role);
+          
+          // Set permissions based on role
+          const newPermissions: UserPermissions = {
+            canModerate: role === 'moderator' || role === 'admin',
+            canAdmin: role === 'admin',
+            canManageUsers: role === 'admin',
+            canViewAnalytics: role === 'moderator' || role === 'admin',
+            canManageContent: role === 'moderator' || role === 'admin',
+          };
+          setPermissions(newPermissions);
         }
       } catch (error) {
         console.error('Error fetching user role:', error);
-        setUserRole('student'); // Default fallback
+        setUserRole('student');
       } finally {
         setLoading(false);
       }
@@ -51,5 +77,5 @@ export const useRoleBasedAccess = () => {
     return userRoleLevel >= requiredRoleLevel;
   };
 
-  return { userRole, hasRole, loading };
+  return { userRole, hasRole, permissions, loading };
 };

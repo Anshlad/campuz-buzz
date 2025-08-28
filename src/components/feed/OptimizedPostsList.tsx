@@ -1,4 +1,3 @@
-
 import React, { memo, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -169,7 +168,14 @@ export const OptimizedPostsList: React.FC<OptimizedPostsListProps> = ({ classNam
     },
     is_liked: false,
     is_saved: false,
-    user_reaction: undefined
+    user_reaction: undefined,
+    profiles: {
+      id: post.user_id,
+      display_name: post.profiles.display_name,
+      avatar_url: post.profiles.avatar_url,
+      major: post.profiles.major,
+      year: undefined
+    }
   });
 
   const handleReact = (postId: string, reactionType: string) => {
