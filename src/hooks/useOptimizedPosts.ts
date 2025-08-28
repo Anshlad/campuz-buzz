@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { EnhancedPostData } from '@/types/posts';
+import { safeParseReactions } from '@/services/posts/postTransformers';
 
 export interface OptimizedPost extends EnhancedPostData {
   is_liked: boolean;
@@ -13,6 +14,7 @@ export const useOptimizedPosts = () => {
   const [posts, setPosts] = useState<OptimizedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const loadPosts = async () => {
     try {
@@ -23,6 +25,7 @@ export const useOptimizedPosts = () => {
           *,
           profiles:user_id (
             id,
+            user_id,
             display_name,
             avatar_url,
             major,
@@ -38,11 +41,17 @@ export const useOptimizedPosts = () => {
         ...post,
         post_type: post.post_type as 'text' | 'image' | 'video' | 'poll',
         visibility: post.visibility as 'public' | 'friends' | 'private',
-        author: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles,
+        author: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
+          id: post.user_id,
+          display_name: 'Anonymous User',
+          avatar_url: undefined,
+          major: undefined,
+          year: undefined
+        },
         is_liked: false,
         is_saved: false,
         user_reaction: undefined,
-        reactions: post.reactions || {},
+        reactions: safeParseReactions(post.reactions),
         hashtags: post.hashtags || [],
         mentions: post.mentions || [],
         tags: post.tags || []
@@ -56,9 +65,79 @@ export const useOptimizedPosts = () => {
     }
   };
 
+  const createPost = async (postData: any) => {
+    try {
+      setIsCreating(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('posts')
+        .insert({
+          user_id: user.id,
+          content: postData.content,
+          title: postData.title,
+          post_type: postData.post_type,
+          visibility: postData.visibility,
+          tags: postData.tags || [],
+          image_url: postData.image_url,
+          reactions: {},
+          hashtags: [],
+          mentions: []
+        })
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            user_id,
+            display_name,
+            avatar_url,
+            major,
+            year
+          )
+        `)
+        .single();
+
+      if (error) throw error;
+
+      const newPost: OptimizedPost = {
+        ...data,
+        post_type: data.post_type as 'text' | 'image' | 'video' | 'poll',
+        visibility: data.visibility as 'public' | 'friends' | 'private',
+        author: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles || {
+          id: data.user_id,
+          display_name: 'Anonymous User',
+          avatar_url: undefined,
+          major: undefined,
+          year: undefined
+        },
+        is_liked: false,
+        is_saved: false,
+        user_reaction: undefined,
+        reactions: safeParseReactions(data.reactions),
+        hashtags: data.hashtags || [],
+        mentions: data.mentions || [],
+        tags: data.tags || []
+      };
+
+      setPosts(prev => [newPost, ...prev]);
+      return newPost;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const retry = () => {
+    setError(null);
+    loadPosts();
+  };
+
   useEffect(() => {
     loadPosts();
   }, []);
 
-  return { posts, loading, error, refetch: loadPosts };
+  return { posts, loading, error, refetch: loadPosts, createPost, isCreating, retry };
 };

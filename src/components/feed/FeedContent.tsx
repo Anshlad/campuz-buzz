@@ -70,7 +70,7 @@ export const FeedContent: React.FC<FeedContentProps> = ({
         <EnhancedPostCard
           key={post.id}
           post={post}
-          onLike={() => onLike(post.id)}
+          onReact={(postId, reactionType) => onLike(postId)}
           onSave={() => onSave(post.id)}
           onShare={() => onShare(post.id)}
         />

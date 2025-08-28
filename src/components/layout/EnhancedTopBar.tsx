@@ -6,28 +6,32 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { EnhancedCreatePostModal } from '@/components/posts/EnhancedCreatePostModal';
-import { useOptimizedPosts } from '@/hooks/useOptimizedPosts';
 import { useToast } from '@/hooks/use-toast';
+import { optimizedPostsService } from '@/services/optimizedPostsService';
 
 interface EnhancedTopBarProps {
   onMobileMenuToggle?: () => void;
   showMobileMenu?: boolean;
+  onPostCreated?: () => void;
 }
 
 export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
   onMobileMenuToggle,
-  showMobileMenu = false
+  showMobileMenu = false,
+  onPostCreated
 }) => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { createPost, isCreating } = useOptimizedPosts();
   const { toast } = useToast();
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCreatePost = async (postData: any) => {
     try {
-      await createPost(postData);
+      setIsCreating(true);
+      await optimizedPostsService.createPost(postData);
       setShowCreatePost(false);
+      onPostCreated?.();
       toast({
         title: "Post created!",
         description: "Your post has been shared successfully."
@@ -39,6 +43,8 @@ export const EnhancedTopBar: React.FC<EnhancedTopBarProps> = ({
         description: "Please try again later.",
         variant: "destructive"
       });
+    } finally {
+      setIsCreating(false);
     }
   };
 
