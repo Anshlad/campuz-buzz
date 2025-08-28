@@ -206,6 +206,7 @@ export type Database = {
           parent_id: string | null
           post_id: string
           reactions: Json | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -217,6 +218,7 @@ export type Database = {
           parent_id?: string | null
           post_id: string
           reactions?: Json | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -228,6 +230,7 @@ export type Database = {
           parent_id?: string | null
           post_id?: string
           reactions?: Json | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [

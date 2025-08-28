@@ -1,10 +1,9 @@
 
 import React from 'react';
-import { EnhancedPostCard } from '@/components/posts/EnhancedPostCard';
+import { PostWithComments } from '@/components/posts/PostWithComments';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EnhancedPost } from '@/hooks/useEnhancedPosts';
-import { Loader2 } from 'lucide-react';
 
 interface FeedContentProps {
   posts: EnhancedPost[];
@@ -67,7 +66,7 @@ export const FeedContent: React.FC<FeedContentProps> = ({
   return (
     <div className="space-y-6">
       {posts.map((post) => (
-        <EnhancedPostCard
+        <PostWithComments
           key={post.id}
           post={post}
           onReact={(postId, reactionType) => onLike(postId)}
