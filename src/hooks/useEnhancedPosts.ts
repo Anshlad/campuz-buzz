@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { EnhancedPostData } from '@/types/posts';
 import { safeParseReactions } from '@/services/posts/postTransformers';
-import { imageService } from '@/services/imageService';
+import { ImageService } from '@/services/imageService';
 
 export interface EnhancedPost extends EnhancedPostData {
   is_liked: boolean;
@@ -46,7 +46,7 @@ export const useEnhancedPosts = () => {
 
       const enhancedPosts: EnhancedPost[] = (data || []).map(post => {
         // Validate and log image URLs
-        const validImageUrl = imageService.validateImageUrl(post.image_url);
+        const validImageUrl = ImageService.validateImageUrl(post.image_url);
         
         if (post.image_url && !validImageUrl) {
           console.warn('Invalid image URL detected:', post.image_url, 'for post:', post.id);
@@ -102,7 +102,7 @@ export const useEnhancedPosts = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Validate image URL before creating post
-      const validImageUrl = imageService.validateImageUrl(postData.image_url);
+      const validImageUrl = ImageService.validateImageUrl(postData.image_url);
       
       if (postData.image_url && !validImageUrl) {
         console.warn('Invalid image URL provided for new post:', postData.image_url);
