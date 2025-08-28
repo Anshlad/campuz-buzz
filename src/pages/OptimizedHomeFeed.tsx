@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { EnhancedTopBar } from '@/components/layout/EnhancedTopBar';
 import { OptimizedPostsList } from '@/components/feed/OptimizedPostsList';
@@ -103,7 +102,6 @@ const OptimizedHomeFeed: React.FC = () => {
         open={showCreatePost}
         onClose={() => setShowCreatePost(false)}
         onSubmit={handleCreatePost}
-        isLoading={isCreating}
       />
     </div>
   );

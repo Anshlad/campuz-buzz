@@ -23,6 +23,8 @@ export const useEnhancedPosts = () => {
         .from('posts')
         .select(`
           *,
+          hashtags,
+          mentions,
           profiles:user_id (
             id,
             user_id,
@@ -52,11 +54,12 @@ export const useEnhancedPosts = () => {
         is_saved: false,
         user_reaction: undefined,
         reactions: safeParseReactions(post.reactions),
-        hashtags: post.hashtags || [],
-        mentions: post.mentions || [],
+        hashtags: (post as any).hashtags || [],
+        mentions: (post as any).mentions || [],
         tags: post.tags || [],
         profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
           id: post.user_id,
+          user_id: post.user_id,
           display_name: 'Anonymous User',
           avatar_url: undefined,
           major: undefined,
@@ -94,6 +97,8 @@ export const useEnhancedPosts = () => {
         })
         .select(`
           *,
+          hashtags,
+          mentions,
           profiles:user_id (
             id,
             user_id,
@@ -123,11 +128,12 @@ export const useEnhancedPosts = () => {
         is_saved: false,
         user_reaction: undefined,
         reactions: safeParseReactions(data.reactions),
-        hashtags: data.hashtags || [],
-        mentions: data.mentions || [],
+        hashtags: (data as any).hashtags || [],
+        mentions: (data as any).mentions || [],
         tags: data.tags || [],
         profiles: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles || {
           id: data.user_id,
+          user_id: data.user_id,
           display_name: 'Anonymous User',
           avatar_url: undefined,
           major: undefined,
