@@ -12,7 +12,7 @@ import {
   MoreHorizontal,
   Calendar
 } from 'lucide-react';
-import { EnhancedMedia } from '@/components/common/EnhancedMedia';
+import { PostImage } from '@/components/common/PostImage';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { EnhancedPostData } from '@/types/posts';
@@ -39,12 +39,12 @@ export const EnhancedPostCard = memo<EnhancedPostCardProps>(({
   const handleShare = () => onShare?.(post.id);
   const handleComment = () => onComment?.(post.id);
 
-  const getMediaType = (url: string): 'image' | 'video' | 'auto' => {
-    if (!url) return 'auto';
-    if (/\.(mp4|webm|ogg|mov|avi)(\?|$)/i.test(url)) return 'video';
-    if (/\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url)) return 'image';
-    return 'auto';
-  };
+  // Debug logging for image URL
+  React.useEffect(() => {
+    if (post.image_url) {
+      console.log('Post image URL:', post.image_url);
+    }
+  }, [post.image_url]);
 
   return (
     <Card className={cn("w-full max-w-2xl mx-auto", className)}>
@@ -109,17 +109,14 @@ export const EnhancedPostCard = memo<EnhancedPostCardProps>(({
           </div>
         )}
 
-        {/* Media Content */}
+        {/* Media Content - Enhanced with PostImage component */}
         {post.image_url && (
           <div className="rounded-lg overflow-hidden bg-muted">
-            <EnhancedMedia
+            <PostImage
               src={post.image_url}
               alt={post.title || post.content || 'Post media'}
-              type={getMediaType(post.image_url)}
-              className="w-full max-h-96"
-              fallbackSrc="/placeholder.svg"
-              lazy={true}
-              onError={(error) => console.error('Media loading error:', error)}
+              className="w-full max-h-96 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+              fallbackClassName="w-full h-48 bg-muted/50 flex items-center justify-center text-muted-foreground border border-border rounded-lg"
             />
           </div>
         )}

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { EnhancedPostData } from '@/types/posts';
 import { safeParseReactions } from '@/services/posts/postTransformers';
+import { imageService } from '@/services/imageService';
 
 export interface EnhancedPost extends EnhancedPostData {
   is_liked: boolean;
@@ -19,6 +20,8 @@ export const useEnhancedPosts = () => {
   const loadPosts = async () => {
     try {
       setLoading(true);
+      console.log('Loading posts with images...');
+      
       const { data, error } = await supabase
         .from('posts')
         .select(`
@@ -34,39 +37,58 @@ export const useEnhancedPosts = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading posts:', error);
+        throw error;
+      }
 
-      const enhancedPosts: EnhancedPost[] = (data || []).map(post => ({
-        ...post,
-        post_type: post.post_type as 'text' | 'image' | 'video' | 'poll',
-        visibility: post.visibility as 'public' | 'friends' | 'private',
-        author: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
-          id: post.user_id,
-          user_id: post.user_id,
-          display_name: 'Anonymous User',
-          avatar_url: undefined,
-          major: undefined,
-          year: undefined
-        },
-        is_liked: false,
-        is_saved: false,
-        user_reaction: undefined,
-        reactions: safeParseReactions(post.reactions),
-        hashtags: [],
-        mentions: [],
-        tags: post.tags || [],
-        profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
-          id: post.user_id,
-          user_id: post.user_id,
-          display_name: 'Anonymous User',
-          avatar_url: undefined,
-          major: undefined,
-          year: undefined
+      console.log('Raw posts data:', data);
+
+      const enhancedPosts: EnhancedPost[] = (data || []).map(post => {
+        // Validate and log image URLs
+        const validImageUrl = imageService.validateImageUrl(post.image_url);
+        
+        if (post.image_url && !validImageUrl) {
+          console.warn('Invalid image URL detected:', post.image_url, 'for post:', post.id);
+        } else if (validImageUrl) {
+          console.log('Valid image URL for post', post.id, ':', validImageUrl);
         }
-      }));
 
+        return {
+          ...post,
+          post_type: post.post_type as 'text' | 'image' | 'video' | 'poll',
+          visibility: post.visibility as 'public' | 'friends' | 'private',
+          author: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
+            id: post.user_id,
+            user_id: post.user_id,
+            display_name: 'Anonymous User',
+            avatar_url: undefined,
+            major: undefined,
+            year: undefined
+          },
+          is_liked: false,
+          is_saved: false,
+          user_reaction: undefined,
+          reactions: safeParseReactions(post.reactions),
+          hashtags: [],
+          mentions: [],
+          tags: post.tags || [],
+          image_url: validImageUrl, // Use validated URL
+          profiles: Array.isArray(post.profiles) ? post.profiles[0] : post.profiles || {
+            id: post.user_id,
+            user_id: post.user_id,
+            display_name: 'Anonymous User',
+            avatar_url: undefined,
+            major: undefined,
+            year: undefined
+          }
+        };
+      });
+
+      console.log('Enhanced posts with validated images:', enhancedPosts);
       setPosts(enhancedPosts);
     } catch (err: any) {
+      console.error('Error in loadPosts:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -79,6 +101,13 @@ export const useEnhancedPosts = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Validate image URL before creating post
+      const validImageUrl = imageService.validateImageUrl(postData.image_url);
+      
+      if (postData.image_url && !validImageUrl) {
+        console.warn('Invalid image URL provided for new post:', postData.image_url);
+      }
+
       const { data, error } = await supabase
         .from('posts')
         .insert({
@@ -88,7 +117,7 @@ export const useEnhancedPosts = () => {
           post_type: postData.post_type,
           visibility: postData.visibility,
           tags: postData.tags || [],
-          image_url: postData.image_url,
+          image_url: validImageUrl, // Use validated URL
           reactions: {}
         })
         .select(`

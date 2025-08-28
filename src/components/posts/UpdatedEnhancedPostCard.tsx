@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { PostReactionButton } from '@/components/posts/PostReactionButton';
 import { PostActions } from '@/components/posts/PostActions';
+import { PostImage } from '@/components/common/PostImage';
 import { MessageSquare, Share2, Bookmark, BookmarkCheck, MapPin, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { EnhancedPostData } from '@/services/enhancedPostsService';
@@ -37,6 +38,13 @@ export const UpdatedEnhancedPostCard: React.FC<UpdatedEnhancedPostCardProps> = (
   const handleReaction = (reactionType: string) => {
     onReact(post.id, reactionType);
   };
+
+  // Debug logging for image URL
+  React.useEffect(() => {
+    if (post.image_url) {
+      console.log('Updated post image URL:', post.image_url);
+    }
+  }, [post.image_url]);
 
   const renderHashtags = () => {
     if (!post.hashtags || post.hashtags.length === 0) return null;
@@ -174,14 +182,14 @@ export const UpdatedEnhancedPostCard: React.FC<UpdatedEnhancedPostCardProps> = (
           {renderPostContent()}
         </div>
 
-        {/* Media */}
+        {/* Media - Enhanced with PostImage component */}
         {post.image_url && (
           <div className="rounded-lg overflow-hidden bg-muted mb-4">
-            <img 
-              src={post.image_url} 
-              alt="Post content" 
+            <PostImage
+              src={post.image_url}
+              alt={post.title || post.content || 'Post content'}
               className="w-full max-h-96 object-cover cursor-pointer hover:opacity-95 transition-opacity"
-              onClick={() => {/* Open image modal */}}
+              fallbackClassName="w-full h-48 bg-muted/50 flex items-center justify-center text-muted-foreground border border-border rounded-lg"
             />
           </div>
         )}
