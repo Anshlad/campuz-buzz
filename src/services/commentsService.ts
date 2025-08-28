@@ -61,8 +61,12 @@ export class CommentsService {
 
       if (error) throw error;
 
-      // Transform flat comments into threaded structure
-      return this.buildCommentTree(data || []);
+      // Transform flat comments into threaded structure with proper typing
+      return this.buildCommentTree((data || []).map(comment => ({
+        ...comment,
+        reactions: (comment.reactions as Record<string, any>) || {},
+        profiles: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles
+      })));
     } catch (error) {
       console.error('Error fetching post comments:', error);
       throw error;
@@ -102,6 +106,7 @@ export class CommentsService {
 
       return (data || []).map(comment => ({
         ...comment,
+        reactions: (comment.reactions as Record<string, any>) || {},
         profiles: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles
       }));
     } catch (error) {
@@ -169,6 +174,7 @@ export class CommentsService {
 
       return {
         ...comment,
+        reactions: (comment.reactions as Record<string, any>) || {},
         profiles: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles
       };
     } catch (error) {
@@ -232,6 +238,7 @@ export class CommentsService {
 
       return {
         ...comment,
+        reactions: (comment.reactions as Record<string, any>) || {},
         profiles: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles
       };
     } catch (error) {

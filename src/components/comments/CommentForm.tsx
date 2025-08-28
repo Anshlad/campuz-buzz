@@ -17,7 +17,7 @@ export const CommentForm: React.FC<CommentFormProps> = ({
   isSubmitting = false,
   placeholder = "Write a comment..."
 }) => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [content, setContent] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,9 +46,9 @@ export const CommentForm: React.FC<CommentFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="flex space-x-3">
       <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={profile?.avatar_url} />
+        <AvatarImage src={user.user_metadata?.avatar_url} />
         <AvatarFallback>
-          {profile?.display_name?.charAt(0)?.toUpperCase() || 'U'}
+          {user.email?.charAt(0)?.toUpperCase() || 'U'}
         </AvatarFallback>
       </Avatar>
       
