@@ -3,14 +3,16 @@ import React from 'react';
 import { PostWithComments } from '@/components/posts/PostWithComments';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePostReactions } from '@/hooks/usePostReactions';
+import { usePostSaves } from '@/hooks/usePostSaves';
 import { EnhancedPost } from '@/hooks/useEnhancedPosts';
 
 interface FeedContentProps {
   posts: EnhancedPost[];
   loading: boolean;
-  onLike: (postId: string) => void;
-  onSave: (postId: string) => void;
-  onShare: (postId: string) => void;
+  onLike?: (postId: string) => void;
+  onSave?: (postId: string) => void;
+  onShare?: (postId: string) => void;
 }
 
 export const FeedContent: React.FC<FeedContentProps> = ({
@@ -20,6 +22,8 @@ export const FeedContent: React.FC<FeedContentProps> = ({
   onSave,
   onShare
 }) => {
+  const { reactToPost } = usePostReactions();
+  const { toggleSave } = usePostSaves();
   if (loading) {
     return (
       <div className="space-y-6">
@@ -69,9 +73,15 @@ export const FeedContent: React.FC<FeedContentProps> = ({
         <PostWithComments
           key={post.id}
           post={post}
-          onReact={(postId, reactionType) => onLike(postId)}
-          onSave={() => onSave(post.id)}
-          onShare={() => onShare(post.id)}
+          onReact={(postId, reactionType) => {
+            reactToPost(postId, reactionType);
+            onLike?.(postId);
+          }}
+          onSave={(postId) => {
+            toggleSave(postId);
+            onSave?.(postId);
+          }}
+          onShare={(postId) => onShare?.(postId)}
         />
       ))}
     </div>

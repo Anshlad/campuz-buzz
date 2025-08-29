@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { PostImage } from '@/components/common/PostImage';
 import { CommentsSection } from '@/components/comments/CommentsSection';
+import { usePostReactions } from '@/hooks/usePostReactions';
+import { usePostSaves } from '@/hooks/usePostSaves';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { EnhancedPostData } from '@/types/posts';
@@ -38,10 +40,33 @@ export const PostWithComments: React.FC<PostWithCommentsProps> = ({
   className
 }) => {
   const [showComments, setShowComments] = useState(initialShowComments);
+  const { reactToPost, isLoading: isReactionLoading } = usePostReactions();
+  const { toggleSave, isLoading: isSaveLoading } = usePostSaves();
 
-  const handleLike = () => onReact?.(post.id, 'like');
-  const handleSave = () => onSave?.(post.id);
-  const handleShare = () => onShare?.(post.id);
+  const handleLike = () => {
+    reactToPost(post.id, 'like');
+    onReact?.(post.id, 'like');
+  };
+  
+  const handleSave = () => {
+    toggleSave(post.id);
+    onSave?.(post.id);
+  };
+  
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: post.title || 'Check out this post',
+        text: post.content,
+        url: `${window.location.origin}/post/${post.id}`
+      });
+    } else {
+      // Fallback to copying link
+      navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+    }
+    onShare?.(post.id);
+  };
+  
   const handleComment = () => setShowComments(!showComments);
 
   return (
@@ -154,13 +179,14 @@ export const PostWithComments: React.FC<PostWithCommentsProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={handleLike}
+                disabled={isReactionLoading(post.id)}
                 className={cn(
                   "text-muted-foreground hover:text-red-500",
                   post.is_liked && "text-red-500"
                 )}
               >
                 <Heart className={cn("h-4 w-4 mr-1", post.is_liked && "fill-current")} />
-                <span className="text-sm">Like</span>
+                <span className="text-sm">{isReactionLoading(post.id) ? 'Liking...' : 'Like'}</span>
               </Button>
 
               <Button
@@ -196,6 +222,7 @@ export const PostWithComments: React.FC<PostWithCommentsProps> = ({
               variant="ghost"
               size="sm"
               onClick={handleSave}
+              disabled={isSaveLoading(post.id)}
               className={cn(
                 "text-muted-foreground hover:text-yellow-500",
                 post.is_saved && "text-yellow-500"
