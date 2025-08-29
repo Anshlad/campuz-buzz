@@ -19,6 +19,7 @@ export const usePostReactions = () => {
       // Invalidate posts queries to refresh the feed
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['enhanced-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['user-posts'] });
       
       toast({
         description: "Reaction updated successfully",

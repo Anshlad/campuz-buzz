@@ -20,7 +20,9 @@ export const useEnhancedPosts = () => {
   const loadPosts = async () => {
     try {
       setLoading(true);
-      console.log('Loading posts with images...');
+      console.log('Loading posts with user reactions...');
+      
+      const { data: { user } } = await supabase.auth.getUser();
       
       const { data, error } = await supabase
         .from('posts')
@@ -44,6 +46,45 @@ export const useEnhancedPosts = () => {
 
       console.log('Raw posts data:', data);
 
+      // Get user likes and saves if user is authenticated
+      let userLikes: string[] = [];
+      let userSaves: string[] = [];
+      let userReactions: Record<string, string> = {};
+
+      if (user && data?.length > 0) {
+        const postIds = data.map(post => post.id);
+        
+        // Get user likes (from legacy likes table)
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', user.id)
+          .in('post_id', postIds);
+        
+        userLikes = likesData?.map(like => like.post_id) || [];
+
+        // Get user reactions (from new post_reactions table)
+        const { data: reactionsData } = await supabase
+          .from('post_reactions')
+          .select('post_id, reaction_type')
+          .eq('user_id', user.id)
+          .in('post_id', postIds);
+        
+        userReactions = reactionsData?.reduce((acc, reaction) => {
+          acc[reaction.post_id] = reaction.reaction_type;
+          return acc;
+        }, {} as Record<string, string>) || {};
+
+        // Get user saves
+        const { data: savesData } = await supabase
+          .from('post_saves')
+          .select('post_id')
+          .eq('user_id', user.id)
+          .in('post_id', postIds);
+        
+        userSaves = savesData?.map(save => save.post_id) || [];
+      }
+
       const enhancedPosts: EnhancedPost[] = (data || []).map(post => {
         // Validate and log image URLs
         const validImageUrl = ImageService.validateImageUrl(post.image_url);
@@ -66,9 +107,9 @@ export const useEnhancedPosts = () => {
             major: undefined,
             year: undefined
           },
-          is_liked: false,
-          is_saved: false,
-          user_reaction: undefined,
+          is_liked: userLikes.includes(post.id) || userReactions[post.id] === 'like',
+          is_saved: userSaves.includes(post.id),
+          user_reaction: userReactions[post.id],
           reactions: safeParseReactions(post.reactions),
           hashtags: [],
           mentions: [],

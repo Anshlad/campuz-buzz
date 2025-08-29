@@ -46,6 +46,7 @@ export const usePostSaves = () => {
       // Invalidate posts queries to refresh the feed
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['enhanced-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['user-posts'] });
       
       toast({
         description: result.action === 'added' ? "Post saved" : "Post removed from saved",
