@@ -76,7 +76,7 @@ export const ChannelSidebar: React.FC<ChannelSidebarProps> = ({
       <div className="p-4 border-b">
         <div className="flex items-center space-x-3">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={community.avatar_url} />
+            <AvatarImage src={community.avatar_url || ''} />
             <AvatarFallback>{community.name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">

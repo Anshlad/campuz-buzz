@@ -1,17 +1,18 @@
-
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface FastPost {
+interface Post {
   id: string;
-  user_id: string;
   content: string;
+  created_at: string;
   image_url?: string;
   likes_count: number;
   comments_count: number;
-  created_at: string;
-  is_liked?: boolean;
+  is_liked: boolean;
+  user_id: string;
   author: {
     id: string;
     display_name: string;
@@ -19,212 +20,152 @@ export interface FastPost {
   };
 }
 
-interface PostCreationData {
-  content: string;
-  image_url?: string;
-  visibility?: 'public' | 'friends' | 'private';
-}
-
 export const useFastPosts = () => {
-  const [posts, setPosts] = useState<FastPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Optimized fetch with minimal data
-  const fetchPosts = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
+  // Fetch posts with user interaction data
+  const { 
+    data: posts = [], 
+    isLoading: loading, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['fast-posts'],
+    queryFn: async () => {
       const { data: postsData, error } = await supabase
         .from('posts')
         .select(`
-          id,
-          user_id,
-          content,
-          image_url,
-          likes_count,
-          comments_count,
-          created_at
+          *,
+          profiles:user_id (
+            id,
+            display_name,
+            avatar_url
+          )
         `)
         .order('created_at', { ascending: false })
-        .limit(10); // Start with fewer posts
+        .limit(20);
 
       if (error) throw error;
 
-      // Handle empty posts case
-      if (!postsData || postsData.length === 0) {
-        setPosts([]);
-        return;
-      }
-
-      // Get profiles separately for better performance
-      const userIds = [...new Set(postsData.map(p => p.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
-
-      const profileMap = new Map(
-        (profiles || []).map(p => [p.user_id, p])
-      );
-
-      // Get current user's likes
-      const { data: { user } } = await supabase.auth.getUser();
-      let userLikes: Set<string> = new Set();
-      
-      if (user) {
+      // Get user's likes for these posts
+      let userLikes: string[] = [];
+      if (user && postsData?.length) {
         const { data: likesData } = await supabase
           .from('likes')
           .select('post_id')
           .eq('user_id', user.id)
           .in('post_id', postsData.map(p => p.id));
         
-        userLikes = new Set((likesData || []).map(like => like.post_id));
+        userLikes = likesData?.map(l => l.post_id) || [];
       }
 
-      const fastPosts: FastPost[] = postsData.map(post => {
-        const profile = profileMap.get(post.user_id);
-        return {
-          id: post.id,
-          user_id: post.user_id,
-          content: post.content,
-          image_url: post.image_url,
-          likes_count: post.likes_count || 0,
-          comments_count: post.comments_count || 0,
-          created_at: post.created_at,
-          is_liked: userLikes.has(post.id),
-          author: {
-            id: post.user_id,
-            display_name: profile?.display_name || 'Anonymous',
-            avatar_url: profile?.avatar_url
-          }
-        };
-      });
+      return postsData?.map(post => ({
+        id: post.id,
+        content: post.content,
+        created_at: post.created_at,
+        image_url: post.image_url,
+        likes_count: post.likes_count || 0,
+        comments_count: post.comments_count || 0,
+        is_liked: userLikes.includes(post.id),
+        user_id: post.user_id,
+        author: {
+          id: post.profiles?.id || post.user_id,
+          display_name: post.profiles?.display_name || 'Anonymous',
+          avatar_url: post.profiles?.avatar_url
+        }
+      })) || [];
+    },
+    enabled: !!user,
+    staleTime: 30000, // 30 seconds
+    refetchOnMount: false,
+    refetchOnWindowFocus: false
+  });
 
-      setPosts(fastPosts);
-    } catch (err) {
-      setError(err as Error);
-      console.error('Error fetching posts:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Fast post creation
-  const createPost = useCallback(async (postData: PostCreationData) => {
-    try {
-      setIsCreating(true);
-      
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Authentication required');
+  // Create post mutation
+  const createPostMutation = useMutation({
+    mutationFn: async (postData: { content: string; image_url?: string }) => {
+      if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
         .from('posts')
         .insert({
-          user_id: user.id,
           content: postData.content,
+          user_id: user.id,
           image_url: postData.image_url,
-          post_type: postData.image_url ? 'image' : 'text',
-          visibility: postData.visibility || 'public',
-          likes_count: 0,
-          comments_count: 0,
-          shares_count: 0,
-          saves_count: 0
+          post_type: 'text',
+          visibility: 'public'
         })
         .select(`
-          id,
-          user_id,
-          content,
-          image_url,
-          likes_count,
-          comments_count,
-          created_at
+          *,
+          profiles:user_id (
+            id,
+            display_name,
+            avatar_url
+          )
         `)
         .single();
 
       if (error) throw error;
+      return data;
+    },
+    onSuccess: (newPost) => {
+      // Add the new post to the beginning of the list
+      queryClient.setQueryData(['fast-posts'], (oldPosts: Post[] = []) => [
+        {
+          id: newPost.id,
+          content: newPost.content,
+          created_at: newPost.created_at,
+          image_url: newPost.image_url,
+          likes_count: 0,
+          comments_count: 0,
+          is_liked: false,
+          user_id: newPost.user_id,
+          author: {
+            id: newPost.profiles?.id || newPost.user_id,
+            display_name: newPost.profiles?.display_name || user?.user_metadata?.full_name || 'You',
+            avatar_url: newPost.profiles?.avatar_url || user?.user_metadata?.avatar_url
+          }
+        },
+        ...oldPosts
+      ]);
 
-      // Get user profile for the new post
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('display_name, avatar_url')
+      toast({
+        title: "Post created!",
+        description: "Your post has been shared successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error creating post:', error);
+      toast({
+        title: "Error creating post",
+        description: error.message || "Please try again later.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Toggle like mutation
+  const toggleLikeMutation = useMutation({
+    mutationFn: async (postId: string) => {
+      if (!user) throw new Error('User not authenticated');
+
+      // Check if already liked
+      const { data: existingLike } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', postId)
         .eq('user_id', user.id)
         .single();
 
-      const newPost: FastPost = {
-        ...data,
-        is_liked: false,
-        author: {
-          id: user.id,
-          display_name: profile?.display_name || 'You',
-          avatar_url: profile?.avatar_url
-        }
-      };
-
-      // Optimistic update
-      setPosts(prev => [newPost, ...prev]);
-      
-      toast({
-        title: "Post created!",
-        description: "Your post has been shared."
-      });
-
-    } catch (error) {
-      console.error('Error creating post:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create post. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
-    } finally {
-      setIsCreating(false);
-    }
-  }, [toast]);
-
-  // Handle like toggle
-  const toggleLike = useCallback(async (postId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to like posts.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const currentPost = posts.find(p => p.id === postId);
-      if (!currentPost) return;
-
-      const wasLiked = currentPost.is_liked;
-
-      // Optimistic update first
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId) {
-          return {
-            ...p,
-            is_liked: !wasLiked,
-            likes_count: wasLiked 
-              ? Math.max(0, p.likes_count - 1) 
-              : p.likes_count + 1
-          };
-        }
-        return p;
-      }));
-
-      // Then update database
-      if (wasLiked) {
+      if (existingLike) {
         // Unlike
         await supabase
           .from('likes')
           .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id);
+          .eq('id', existingLike.id);
+        return { isLiked: false };
       } else {
         // Like
         await supabase
@@ -233,49 +174,65 @@ export const useFastPosts = () => {
             post_id: postId,
             user_id: user.id
           });
+        return { isLiked: true };
       }
+    },
+    onMutate: async (postId: string) => {
+      // Optimistic update
+      queryClient.setQueryData(['fast-posts'], (oldPosts: Post[] = []) =>
+        oldPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                is_liked: !post.is_liked,
+                likes_count: post.is_liked ? post.likes_count - 1 : post.likes_count + 1
+              }
+            : post
+        )
+      );
+    },
+    onError: (error, postId) => {
+      // Revert optimistic update
+      queryClient.setQueryData(['fast-posts'], (oldPosts: Post[] = []) =>
+        oldPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                is_liked: !post.is_liked,
+                likes_count: post.is_liked ? post.likes_count + 1 : post.likes_count - 1
+              }
+            : post
+        )
+      );
 
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      
-      // Revert optimistic update on error
-      const originalPost = posts.find(p => p.id === postId);
-      if (originalPost) {
-        setPosts(prev => prev.map(p => {
-          if (p.id === postId) {
-            return {
-              ...p,
-              is_liked: originalPost.is_liked,
-              likes_count: originalPost.likes_count
-            };
-          }
-          return p;
-        }));
-      }
-      
       toast({
         title: "Error",
         description: "Failed to update like. Please try again.",
         variant: "destructive"
       });
     }
-  }, [posts, toast]);
+  });
 
-  // Load posts on mount
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  const createPost = useCallback((postData: { content: string; image_url?: string }) => {
+    createPostMutation.mutate(postData);
+  }, [createPostMutation]);
 
-  // Memoize return value to prevent unnecessary re-renders
-  const value = useMemo(() => ({
+  const toggleLike = useCallback((postId: string) => {
+    toggleLikeMutation.mutate(postId);
+  }, [toggleLikeMutation]);
+
+  const retry = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  return {
     posts,
     loading,
     error,
     createPost,
-    isCreating,
+    isCreating: createPostMutation.isPending,
     toggleLike,
-    retry: fetchPosts
-  }), [posts, loading, error, createPost, isCreating, toggleLike, fetchPosts]);
-
-  return value;
+    isLiking: toggleLikeMutation.isPending,
+    retry
+  };
 };

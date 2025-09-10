@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
-export type Community = Database['public']['Tables']['communities_enhanced']['Row'];
+export type Community = Database['public']['Tables']['communities']['Row'];
 export type Channel = Database['public']['Tables']['community_channels']['Row'];
 export type Message = Database['public']['Tables']['messages']['Row'];
 export type CommunityMember = Database['public']['Tables']['community_members']['Row'];
@@ -33,6 +33,7 @@ export interface CommunityWithChannels extends Community {
   channels: Channel[];
   roles: CommunityRole[];
   member_role?: string;
+  avatar_url?: string | null;
 }
 
 class ChatService {
@@ -61,7 +62,7 @@ class ChatService {
   // Communities
   async getCommunities(): Promise<CommunityWithChannels[]> {
     const { data: communities, error } = await supabase
-      .from('communities_enhanced')
+      .from('communities')
       .select(`
         *,
         channels:community_channels(*),
@@ -70,12 +71,17 @@ class ChatService {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return communities as CommunityWithChannels[];
+    return (communities || []).map(community => ({
+      ...community,
+      avatar_url: null, // Add missing field
+      channels: Array.isArray(community.channels) ? community.channels : [],
+      roles: Array.isArray(community.roles) ? community.roles : []
+    })) as CommunityWithChannels[];
   }
 
   async createCommunity(name: string, description?: string): Promise<Community> {
     const { data, error } = await supabase
-      .from('communities_enhanced')
+      .from('communities')
       .insert({ name, description, created_by: (await supabase.auth.getUser()).data.user?.id! })
       .select()
       .single();

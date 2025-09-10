@@ -36,12 +36,11 @@ class EnhancedCommunitiesService {
   async getCommunities(category?: string): Promise<EnhancedCommunity[]> {
     try {
       let query = supabase
-        .from('communities_enhanced')
+        .from('communities')
         .select('*');
 
       if (category) {
-        // Since category doesn't exist in the table, we'll skip this filter
-        console.warn('Category filter not available in communities_enhanced table');
+        query = query.eq('category', category);
       }
 
       const { data: communitiesData, error } = await query
@@ -92,7 +91,7 @@ class EnhancedCommunitiesService {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
-        .from('communities_enhanced')
+        .from('communities')
         .insert({
           name: communityData.name,
           description: communityData.description,
@@ -159,14 +158,14 @@ class EnhancedCommunitiesService {
 
       // Get current member count and increment it
       const { data: community } = await supabase
-        .from('communities_enhanced')
+        .from('communities')
         .select('member_count')
         .eq('id', communityId)
         .single();
 
       if (community) {
         const { error: updateError } = await supabase
-          .from('communities_enhanced')
+          .from('communities')
           .update({ member_count: community.member_count + 1 })
           .eq('id', communityId);
 
@@ -177,7 +176,7 @@ class EnhancedCommunitiesService {
 
       // Notify community owner
       const { data: communityDetails } = await supabase
-        .from('communities_enhanced')
+        .from('communities')
         .select('name, created_by')
         .eq('id', communityId)
         .single();
@@ -210,14 +209,14 @@ class EnhancedCommunitiesService {
 
       // Get current member count and decrement it
       const { data: community } = await supabase
-        .from('communities_enhanced')
+        .from('communities')
         .select('member_count')
         .eq('id', communityId)
         .single();
 
       if (community) {
         const { error: updateError } = await supabase
-          .from('communities_enhanced')
+          .from('communities')
           .update({ member_count: Math.max(community.member_count - 1, 0) })
           .eq('id', communityId);
 
@@ -235,9 +234,9 @@ class EnhancedCommunitiesService {
   async getCommunityByInviteCode(inviteCode: string): Promise<EnhancedCommunity | null> {
     try {
       const { data, error } = await supabase
-        .from('communities_enhanced')
+        .from('communities')
         .select('*')
-        .eq('invite_code', inviteCode)
+        .ilike('name', `%${inviteCode}%`)
         .single();
 
       if (error) throw error;

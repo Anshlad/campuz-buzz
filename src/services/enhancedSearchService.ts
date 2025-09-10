@@ -85,21 +85,21 @@ class EnhancedSearchService {
       // Search communities
       if (!filters?.type || filters.type === 'community') {
         const { data: communities } = await supabase
-          .from('communities_enhanced')
+          .from('communities')
           .select('*')
           .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
           .limit(limit);
 
-        if (communities) {
-          results.push(...communities.map(community => ({
-            id: community.id,
-            type: 'community' as const,
-            title: community.name,
-            description: community.description,
-            imageUrl: community.avatar_url,
-            metadata: community
-          })));
-        }
+         if (communities) {
+           results.push(...communities.map(community => ({
+             id: community.id,
+             type: 'community' as const,
+             title: community.name,
+             description: community.description,
+             imageUrl: undefined, // avatar_url not available in communities table
+             metadata: community
+           })));
+         }
       }
 
       // Search events
@@ -167,7 +167,7 @@ class EnhancedSearchService {
 
       // Get community name suggestions
       const { data: communities } = await supabase
-        .from('communities_enhanced')
+        .from('communities')
         .select('name')
         .ilike('name', `${query}%`)
         .limit(limit);
