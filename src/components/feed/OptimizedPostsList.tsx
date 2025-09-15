@@ -1,7 +1,7 @@
 import React, { memo, useMemo, useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EnhancedPostCard } from '@/components/posts/EnhancedPostCard';
+import { PostWithComments } from '@/components/posts/PostWithComments';
 import { useInfinitePagination } from '@/hooks/useInfinitePagination';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { analyticsService } from '@/services/analyticsService';
@@ -63,6 +63,7 @@ interface OptimizedPostsListProps {
 }
 
 export const OptimizedPostsList: React.FC<OptimizedPostsListProps> = ({ className }) => {
+  const { user } = useAuth();
   usePerformanceMonitor('OptimizedPostsList');
 
 // Memoized fetch function with enhanced error handling
@@ -183,9 +184,9 @@ const fetchPosts = useMemo(() => async (page: number, limit: number): Promise<Po
       major: post.profiles.major,
       year: undefined
     },
-    is_liked: false,
+    is_liked: post.is_liked,
     is_saved: false,
-    user_reaction: undefined,
+    user_reaction: post.is_liked ? 'like' : undefined,
     profiles: {
       id: post.user_id,
       display_name: post.profiles.display_name,
@@ -195,9 +196,15 @@ const fetchPosts = useMemo(() => async (page: number, limit: number): Promise<Po
     }
   });
 
-  const handleReact = (postId: string, reactionType: string) => {
-    console.log('React to post:', postId, reactionType);
-    analyticsService.trackPostLiked(postId);
+  const { reactToPost, isLoading: isReacting } = usePostReactions();
+
+  const handleReact = async (postId: string, reactionType: string) => {
+    try {
+      await reactToPost(postId, reactionType);
+      analyticsService.trackPostLiked(postId);
+    } catch (error) {
+      console.error('Error reacting to post:', error);
+    }
   };
 
   const handleSave = (postId: string) => {
@@ -235,13 +242,13 @@ const fetchPosts = useMemo(() => async (page: number, limit: number): Promise<Po
     <div className={className}>
       {/* Posts list */}
       {posts.map(post => (
-        <EnhancedPostCard
+        <PostWithComments
           key={post.id}
           post={convertToEnhancedPostData(post)}
           onReact={handleReact}
           onSave={handleSave}
           onShare={handleShare}
-          onComment={handleComment}
+          showComments={true}
           className="mb-6"
         />
       ))}
