@@ -85,9 +85,12 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_private: boolean | null
           name: string
           position: number | null
           server_id: string
+          slowmode_seconds: number | null
+          topic: string | null
           type: string
           updated_at: string
         }
@@ -95,9 +98,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_private?: boolean | null
           name: string
           position?: number | null
           server_id: string
+          slowmode_seconds?: number | null
+          topic?: string | null
           type?: string
           updated_at?: string
         }
@@ -105,9 +111,12 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_private?: boolean | null
           name?: string
           position?: number | null
           server_id?: string
+          slowmode_seconds?: number | null
+          topic?: string | null
           type?: string
           updated_at?: string
         }

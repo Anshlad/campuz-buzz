@@ -150,9 +150,6 @@ export const ChannelSidebar: React.FC<ChannelSidebarProps> = ({
                       >
                         <Hash className="h-4 w-4 mr-2 text-muted-foreground" />
                         <span className="truncate">{channel.name}</span>
-                        {channel.is_private && (
-                          <Lock className="h-3 w-3 ml-auto text-muted-foreground" />
-                        )}
                       </Button>
                     ))}
                   </motion.div>
@@ -205,9 +202,6 @@ export const ChannelSidebar: React.FC<ChannelSidebarProps> = ({
                     >
                       <Hash className="h-4 w-4 mr-2 text-muted-foreground" />
                       <span className="truncate flex-1">{channel.name}</span>
-                      {channel.is_private && (
-                        <Lock className="h-3 w-3 ml-1 text-muted-foreground" />
-                      )}
                       <Badge variant="secondary" className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         12
                       </Badge>
@@ -250,9 +244,6 @@ export const ChannelSidebar: React.FC<ChannelSidebarProps> = ({
                     >
                       <Volume2 className="h-4 w-4 mr-2 text-muted-foreground" />
                       <span className="truncate">{channel.name}</span>
-                      {channel.is_private && (
-                        <Lock className="h-3 w-3 ml-auto text-muted-foreground" />
-                      )}
                     </Button>
                   ))}
                 </motion.div>
