@@ -80,6 +80,47 @@ export type Database = {
         }
         Relationships: []
       }
+      channels: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          position: number | null
+          server_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          position?: number | null
+          server_id: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number | null
+          server_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_channels_server_id"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           attachments: Json | null
@@ -907,6 +948,21 @@ export type Database = {
         }
         Relationships: []
       }
+      kv_store_2a876eaa: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           comment_id: string | null
@@ -929,7 +985,15 @@ export type Database = {
           post_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_likes_post_id"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mentorship_matches: {
         Row: {
@@ -1043,6 +1107,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_messages_channel_id"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_channel_id_fkey"
             columns: ["channel_id"]
@@ -1484,6 +1555,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar: string | null
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -1503,9 +1575,11 @@ export type Database = {
           social_links: Json | null
           updated_at: string
           user_id: string
+          username: string | null
           year: string | null
         }
         Insert: {
+          avatar?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1525,9 +1599,11 @@ export type Database = {
           social_links?: Json | null
           updated_at?: string
           user_id: string
+          username?: string | null
           year?: string | null
         }
         Update: {
+          avatar?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -1547,6 +1623,7 @@ export type Database = {
           social_links?: Json | null
           updated_at?: string
           user_id?: string
+          username?: string | null
           year?: string | null
         }
         Relationships: []
@@ -1638,6 +1715,71 @@ export type Database = {
           metadata?: Json | null
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      server_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string | null
+          server_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          role?: string | null
+          server_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          role?: string | null
+          server_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_server_members_server_id"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servers: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          invite_code: string | null
+          is_public: boolean | null
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          invite_code?: string | null
+          is_public?: boolean | null
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          invite_code?: string | null
+          is_public?: boolean | null
+          name?: string
+          owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
