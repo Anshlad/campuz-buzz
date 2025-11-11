@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2 } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { PostData, CommentData, PostsService } from '@/services/postsService';
 import { useToast } from '@/hooks/use-toast';
@@ -155,10 +155,6 @@ export function PostCard({ post, onPostUpdate }: PostCardProps) {
           <span>{post.comments}</span>
         </Button>
 
-        <Button variant="ghost" size="sm" className="flex items-center space-x-2">
-          <Share2 className="h-4 w-4" />
-          <span>Share</span>
-        </Button>
       </div>
 
       {/* Comments Section */}

@@ -67,7 +67,7 @@ export const AppSidebar = () => {
     { icon: TrendingUp, label: 'Trending', path: '/explore', color: 'text-orange-500' },
     { icon: Users, label: 'Communities', path: '/communities', color: 'text-green-500' },
     { icon: Calendar, label: 'Events', path: '/events', color: 'text-purple-500' },
-    { icon: MessageSquare, label: 'Chat', path: '/chat', color: 'text-pink-500', badge: 3 },
+    { icon: MessageSquare, label: 'Chat', path: '/chat', color: 'text-pink-500' },
     { icon: BookOpen, label: 'Study Groups', path: '/study-groups', color: 'text-indigo-500' },
     { icon: Megaphone, label: 'Announcements', path: '/announcements', color: 'text-red-500' },
   ];
@@ -175,11 +175,6 @@ export const AppSidebar = () => {
                       <NavLink to={item.path}>
                         <item.icon className={`h-4 w-4 ${isActive ? '' : item.color}`} />
                         <span>{item.label}</span>
-                        {item.badge && (
-                          <Badge variant="secondary" className="ml-auto bg-red-500 text-white text-xs">
-                            {item.badge}
-                          </Badge>
-                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

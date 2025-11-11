@@ -68,9 +68,6 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
-          {/* Notification Bell */}
-          <NotificationBell />
-
           {/* Messages */}
           <Button variant="ghost" size="icon">
             <MessageSquare className="h-5 w-5" />
