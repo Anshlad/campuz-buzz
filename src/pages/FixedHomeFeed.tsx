@@ -72,7 +72,7 @@ export const FixedHomeFeed = () => {
                 author_id: post.user_id,
                 author: {
                   id: post.user_id,
-                  username: post.profiles?.display_name || 'anonymous',
+                  username: post.profiles?.display_name?.toLowerCase().replace(/\s+/g, '_') || 'anonymous',
                   display_name: post.profiles?.display_name || 'Anonymous User',
                   avatar: post.profiles?.avatar_url || ''
                 },
