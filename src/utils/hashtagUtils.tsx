@@ -1,6 +1,3 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-
 /**
  * Extract hashtags from text
  */
@@ -11,29 +8,26 @@ export function extractHashtags(text: string): string[] {
 }
 
 /**
- * Render text with clickable hashtags
+ * Extract mentions from text
  */
-export function renderTextWithHashtags(text: string): React.ReactNode {
-  const hashtagRegex = /(#[a-zA-Z0-9_]+)/g;
-  const parts = text.split(hashtagRegex);
+export function extractMentions(text: string): string[] {
+  const mentionRegex = /@[a-zA-Z0-9_]+/g;
+  const matches = text.match(mentionRegex);
+  return matches ? matches.map(mention => mention.toLowerCase()) : [];
+}
 
-  return parts.map((part, index) => {
-    if (part.match(hashtagRegex)) {
-      const hashtag = part.slice(1).toLowerCase(); // Remove # and lowercase
-      return (
-        <Link
-          key={index}
-          to={`/?hashtag=${encodeURIComponent(hashtag)}`}
-          className="font-medium cursor-pointer transition-all"
-          style={{ color: '#0095F6' }}
-          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {part}
-        </Link>
-      );
+/**
+ * Process text to convert hashtags and mentions into HTML spans
+ */
+export function renderTextWithHashtagsAndMentions(text: string): string {
+  const combinedRegex = /(#[a-zA-Z0-9_]+|@[a-zA-Z0-9_]+)/g;
+  
+  return text.replace(combinedRegex, (match) => {
+    if (match.startsWith('#')) {
+      return `<span class="hashtag">${match}</span>`;
+    } else if (match.startsWith('@')) {
+      return `<span class="mention">${match}</span>`;
     }
-    return <span key={index}>{part}</span>;
+    return match;
   });
 }
