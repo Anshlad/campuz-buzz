@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { renderTextWithHashtags } from '@/utils/hashtagUtils';
 
 interface PostCardProps {
   post: PostData;
@@ -114,7 +115,9 @@ export function PostCard({ post, onPostUpdate }: PostCardProps) {
 
       {/* Post Content */}
       <div className="space-y-3">
-        <p className="text-foreground">{post.content}</p>
+        <p className="text-foreground whitespace-pre-wrap">
+          {renderTextWithHashtags(post.content)}
+        </p>
         
         {/* Post Image */}
         {post.image_url && (

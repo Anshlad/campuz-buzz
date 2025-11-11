@@ -183,4 +183,75 @@ export class PostsService {
       throw error;
     }
   }
+
+  static async getPostsByHashtag(hashtag: string, limit = 20, offset = 0): Promise<PostData[]> {
+    const user = await supabase.auth.getUser();
+    const userId = user.data.user?.id;
+
+    // First, get the hashtag ID
+    const { data: hashtagData } = await supabase
+      .from('hashtags')
+      .select('id')
+      .eq('name', hashtag.toLowerCase())
+      .single();
+
+    if (!hashtagData) return [];
+
+    // Get posts with this hashtag
+    const { data: postHashtags, error: postHashtagsError } = await supabase
+      .from('post_hashtags')
+      .select('post_id')
+      .eq('hashtag_id', hashtagData.id);
+
+    if (postHashtagsError || !postHashtags || postHashtags.length === 0) return [];
+
+    const postIds = postHashtags.map(ph => ph.post_id);
+
+    // Fetch the posts
+    const { data: posts, error } = await supabase
+      .from('posts')
+      .select(`
+        id,
+        user_id,
+        content,
+        image_url,
+        created_at,
+        updated_at,
+        likes_count,
+        comments_count,
+        profiles:user_id (
+          id,
+          username,
+          display_name,
+          avatar
+        ),
+        user_likes:likes!left(user_id)
+      `)
+      .in('id', postIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Error fetching posts by hashtag:', error);
+      throw error;
+    }
+
+    return posts?.map(post => ({
+      id: post.id,
+      author_id: post.user_id,
+      content: post.content,
+      image_url: post.image_url,
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      author: {
+        id: post.profiles?.id || post.user_id,
+        username: post.profiles?.username || 'unknown',
+        display_name: post.profiles?.display_name || 'Unknown User',
+        avatar: post.profiles?.avatar || ''
+      },
+      likes: post.likes_count || 0,
+      comments: post.comments_count || 0,
+      is_liked: post.user_likes?.some((like: any) => like.user_id === userId) || false
+    })) || [];
+  }
 }
