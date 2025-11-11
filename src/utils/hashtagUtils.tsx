@@ -24,7 +24,10 @@ export function renderTextWithHashtags(text: string): React.ReactNode {
         <Link
           key={index}
           to={`/?hashtag=${encodeURIComponent(hashtag)}`}
-          className="text-primary hover:underline font-medium"
+          className="font-medium cursor-pointer transition-all"
+          style={{ color: '#0095F6' }}
+          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
           onClick={(e) => e.stopPropagation()}
         >
           {part}
